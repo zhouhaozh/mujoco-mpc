@@ -36,7 +36,7 @@ int Run(const std::string& scene, const std::string& mj, const std::string& vj,
     double prev_x = be.base_state().x, prev_y = be.base_state().y;
     *path = 0;
     for (int t = 1; t <= 20000; ++t) {
-      if (t % 4 == 0) servo.update(t * 0.001);
+      servo.update(t * 0.001);
       be.run(1);
       if (t % 4 == 0) {
         double w[kDriveWheels], steer[kSwerveCorners];
@@ -73,10 +73,8 @@ int Run(const std::string& scene, const std::string& mj, const std::string& vj,
   int di = 0;
   for (int t = 1; t <= 8000; ++t) {
     while (di < 2 && t > dyn[di + 1].t) ++di;
-    if (t % 4 == 0) {
-      servo.set_twist(dyn[di].cmd);
-      servo.update(t * 0.001);
-    }
+    if (t % 4 == 0) servo.set_twist(dyn[di].cmd);
+    servo.update(t * 0.001);
     be.run(1);
     if (t % 4 == 0) {
       double w[kDriveWheels], steer[kSwerveCorners];

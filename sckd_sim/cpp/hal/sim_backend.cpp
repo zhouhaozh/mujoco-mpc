@@ -209,12 +209,15 @@ BaseState SimBackend::base_state() const {
   s.roll  = std::atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y));
   s.pitch = std::asin(std::clamp(2 * (w * y - z * x), -1.0, 1.0));
   s.yaw   = std::atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
-  // 车体系速度:mj_objectVelocity 为只读计算,但签名取非常量 mjData
-  mjtNum res[6];
-  mj_objectVelocity(m_, const_cast<mjData*>(d_), mjOBJ_BODY, base_bid_, res, /*flg_local=*/1);
-  s.vx = res[0];
-  s.vy = res[1];
-  s.wz = res[5];  // 近平面运动时车体 z ≈ 世界 z
+  // 车体系速度:用 freejoint qvel(无歧义)——线速度为世界系,按 yaw 旋转到车体系;
+  // 角速度 z 分量平面运动下两系一致。
+  // (注:mj_objectVelocity flg_local=1 的线速度实测与车体系不符(疑似含参考系旋转),
+  //  弃用;qvel 路径与位置差分/轮速正解一致,2026-10-05 验证)
+  const double wx = d_->qvel[0], wy = d_->qvel[1];
+  const double c = std::cos(s.yaw), sn = std::sin(s.yaw);
+  s.vx = c * wx + sn * wy;
+  s.vy = -sn * wx + c * wy;
+  s.wz = d_->qvel[5];
   return s;
 }
 

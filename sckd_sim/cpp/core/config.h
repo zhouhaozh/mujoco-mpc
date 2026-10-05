@@ -67,6 +67,7 @@ struct ChassisServoParams {
   double steer_kp = 20.0, steer_kd = 1.0;   // 舵位置 PD(混合律;等效 CSP loc_kp)
   double wheel_kp = 2.0, wheel_ki = 0.5;    // 轮速 PI -> tau_ff(显式环路)
   double wheel_int_max_rad = 8.0;           // 积分限幅(防缠绕;τ_int 上限 = ki*此值)
+  double wheel_target_accel_mps2 = 8.0;     // 轮目标加速度限幅(≈实机 97 rad/s²·r)
 };
 
 struct ChassisOdomParams {
@@ -83,6 +84,7 @@ struct ChassisConfig {
   double wheel_radius = 0.0828;
   double dual_offset = 0.055;
   std::array<double, 8> wheel_sign{};             // 线速度->关节速度符号(L=+1/R=−1,镜像轴)
+  double robot_mass_kg = 51.26;                   // 加速度前馈用(CAD 求和,§3.2.1)
   ChassisCoordination coord;
   ChassisRamp ramp;
   ChassisServoParams servo;

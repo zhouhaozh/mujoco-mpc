@@ -33,7 +33,8 @@
       1,
       -1
     ],
-    "note_wheel_sign": "契约序 8 驱动轮 线速度->关节速度符号:wheel_L 轴+y(+1)/wheel_R 轴−y(−1)(URDF 镜像轴);与参考工程 ini wheel_sign 同源(其为电机接线序)"
+    "note_wheel_sign": "契约序 8 驱动轮 线速度->关节速度符号:wheel_L 轴+y(+1)/wheel_R 轴−y(−1)(URDF 镜像轴);与参考工程 ini wheel_sign 同源(其为电机接线序)",
+    "robot_mass_kg": 51.26
   },
   "coordination": {
     "enable_cos_projection": true,
@@ -50,12 +51,13 @@
   },
   "servo": {
     "period_ms": 4,
-    "steer_kp": 60.0,
-    "steer_kd": 2.0,
-    "wheel_kp": 3.0,
-    "wheel_ki": 0.4,
-    "note": "全轴混合控制(用户 2026-10-05):舵=混合 PD 位置伺服;轮=PI 输出 tau_ff(kp=0/kd=0 纯前馈),无嵌套速度环,保证 MPC 所见被控对象不被改写",
-    "wheel_int_max_rad": 8.0
+    "steer_kp": 25.0,
+    "steer_kd": 2.2,
+    "wheel_kp": 0.6,
+    "wheel_ki": 1.0,
+    "note": "伺服重构(2026-10-05):分配 250Hz,轮速 PI 1kHz(目标加速度限幅 8 m/s²);舵 kp25/kd2.2+速率前馈(地面耦合下提高带宽;9ms 延迟界内),轮 kp0.1/ki2.0(打滑时惯量骤降,小 kp 大 ki)",
+    "wheel_int_max_rad": 8.0,
+    "wheel_accel_mps2": 8.0
   },
   "odom": {
     "steer_offset_rad": [
@@ -65,13 +67,13 @@
       0.0
     ],
     "wheel_speed_noise_rad_s": 0.01,
-    "imu_rate_hz": 200.0,
+    "imu_rate_hz": 500.0,
     "imu_latency_ms": 2.0,
     "gyro_bias_rad_s": 0.002,
     "gyro_noise_rad_s": 0.002,
     "acc_noise_mps2": 0.05,
     "gyro_fallback_ms": 300.0,
-    "note": "steer_offset 实机 x4-04 为 ±45° 量级(±0.795/−0.773/0.742/−0.775 rad);默认 0,DR/注入实验用"
+    "note": "IMU=HiPNUC,/dev/ttyUSB0@460800,500Hz 实机验证 2026-09-19(0 误码);带宽 89% 偏满,备用 400Hz;steer_offset 实机 x4-04 约 ±45°;陀螺龄期 300ms 回退"
   },
   "sources": [
     "参考 /home/ubuntu/research/sckd-robot config/robot_8w4s.ini(实机标定:轮半径/加速限/方向角率/迟滞)",

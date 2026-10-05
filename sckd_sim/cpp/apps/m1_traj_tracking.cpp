@@ -46,15 +46,16 @@ int RunTracking(const Args& a) {
   {
     servo.set_twist(Twist{v_circle, 0, 0});
     for (int t = 1; t <= 2000; ++t) {  // 2s 直行:舵对准 0
-      if (t % 4 == 0) servo.update(t * 0.001);
+      servo.update(t * 0.001);
       be.run(1);
     }
     const double steer0 = be.joint(AxisSteer(0)).q;
     servo.set_twist(Twist{v_circle, 0, wz_circle});       // 阶跃
-    const double target = M_PI / 2;                        // 纯 wz+vx 下 FL 目标角
+    // FL 真实目标角 = atan2(vy + wz·x, vx − wz·y) @ FL(0.475, 0.475)
+    const double target = std::atan2(wz_circle * 0.475, v_circle - wz_circle * 0.475);
     bool hit63 = false;
     for (int t = 2001; t <= 8000 && !hit63; ++t) {
-      if (t % 4 == 0) servo.update(t * 0.001);
+      servo.update(t * 0.001);
       be.run(1);
       const double q = be.joint(AxisSteer(0)).q;
       if (std::fabs(q - steer0) >= 0.63 * std::fabs(target - steer0)) {
@@ -72,12 +73,13 @@ int RunTracking(const Args& a) {
     be.hold_arm(60.0, 1.5);
     s2.set_twist(Twist{v_circle, 0, wz_circle});
     for (int t = 1; t <= 20000; ++t) {
-      if (t % 4 == 0) s2.update(t * 0.001);
+      s2.update(t * 0.001);
       be.run(1);
       if (t < 3000) continue;  // 入口过渡不计入指标
       const BaseState b = be.base_state();
       const double v_err = std::hypot(b.vx - v_circle, b.vy);
-      const double radial = std::fabs(std::hypot(b.x, b.y) - r_circle);
+      // 前馈圆弧圆心在 (0, r)(起点原点、左转);横向误差相对该圆度量
+      const double radial = std::fabs(std::hypot(b.x, b.y - r_circle) - r_circle);
       sum_v_err2 += v_err * v_err;
       sum_wz_err2 += (b.wz - wz_circle) * (b.wz - wz_circle);
       sum_rad2 += radial * radial;
@@ -99,10 +101,8 @@ int RunTracking(const Args& a) {
       Twist cmd{1.0, 0, 0};
       if (t > 2000 && t <= 4000) cmd = Twist{-1.0, 0, 0};  // 反向(舵保持,轮速反号)
       if (t > 4000) cmd = Twist{0, 0, 0};                   // 急停
-      if (t % 4 == 0) {
-        s3.set_twist(cmd);
-        s3.update(t * 0.001);
-      }
+      if (t % 4 == 0) s3.set_twist(cmd);
+      s3.update(t * 0.001);
       be.run(1);
       const BaseState b = be.base_state();
       if (t % 100 == 0) {
