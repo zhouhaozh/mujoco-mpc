@@ -45,6 +45,8 @@ class SimBackend : public RobotInterface {
   const ChassisConfig& chassis_config() const { return chcfg_; }
   const mjModel* model() const { return m_; }
   const mjData* data() const { return d_; }
+  // 可写访问(演示/气动外力等进程内扩展;正式算法层禁用,§4.3)
+  mjData* data_mut() { return d_; }
 
  private:
   void write_ctrl();
