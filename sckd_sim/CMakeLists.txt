@@ -19,7 +19,12 @@ add_library(sckd_core STATIC
   cpp/robot/swerve_kinematics.cpp
   cpp/hal/sim_backend.cpp
   cpp/control/chassis_servo.cpp
+  cpp/control/chassis_mpc.cpp
+  cpp/control/gen/chassis_mpc.c
   cpp/estimation/wheel_odom.cpp)
+set_source_files_properties(cpp/control/gen/chassis_mpc.c PROPERTIES LANGUAGE CXX)
+target_include_directories(sckd_core PUBLIC third_party/osqp/include)
+target_link_libraries(sckd_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/osqp/libosqp.a)
 target_include_directories(sckd_core PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/cpp
   ${MUJOCO_DIR}/include)
@@ -27,7 +32,7 @@ target_link_directories(sckd_core PUBLIC ${MUJOCO_DIR}/lib)
 target_link_libraries(sckd_core PUBLIC mujoco Threads::Threads Eigen3::Eigen)
 
 foreach(app m0_determinism m0_step_rate m0_static_contact m0_arm_step_response
-        m1_traj_tracking m1_arm_gravity m1_odom m1_dbg_chassis)
+        m1_traj_tracking m1_arm_gravity m1_odom m1_dbg_chassis m1_mpc_tracking)
   add_executable(${app} cpp/apps/${app}.cpp)
   target_link_libraries(${app} PRIVATE sckd_core)
 endforeach()

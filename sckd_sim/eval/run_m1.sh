@@ -30,6 +30,7 @@ run m0_static    "$BUILD/m0_static_contact" "$GEN/x4_tennis_scene.mjcf" "$CFG/mo
 run m1_traj      "$BUILD/m1_traj_tracking"  "$GEN/x4_tennis_scene.mjcf" "$CFG/motors.json" "$CFG/x4_tennis.json" "$CFG/chassis_m1.json"
 run m1_gravity   "$BUILD/m1_arm_gravity"    "$GEN/x4_tennis_scene.mjcf" "$CFG/motors.json" "$CFG/x4_tennis.json" "$CFG/chassis_m1.json"
 run m1_odom      "$BUILD/m1_odom"           "$GEN/x4_tennis_scene.mjcf" "$CFG/motors.json" "$CFG/x4_tennis.json" "$CFG/chassis_m1.json"
+run m1_mpc       "$BUILD/m1_mpc_tracking"   "$GEN/x4_tennis_scene.mjcf" "$CFG/motors.json" "$CFG/x4_tennis.json" "$CFG/chassis_m1.json"
 
 note "=== summary: pass=$pass fail=$fail ==="
 exit "$fail"
