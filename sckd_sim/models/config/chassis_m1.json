@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "geometry": {
+    "corner_xy_m": [[0.475, 0.475], [0.475, -0.475], [-0.475, 0.475], [-0.475, -0.475]],
+    "wheel_radius_m": 0.0828,
+    "dual_wheel_offset_m": 0.055,
+    "drives_per_corner": 2,
+    "note_corner_order": "契约角序 FL,FR,RL,RR(参考工程 ini 为 FR,FL,RL,RR,数值已按契约重排)"
+  },
+  "coordination": {
+    "enable_cos_projection": true,
+    "cos_deadband_rad": 0.10,
+    "cos_floor": 0.0,
+    "reverse_threshold_rad": 1.5708,
+    "reverse_hysteresis_rad": 0.20,
+    "zero_speed_mps": 0.001
+  },
+  "ramp": {
+    "accel_limit_mps2": 8.0,
+    "ang_accel_limit_rad_s2": 20.0,
+    "dir_rate_limit_rad_s": 3.0
+  },
+  "servo": {
+    "period_ms": 4,
+    "steer_kp": 20.0,
+    "steer_kd": 1.0,
+    "wheel_kp": 2.0,
+    "wheel_ki": 0.5,
+    "note": "全轴混合控制(用户 2026-10-05):舵=混合 PD 位置伺服;轮=PI 输出 tau_ff(kp=0/kd=0 纯前馈),无嵌套速度环,保证 MPC 所见被控对象不被改写"
+  },
+  "odom": {
+    "steer_offset_rad": [0.0, 0.0, 0.0, 0.0],
+    "wheel_speed_noise_rad_s": 0.01,
+    "imu_rate_hz": 200.0,
+    "imu_latency_ms": 2.0,
+    "gyro_bias_rad_s": 0.002,
+    "gyro_noise_rad_s": 0.002,
+    "acc_noise_mps2": 0.05,
+    "gyro_fallback_ms": 300.0,
+    "note": "steer_offset 实机 x4-04 为 ±45° 量级(±0.795/−0.773/0.742/−0.775 rad);默认 0,DR/注入实验用"
+  },
+  "sources": [
+    "参考 /home/ubuntu/research/sckd-robot config/robot_8w4s.ini(实机标定:轮半径/加速限/方向角率/迟滞)",
+    "协同策略参考其 ADR-0009(cos 投影/最近角/迟滞反转);速度环方案(ADR-0012)按用户指示不采用"
+  ]
+}

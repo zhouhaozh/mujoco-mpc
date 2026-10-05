@@ -1,0 +1,42 @@
+cmake_minimum_required(VERSION 3.16)
+project(sckd_sim LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+set(MUJOCO_DIR "/home/ubuntu/research/sim/deps/mujoco-3.14.0" CACHE PATH
+    "MuJoCo release root containing include/ and lib/")
+
+find_package(Threads REQUIRED)
+find_package(Eigen3 REQUIRED)
+
+add_library(sckd_core STATIC
+  cpp/core/config.cpp
+  cpp/robot/motor_model.cpp
+  cpp/robot/swerve_kinematics.cpp
+  cpp/hal/sim_backend.cpp)
+target_include_directories(sckd_core PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/cpp
+  ${MUJOCO_DIR}/include)
+target_link_directories(sckd_core PUBLIC ${MUJOCO_DIR}/lib)
+target_link_libraries(sckd_core PUBLIC mujoco Threads::Threads Eigen3::Eigen)
+
+foreach(app m0_determinism m0_step_rate m0_static_contact m0_arm_step_response)
+  add_executable(${app} cpp/apps/${app}.cpp)
+  target_link_libraries(${app} PRIVATE sckd_core)
+endforeach()
+
+add_executable(test_motor_model cpp/tests/test_motor_model.cpp)
+target_include_directories(test_motor_model PRIVATE third_party/doctest)
+target_link_libraries(test_motor_model PRIVATE sckd_core)
+
+add_executable(test_swerve cpp/tests/test_swerve.cc)
+target_include_directories(test_swerve PRIVATE third_party/doctest)
+target_link_libraries(test_swerve PRIVATE sckd_core)
+
+enable_testing()
+add_test(NAME motor_model COMMAND test_motor_model)
+add_test(NAME swerve COMMAND test_swerve)

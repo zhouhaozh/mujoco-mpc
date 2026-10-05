@@ -1,0 +1,11 @@
+# 归档与构建产物
+*.tar.gz
+sckd_sim/build/
+__pycache__/
+*.pyc
+
+# 模型管线临时文件(build_model.py 生成,可重建)
+sckd_sim/models/generated/_*.urdf
+
+# 日志产物
+sckd_sim/eval/reports/*.csv

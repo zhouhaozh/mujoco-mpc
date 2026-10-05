@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "variant": "x4_tennis",
+  "source_urdf": "source/x4_tennis/tennis_robot.urdf",
+  "notes": [
+    "电机配置用户确认 2026-10-05:与羽毛球机差异仅 J5(网球 RS06 / 羽毛球 RS05),其余一致",
+    "J3 URDF effort=60 被 RS06 电机能力 36 N·m 取代(min(电机,机构) 口径)",
+    "连续关节(steer/wheel/J1/J4/J5)无机构行程信息,不设位置限位,仅速度/力矩限制"
+  ],
+  "joints": [
+    {"joint": "FL_steer_joint",        "motor": "RS06", "mechanism_limit_nm": 36.0},
+    {"joint": "FL_wheel_left_joint",   "motor": "RS06", "mechanism_limit_nm": 36.0},
+    {"joint": "FL_wheel_right_joint",  "motor": "RS06", "mechanism_limit_nm": 36.0},
+    {"joint": "FR_steer_joint",        "motor": "RS06", "mechanism_limit_nm": 36.0},
+    {"joint": "FR_wheel_left_joint",   "motor": "RS06", "mechanism_limit_nm": 36.0},
+    {"joint": "FR_wheel_right_joint",  "motor": "RS06", "mechanism_limit_nm": 36.0},
+    {"joint": "RL_steer_joint",        "motor": "RS06", "mechanism_limit_nm": 36.0},
+    {"joint": "RL_wheel_left_joint",   "motor": "RS06", "mechanism_limit_nm": 36.0},
+    {"joint": "RL_wheel_right_joint",  "motor": "RS06", "mechanism_limit_nm": 36.0},
+    {"joint": "RR_steer_joint",        "motor": "RS06", "mechanism_limit_nm": 36.0},
+    {"joint": "RR_wheel_left_joint",   "motor": "RS06", "mechanism_limit_nm": 36.0},
+    {"joint": "RR_wheel_right_joint",  "motor": "RS06", "mechanism_limit_nm": 36.0},
+    {"joint": "Joint1", "motor": "RS04", "mechanism_limit_nm": 120.0},
+    {"joint": "Joint2", "motor": "RS04", "mechanism_limit_nm": 120.0},
+    {"joint": "Joint3", "motor": "RS06", "mechanism_limit_nm": 36.0},
+    {"joint": "Joint4", "motor": "RS06", "mechanism_limit_nm": 36.0},
+    {"joint": "Joint5", "motor": "RS06", "mechanism_limit_nm": 36.0}
+  ],
+  "wheel_collision": {
+    "radius_m": 0.0828,
+    "half_width_m": 0.027,
+    "center_in_wheel_frame": {
+      "left":  [-0.0012, -0.077, 0.0],
+      "right": [ 0.0012,  0.077, 0.0]
+    },
+    "friction": [1.0, 0.005, 0.0001],
+    "note": "轮碰撞用基元圆柱替代原始 STL 网格(视觉保留 STL);几何取自网格 bbox/径向 p99,详见 manifest"
+  },
+  "keyframe_home": {"base_z_m": 0.2087, "note": "0.043-0.1689+轮半径 0.0828,推导见 build manifest"}
+}

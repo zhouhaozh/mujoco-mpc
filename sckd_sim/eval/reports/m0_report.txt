@@ -1,0 +1,47 @@
+=== M0 acceptance 2026-10-05 18:14:15 ===
+T-N 包络为手册读图估值(calibrated=false),数值结论以此为边界
+[OK] /home/ubuntu/sckd/sim/sckd_sim/models/generated/x4_tennis_scene.mjcf
+     nq=24 nv=23 nu=17 smoke 100 steps, base_z=0.2086
+[OK] manifest -> /home/ubuntu/sckd/sim/sckd_sim/models/generated/x4_tennis_manifest.json
+[PASS] model_pipeline
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/ubuntu/sckd/sim/sckd_sim/build
+[ 28%] Built target sckd_core
+[ 42%] Built target m0_arm_step_response
+[ 71%] Built target m0_static_contact
+[ 71%] Built target m0_determinism
+[100%] Built target m0_step_rate
+[100%] Built target test_motor_model
+[PASS] build
+--- unit_tests
+[doctest] doctest version is "2.5.0"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:  7 |  7 passed | 0 failed | 0 skipped
+[doctest] assertions: 17 | 17 passed | 0 failed |
+[doctest] Status: SUCCESS!
+[PASS] unit_tests
+--- determinism
+run1 hash=86294b26f00564f4  run2 hash=86294b26f00564f4
+trajectory_hash_equal=1  final_qpos_bit_equal=1
+[PASS] determinism: 6000 步全轨迹逐位一致
+[PASS] determinism
+--- step_rate
+model: nbody=19 nq=24 nv=23 nu=17 dt=0.001 s
+200000 steps in 2.224 s -> 89913 steps/s (实时 89.9x)
+[PASS] step_rate >= 10000 steps/s
+[PASS] step_rate
+--- static_contact
+max|vx|=0.0000 m/s  max|vy|=0.0000 m/s  max|wz|=0.0002 rad/s  max_tilt=0.0000 rad (0.00 deg)
+z range=[0.2086,0.2086] drift=0.0000 m  wheel_contacts=16  normal_sum=502.8 N (整机重 502.9 N)
+all_finite=1
+[PASS] static_contact
+[PASS] static_contact
+--- arm_step_response
+J2(RS04): max|tau|=120.00 N·m (cap 120)  final q=-0.534 rad (target -0.6)  tail std=0.0000
+J5(RS06): max|tau|=36.00 N·m (cap 36)   final q=1.000 rad (target +1.0)  tail std=0.0000
+csv -> eval/reports/arm_step_response.csv
+[PASS] arm_step_response(限幅链/到达/整定)
+[PASS] arm_step_response
+=== summary: pass=7 fail=0 ===
