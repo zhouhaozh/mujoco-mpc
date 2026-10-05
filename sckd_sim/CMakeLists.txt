@@ -21,7 +21,10 @@ add_library(sckd_core STATIC
   cpp/control/chassis_servo.cpp
   cpp/control/chassis_mpc.cpp
   cpp/control/gen/chassis_mpc.c
-  cpp/estimation/wheel_odom.cpp)
+  cpp/estimation/wheel_odom.cpp
+  cpp/sim/ball_aero.cpp
+  cpp/sim/ball_server.cpp
+  cpp/estimation/ball_predictor.cpp)
 set_source_files_properties(cpp/control/gen/chassis_mpc.c PROPERTIES LANGUAGE CXX)
 target_include_directories(sckd_core PUBLIC third_party/osqp/include)
 target_link_libraries(sckd_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/osqp/libosqp.a)
@@ -45,6 +48,11 @@ add_executable(test_swerve cpp/tests/test_swerve.cc)
 target_include_directories(test_swerve PRIVATE third_party/doctest)
 target_link_libraries(test_swerve PRIVATE sckd_core)
 
+add_executable(test_ball cpp/tests/test_ball.cc)
+target_include_directories(test_ball PRIVATE third_party/doctest)
+target_link_libraries(test_ball PRIVATE sckd_core)
+
 enable_testing()
 add_test(NAME motor_model COMMAND test_motor_model)
 add_test(NAME swerve COMMAND test_swerve)
+add_test(NAME ball COMMAND test_ball)

@@ -10,7 +10,7 @@ void BallServer::Spawn(double qpos[7], double v[3], double w[3]) const {
   const double el = p_.elevation_deg * M_PI / 180.0;
   const double az = p_.azimuth_deg * M_PI / 180.0;
   const double ch = std::cos(el), sh = std::sin(el);
-  v[0] = -p_.speed * ch * std::cos(az);
+  v[0] = p_.speed * ch * std::cos(az);
   v[1] = p_.speed * ch * std::sin(az);
   v[2] = p_.speed * sh;
   // 上旋轴:垂直于速度的水平方向(ω×v 升力向上)
