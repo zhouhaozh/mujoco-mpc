@@ -100,6 +100,9 @@ ChassisConfig LoadChassisConfig(const std::string& chassis_json_path) {
   if (i != 4) throw std::runtime_error("geometry.corner_xy_m must have 4 corners");
   c.wheel_radius = g.at("wheel_radius_m");
   c.dual_offset = g.at("dual_wheel_offset_m");
+  i = 0;
+  for (const double v : g.at("wheel_sign")) c.wheel_sign[i++] = v;
+  if (i != 8) throw std::runtime_error("geometry.wheel_sign must have 8 values");
 
   const auto& co = j.at("coordination");
   c.coord.enable_cos_projection = co.value("enable_cos_projection", true);
@@ -120,6 +123,7 @@ ChassisConfig LoadChassisConfig(const std::string& chassis_json_path) {
   c.servo.steer_kd = s.at("steer_kd");
   c.servo.wheel_kp = s.at("wheel_kp");
   c.servo.wheel_ki = s.at("wheel_ki");
+  c.servo.wheel_int_max_rad = s.value("wheel_int_max_rad", 8.0);
 
   const auto& o = j.at("odom");
   i = 0;

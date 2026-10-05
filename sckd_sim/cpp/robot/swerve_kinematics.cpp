@@ -15,6 +15,24 @@ double AngleDiff(double to, double from) { return WrapPi(to - from); }
 SwerveKinematics::SwerveKinematics(const SwerveGeometry& g, const CoordinationParams& c)
     : g_(g), c_(c) {}
 
+SwerveKinematics SwerveKinematics::FromChassisConfig(const ChassisConfig& cfg) {
+  SwerveGeometry g;
+  for (int i = 0; i < kSwerveCorners; ++i) {
+    g.corner_x[i] = cfg.corner_x[i];
+    g.corner_y[i] = cfg.corner_y[i];
+  }
+  g.wheel_radius = cfg.wheel_radius;
+  g.dual_offset = cfg.dual_offset;
+  CoordinationParams c;
+  c.enable_cos_projection = cfg.coord.enable_cos_projection;
+  c.cos_deadband = cfg.coord.cos_deadband;
+  c.cos_floor = cfg.coord.cos_floor;
+  c.reverse_threshold = cfg.coord.reverse_threshold;
+  c.reverse_hysteresis = cfg.coord.reverse_hysteresis;
+  c.zero_speed = cfg.coord.zero_speed;
+  return SwerveKinematics(g, c);
+}
+
 void SwerveKinematics::Allocate(const Twist& t, const double steer_meas[kSwerveCorners],
                                 bool reversed[kSwerveCorners],
                                 CornerCmd out[kSwerveCorners]) const {

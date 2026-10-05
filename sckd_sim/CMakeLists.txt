@@ -17,14 +17,17 @@ add_library(sckd_core STATIC
   cpp/core/config.cpp
   cpp/robot/motor_model.cpp
   cpp/robot/swerve_kinematics.cpp
-  cpp/hal/sim_backend.cpp)
+  cpp/hal/sim_backend.cpp
+  cpp/control/chassis_servo.cpp
+  cpp/estimation/wheel_odom.cpp)
 target_include_directories(sckd_core PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/cpp
   ${MUJOCO_DIR}/include)
 target_link_directories(sckd_core PUBLIC ${MUJOCO_DIR}/lib)
 target_link_libraries(sckd_core PUBLIC mujoco Threads::Threads Eigen3::Eigen)
 
-foreach(app m0_determinism m0_step_rate m0_static_contact m0_arm_step_response)
+foreach(app m0_determinism m0_step_rate m0_static_contact m0_arm_step_response
+        m1_traj_tracking m1_arm_gravity m1_odom)
   add_executable(${app} cpp/apps/${app}.cpp)
   target_link_libraries(${app} PRIVATE sckd_core)
 endforeach()

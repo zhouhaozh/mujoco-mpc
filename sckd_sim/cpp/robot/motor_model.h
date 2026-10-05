@@ -9,10 +9,7 @@
 
 namespace sckd {
 
-// 单轴混合模式命令
-struct MotorCmd {
-  double q = 0, dq = 0, kp = 0, kd = 0, tau_ff = 0;
-};
+// MotorCmd 已迁至 core/types.h(核心命令契约,HAL/伺服/电机模型共用)
 
 class MotorModel {
  public:

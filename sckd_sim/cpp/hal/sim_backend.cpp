@@ -8,8 +8,9 @@
 namespace sckd {
 
 SimBackend::SimBackend(const std::string& scene_xml, const std::string& motors_json,
-                       const std::string& variant_json) {
+                       const std::string& variant_json, const std::string& chassis_json) {
   cfg_ = LoadMotorConfig(motors_json, variant_json);
+  chcfg_ = LoadChassisConfig(chassis_json);
 
   char err[1024] = "";
   m_ = mj_loadXML(scene_xml.c_str(), nullptr, err, sizeof(err));
@@ -33,9 +34,11 @@ SimBackend::SimBackend(const std::string& scene_xml, const std::string& motors_j
     return;
   }
   motor_ = std::make_unique<MotorModel>(cfg_);
+  scratch_ = mj_makeData(m_);   // 重力前馈专用(悬空姿态,无接触)
 }
 
 SimBackend::~SimBackend() {
+  if (scratch_) mj_deleteData(scratch_);
   if (d_) mj_deleteData(d_);
   if (m_) mj_deleteModel(m_);
 }
@@ -72,6 +75,10 @@ bool SimBackend::reset(int keyframe) {
   mj_resetDataKeyframe(m_, d_, keyframe);
   mj_forward(m_, d_);
   motor_ = std::make_unique<MotorModel>(cfg_);  // 电机状态(延迟管道/使能)一并复位
+  rng_.seed(12345);                              // 噪声流固定 -> 确定性可回归
+  imu_valid_ = false;
+  next_imu_tick_ = 0;
+  last_bvx_ = last_bvy_ = last_bvz_ = 0;
   tick_ = 0;
   return true;
 }
@@ -94,6 +101,40 @@ void SimBackend::hold_arm(double kp, double kd) {
 }
 
 bool SimBackend::enable(int axis, bool on) { return motor_->enable(axis, on); }
+
+void SimBackend::set_axis_cmd(int axis, const MotorCmd& cmd) { motor_->set_cmd(axis, cmd); }
+
+JointReport SimBackend::joint_measured(int axis) {
+  JointReport r = joint(axis);
+  r.q = quantize(r.q);
+  if (axis >= 0 && axis < kNumChassis) {
+    if (axis % 3 == 0) {
+      // 舵角:模型侧零位偏置(装配误差;实机 x4-04 实测约 ±45°)
+      r.q += chcfg_.odom.steer_offset_rad[axis / 3];
+    } else {
+      // 驱动轮:速度测量噪声
+      r.dq += gauss_(rng_) * chcfg_.odom.wheel_speed_noise_rad_s;
+    }
+  }
+  return r;
+}
+
+bool SimBackend::get_imu(ImuSample* out) {
+  if (!ok() || !imu_valid_ || !out) return false;
+  *out = imu_;
+  return true;
+}
+
+bool SimBackend::arm_gravity(const double q[kNumArm], double tau_ff[kNumArm]) {
+  if (!ok()) return false;
+  mj_resetDataKeyframe(m_, scratch_, 0);
+  scratch_->qpos[2] += 0.5;  // 悬空:排除地面接触对逆动力学的影响
+  for (int j = 0; j < kNumArm; ++j) scratch_->qpos[qadr_[AxisArm(j)]] = q[j];
+  // reset 后 qvel=qacc=0 -> qfrc_inverse 即纯重力项
+  mj_inverse(m_, scratch_);
+  for (int j = 0; j < kNumArm; ++j) tau_ff[j] = scratch_->qfrc_inverse[vadr_[AxisArm(j)]];
+  return true;
+}
 
 void SimBackend::set_arm_hybrid(const ArmHybridCmd& cmd) {
   for (int j = 0; j < kNumArm; ++j) {
@@ -128,8 +169,33 @@ bool SimBackend::run(int steps) {
     write_ctrl();     // 电机模型(混合律+限幅链) -> ctrl
     mj_step(m_, d_);
     ++tick_;
+    sample_imu();     // 200Hz 采样(带龄期戳/偏置/噪声)
   }
   return true;
+}
+
+void SimBackend::sample_imu() {
+  const uint64_t period = std::max<uint64_t>(
+      1, static_cast<uint64_t>(std::lround(1000.0 / chcfg_.odom.imu_rate_hz)));  // ticks(ms)
+  if (tick_ < next_imu_tick_) return;
+  next_imu_tick_ = tick_ + period;
+
+  const BaseState s = base_state();
+  const bool first = !imu_valid_;
+  const double ax = first ? 0.0 : (s.vx - last_bvx_) / dt_;
+  const double ay = first ? 0.0 : (s.vy - last_bvy_) / dt_;
+  const auto& p = chcfg_.odom;
+  imu_.t_us = tick_ * 1000 - static_cast<uint64_t>(p.imu_latency_ms * 1000.0);
+  imu_.acc[0] = ax + gauss_(rng_) * p.acc_noise_mps2;
+  imu_.acc[1] = ay + gauss_(rng_) * p.acc_noise_mps2;
+  imu_.acc[2] = -m_->opt.gravity[2] + gauss_(rng_) * p.acc_noise_mps2;  // 静止读 +g
+  imu_.gyr[0] = gauss_(rng_) * p.gyro_noise_rad_s;
+  imu_.gyr[1] = gauss_(rng_) * p.gyro_noise_rad_s;
+  imu_.gyr[2] = s.wz + p.gyro_bias_rad_s + gauss_(rng_) * p.gyro_noise_rad_s;
+  last_bvx_ = s.vx;
+  last_bvy_ = s.vy;
+  last_bvz_ = 0.0;
+  imu_valid_ = true;
 }
 
 BaseState SimBackend::base_state() const {

@@ -7,6 +7,8 @@
 
 #include <Eigen/Dense>
 
+#include "core/config.h"
+
 namespace sckd {
 
 constexpr int kSwerveCorners = 4;
@@ -43,6 +45,8 @@ double AngleDiff(double to, double from);
 class SwerveKinematics {
  public:
   SwerveKinematics(const SwerveGeometry& g, const CoordinationParams& c);
+  // 从底盘配置构造(几何+协同参数;伺服与里程计共用)
+  static SwerveKinematics FromChassisConfig(const ChassisConfig& cfg);
 
   // 逆解:twist -> 每角(目标舵角, 模块速度)。reversed 为有状态迟滞,调用方持有并
   // 跨周期传入;舵角误差大时 cos 投影自动收缩驱动速度(消除侧向刮擦分量)。
