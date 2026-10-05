@@ -1,0 +1,60 @@
+=== M1 acceptance 2026-10-05 21:14:33 ===
+边界: T-N 读图估值(calibrated=false);连杆惯量未辨识;地面摩擦名义值;增益=仿真口径(实机作初值,行为对齐)
+--- unit_motor
+[doctest] doctest version is "2.5.0"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:  7 |  7 passed | 0 failed | 0 skipped
+[doctest] assertions: 17 | 17 passed | 0 failed |
+[doctest] Status: SUCCESS!
+[PASS] unit_motor
+--- unit_swerve
+[doctest] doctest version is "2.5.0"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:   8 |   8 passed | 0 failed | 0 skipped
+[doctest] assertions: 182 | 182 passed | 0 failed |
+[doctest] Status: SUCCESS!
+[PASS] unit_swerve
+--- m0_determinism
+run1 hash=dd9336897b4fd0a0  run2 hash=dd9336897b4fd0a0
+trajectory_hash_equal=1  final_qpos_bit_equal=1
+[PASS] determinism: 6000 步全轨迹逐位一致
+[PASS] m0_determinism
+--- m0_static
+max|vx|=0.0002 m/s  max|vy|=0.0000 m/s  max|wz|=0.0000 rad/s  max_tilt=0.0000 rad (0.00 deg)
+z range=[0.2086,0.2086] drift=0.0000 m  wheel_contacts=16  normal_sum=502.8 N (整机重 502.9 N)
+all_finite=1
+[PASS] static_contact
+[PASS] m0_static
+--- m1_traj
+T_steer(63%) = 0.049000 s(FL 阶跃;MPC 等效模型输入)
+circle: v_rms=0.085 m/s (max 0.174)  wz_rms=0.031 rad/s  radial_rms=0.125 m
+stop: |v|max(4.5s 后)=0.050 m/s  finite=1
+[PASS] m1_traj_tracking
+[PASS] m1_traj
+--- m1_gravity
+pose home:
+    ff=0  max_err=0.4069 rad (23.31 deg) @ J2
+    ff=1  max_err=0.0002 rad (0.01 deg) @ J3
+pose side:
+    ff=0  max_err=0.3871 rad (22.18 deg) @ J2
+    ff=1  max_err=0.0002 rad (0.01 deg) @ J1
+pose reach:
+    ff=0  max_err=0.1608 rad (9.21 deg) @ J2
+    ff=1  max_err=0.0001 rad (0.01 deg) @ J2
+pose low:
+    ff=0  max_err=0.3044 rad (17.44 deg) @ J2
+    ff=1  max_err=0.0002 rad (0.01 deg) @ J5
+worst(with FF) = 0.01 deg(判据 < 2.00 deg 且优于无 FF)
+[PASS] m1_arm_gravity
+[PASS] m1_gravity
+--- m1_odom
+=== 里程计对照表(§5.2;测量注入:量化+噪声,舵偏置=0)===
+巡航段(圆弧 20 s): 路径 19.5 m  漂移 2.024 m  vRMSE 0.071 m/s
+全程(巡航+高机动): 路径 27.5 m
+  wheel-only: 漂移 2.117 m (7.71%)  航向误差 1.877 rad
+  gyro-fused: 漂移 0.271 m (0.99%)  航向误差 0.056 rad  滑移残差 0.0567 rad/s
+[INFO] m1_odom 完成(基线建立,漂移%记录供回归对比)
+[PASS] m1_odom
+=== summary: pass=7 fail=0 ===
