@@ -28,10 +28,10 @@ struct HitPlan {
 };
 
 struct PlannerParams {
-  double height_lo = 0.7, height_hi = 1.7;
+  double height_lo = 0.5, height_hi = 2.0;
   double arm_reach_min = 0.4, arm_reach_max = 1.1;
   double swing_time = 0.35, prep_time = 0.55;
-  double max_base_travel = 3.0;
+  double max_base_travel = 5.0;
   double restitution = 0.60;
 };
 

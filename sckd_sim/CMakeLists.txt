@@ -37,7 +37,7 @@ target_link_directories(sckd_core PUBLIC ${MUJOCO_DIR}/lib)
 target_link_libraries(sckd_core PUBLIC mujoco Threads::Threads Eigen3::Eigen)
 
 foreach(app m0_determinism m0_step_rate m0_static_contact m0_arm_step_response
-        m1_traj_tracking m1_arm_gravity m1_odom m1_dbg_chassis m1_mpc_tracking m2_predictor demo_hit)
+        m1_traj_tracking m1_arm_gravity m1_odom m1_dbg_chassis m1_mpc_tracking m2_predictor m2_intercept demo_hit)
   add_executable(${app} cpp/apps/${app}.cpp)
   target_link_libraries(${app} PRIVATE sckd_core)
 endforeach()
