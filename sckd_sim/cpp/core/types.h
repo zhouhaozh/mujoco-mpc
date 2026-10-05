@@ -64,6 +64,12 @@ struct ImuSample {
   double gyr[3] = {0, 0, 0};      // rad/s(车体系)
 };
 
+// 球观测(§3.6;时间戳=采样时刻-感知延迟)
+struct BallObs {
+  double t = 0;
+  double p[3] = {0, 0, 0};
+};
+
 // 单轴电机混合模式命令(核心命令契约;实机协议同构)
 struct MotorCmd {
   double q = 0, dq = 0, kp = 0, kd = 0, tau_ff = 0;

@@ -36,6 +36,7 @@ class SimBackend : public RobotInterface {
   JointReport joint(int axis) const override;
   JointReport joint_measured(int axis) override;
   bool get_imu(ImuSample* out) override;
+  bool get_ball_obs(BallObs* out);
   bool arm_gravity(const double q[kNumArm], double tau_ff[kNumArm]) override;
 
   bool run(int steps);                   // 每步:tick -> compute -> ctrl -> mj_step(+IMU 采样)
@@ -52,6 +53,7 @@ class SimBackend : public RobotInterface {
   void write_ctrl();
   bool build_maps();
   void sample_imu();                     // 200Hz:真值 + 偏置/噪声 -> imu_(带龄期戳)
+  void sample_ball_obs();                // 300Hz:球位置 + 噪声 -> ball_obs_(带龄期戳)
 
   mjModel* m_ = nullptr;
   mjData* d_ = nullptr;
@@ -69,6 +71,14 @@ class SimBackend : public RobotInterface {
   ImuSample imu_{};
   bool imu_valid_ = false;
   uint64_t next_imu_tick_ = 0;
+  // 球观测(§3.6 源①)
+  BallObs ball_obs_{};       // 带噪声+延迟戳的观测
+  bool ball_obs_valid_ = false;
+  uint64_t next_ball_obs_tick_ = 0;
+  int ball_bid_ = -1, ball_qadr_ = -1;
+  double ball_obs_noise_ = 0.030;   // σ(m,对齐真机 trobot)
+  double ball_obs_rate_hz_ = 300.0;
+  double ball_obs_latency_ms_ = 15.0;
   double last_bvx_ = 0, last_bvy_ = 0, last_bvz_ = 0;
 };
 

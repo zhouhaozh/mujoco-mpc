@@ -62,6 +62,13 @@ bool SimBackend::build_maps() {
     return false;
   }
   base_qadr_ = m_->jnt_qposadr[root_jid];
+  // 球(可选;demo/m2 场景含 ball body)
+  ball_bid_ = mj_name2id(m_, mjOBJ_BODY, "ball");
+  if (ball_bid_ >= 0) {
+    const int bj = mj_name2id(m_, mjOBJ_JOINT, "ball_free");
+    if (bj >= 0) ball_qadr_ = m_->jnt_qposadr[bj];
+    else ball_bid_ = -1;
+  }
   return true;
 }
 
@@ -170,6 +177,7 @@ bool SimBackend::run(int steps) {
     mj_step(m_, d_);
     ++tick_;
     sample_imu();     // 200Hz 采样(带龄期戳/偏置/噪声)
+    sample_ball_obs();// 300Hz(带龄期戳/噪声)
   }
   return true;
 }
@@ -219,6 +227,25 @@ BaseState SimBackend::base_state() const {
   s.vy = -sn * wx + c * wy;
   s.wz = d_->qvel[5];
   return s;
+}
+
+void SimBackend::sample_ball_obs() {
+  if (ball_bid_ < 0 || ball_qadr_ < 0) return;
+  const uint64_t period = std::max<uint64_t>(
+      1, static_cast<uint64_t>(std::lround(1000.0 / ball_obs_rate_hz_)));
+  if (tick_ < next_ball_obs_tick_) return;
+  next_ball_obs_tick_ = tick_ + period;
+  ball_obs_.t = tick_ * 0.001 - ball_obs_latency_ms_ * 0.001;
+  ball_obs_.p[0] = d_->qpos[ball_qadr_]     + gauss_(rng_) * ball_obs_noise_;
+  ball_obs_.p[1] = d_->qpos[ball_qadr_ + 1] + gauss_(rng_) * ball_obs_noise_;
+  ball_obs_.p[2] = d_->qpos[ball_qadr_ + 2] + gauss_(rng_) * ball_obs_noise_;
+  ball_obs_valid_ = true;
+}
+
+bool SimBackend::get_ball_obs(BallObs* out) {
+  if (!ok() || !ball_obs_valid_ || !out) return false;
+  *out = ball_obs_;
+  return true;
 }
 
 JointReport SimBackend::joint(int axis) const {

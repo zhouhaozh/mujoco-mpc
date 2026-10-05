@@ -1,14 +1,10 @@
 #pragma once
 // 球轨迹预测器(§6.1/§3.6):物理 EKF(T1:重力+阻力,可选残余加速度)+ 反弹事件分段;
 // 附逐轴 CA 滤波(trobot 现役路线)作 A/B 基线——用数据说话,不被其绑架。
+#include "core/types.h"
 #include "sim/ball_aero.h"
 
 namespace sckd {
-
-struct BallObs {
-  double t = 0;
-  double p[3] = {0, 0, 0};
-};
 
 struct BounceParams {
   double restitution_z = 0.73;   // 参数化映射的常数起点(F3/仿真真值拟合替换)
