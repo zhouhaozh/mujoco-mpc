@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "tennis": {
+    "mass_kg": 0.057,
+    "radius_m": 0.033,
+    "rho_air": 1.225,
+    "Cd": 0.55,
+    "Cl_k": 0.3,
+    "note": "Cl = Cl_k * S(S=spin 比=ωr/|v|,文献:Cl~0.2-0.3@S=0.2);calibrated=false,F3 以真机高速摄像拟合(§9-4)"
+  },
+  "server": {
+    "speed_mps": 12.0,
+    "elevation_deg": 12.0,
+    "azimuth_deg": 180.0,
+    "spin_rpm": 2000,
+    "spawn_pos_m": [
+      8.0,
+      0.0,
+      2.0
+    ],
+    "note": "默认自 +x 侧 8m 处向机器人(−x)发球,12 m/s/仰角12°/上旋2000rpm(业余典型,文献值)"
+  },
+  "obs": {
+    "rate_hz": 300.0,
+    "latency_ms": 15.0,
+    "noise_std_m": 0.03,
+    "drop_prob": 0.0,
+    "note": "对齐真机(2026-10-05,trobot):4×Basler+TrackNet/TRT ~300Hz,σ=30mm,PTP 时戳,延迟15ms"
+  },
+  "bounce": {
+    "restitution_z": 0.73,
+    "friction_xy": 0.8,
+    "min_interval_s": 0.1,
+    "note": "每轴解析恢复系数(上位机 ML 反弹试过退回解析式;网球典型 e=0.73);去抖 100ms"
+  }
+}
