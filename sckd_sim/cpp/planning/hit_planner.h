@@ -20,6 +20,7 @@ struct HitPlan {
   double p_hit[3] = {0, 0, 0};
   double t_hit = 0;
   double base_target[3] = {0, 0, 0};
+  double v_in[3] = {0, 0, 0};      // 预测来球速度@t_hit(拍面姿态对准用)
   double v_racket[3] = {0, 0, 0};
   double n_face[3] = {0, 0, 1};
   bool feasible = false;

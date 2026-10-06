@@ -35,6 +35,7 @@ int main(int argc, char** argv) {
   const int ball_qadr = m->jnt_qposadr[mj_name2id(m, mjOBJ_JOINT, "ball_free")];
   const int ball_vadr = m->jnt_dofadr[mj_name2id(m, mjOBJ_JOINT, "ball_free")];
   const int ball_bid = mj_name2id(m, mjOBJ_BODY, "ball");
+  const int ball_gid = mj_name2id(m, mjOBJ_GEOM, "ball_geom");
   const int site_id = mj_name2id(m, mjOBJ_SITE, "racket_center");
 
   BallAeroParams aero;
@@ -68,6 +69,8 @@ int main(int argc, char** argv) {
     double lock_p[3] = {0}, lock_t = 0, plan_err = -1;
     int replans = 0;
     double t_min_dist = -1;
+    double t_ground = -1;   // 首次落地时刻(判"挥拍击球"还是"落地后撞拍")
+    bool touch_printed = false;
     double min_dist_decomp[3] = {-1, -1, -1};  // [法向, 面内1, 面内2]@最近时刻
 
     // 发球(微扰):慢弧线喂球,保证甜区落在管线可达时间窗内
@@ -200,9 +203,34 @@ int main(int argc, char** argv) {
       be.set_arm_hybrid(ac);
       be.run(1);
 
-      // 接触检测:球速方向改变(-x → +x);有效性要求拍曾接近(排除碰臂/车体误计)
+      // 接触检测:球速方向改变(-x → +x)
       const double vx = d->qvel[ball_vadr];
-      if (vx > 0 && vx0 < 0) { ball_hit = true; break; }
+      // 诊断:击球窗内首次球接触(geom 对/接触法向/球速)
+      if (locked_saved && !touch_printed && ts > lock_t - 0.30 && ts < lock_t + 0.30 &&
+          d->ncon > 0) {
+        for (int ci = 0; ci < d->ncon; ++ci) {
+          const int g1 = d->contact[ci].geom1, g2 = d->contact[ci].geom2;
+          const bool has_ball = (g1 == ball_gid || g2 == ball_gid);
+          if (!has_ball) continue;
+          const int other = (g1 == ball_gid) ? g2 : g1;
+          const double* cn = d->contact[ci].frame;  // 法向 = frame[0..2](g1→g2)
+          double nball[3] = {cn[0], cn[1], cn[2]};
+          if (g2 == ball_gid) for (int k = 0; k < 3; ++k) nball[k] = -nball[k];
+          std::printf("  [touch] t=%.3f vs %s n=(%.2f,%.2f,%.2f) bv=(%.1f,%.1f,%.1f)\n",
+                      ts, mj_id2name(m, mjOBJ_GEOM, other),
+                      nball[0], nball[1], nball[2],
+                      d->qvel[ball_vadr], d->qvel[ball_vadr+1], d->qvel[ball_vadr+2]);
+          touch_printed = true;
+        }
+      }
+      if (t_ground < 0 && d->qpos[ball_qadr+2] < 0.033 && d->qvel[ball_vadr+2] < 0)
+        t_ground = ts;
+      if (vx > 0 && vx0 < 0) {
+        ball_hit = true;
+        std::printf("  [contact] t=%.3f ball_z=%.3f %s\n", ts, d->qpos[ball_qadr+2],
+                    (t_ground > 0) ? "(落地后!非挥拍击球)" : "(落地前·有效)");
+        break;
+      }
       // 拍-球距离
       {
         double x[3]={0,0,0};
@@ -231,7 +259,7 @@ int main(int argc, char** argv) {
       if (d->qpos[ball_qadr+2] < 0.05 && (locked_saved ? ts > lock_t + 0.3 : ts > 1.0)) break;
       if (ts > 5.0) break;
     }
-    if (ball_hit && min_ball_dist < 0.30) ++hits;  // 有效:方向改变且拍曾接近(排除碰臂)
+    if (ball_hit && min_ball_dist < 0.30 && t_ground < 0) ++hits;  // 有效:落地前方向改变且拍接近
     if (min_ball_dist < 0.15) ++contacts;
     char pe_str[16];
     if (plan_err >= 0) std::snprintf(pe_str, sizeof(pe_str), "%.3f", plan_err);

@@ -18,6 +18,8 @@ class ArmIk {
   // target:拍心世界位置;base_x/y/yaw:底盘位姿(IK 期间底盘视为固定)
   IkResult Solve(const double target[3], double base_x, double base_y,
                  double base_yaw, const double q_seed[5], int max_iter = 300);
+  // 拍面法向(世界系)FK:给定 q 与底盘位姿(yaw=0 约定同 Solve)
+  void FaceNormal(const double q[5], double base_x, double base_y, double n_out[3]);
 
  private:
   mjModel* m_;

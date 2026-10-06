@@ -10,7 +10,7 @@ namespace {
 constexpr double kBackDelta[5] = {-0.35, 0.25, 0.10, 0.0, 0.0};
 // 穿击提前量:补偿臂跟踪系统滞后(面内 ~0.12m@t_hit,J1 残余滞后主导,
 // 2026-10-06 拍面系分解定位)。0 = 不提前
-constexpr double kStrikeLead = 0.045;
+constexpr double kStrikeLead = 0.050;
 
 // 五次多项式插值 a→b(静止到静止),t 裁剪到 [t0, t0+T]
 void QuinticProfile(double t0, double T, const double a[5], const double b[5],
@@ -26,6 +26,27 @@ void QuinticProfile(double t0, double T, const double a[5], const double b[5],
     cmd.ddp[j] = (b[j] - a[j]) * ddp;
   }
 }
+
+// J5 姿态搜索:J5 为过拍心的纯滚转(不改变拍心位置),在 ±π 内取 24 个候选,
+// 选拍面法向与目标方向 n*(意图出球方向,近似垂直墙+仰角)最对齐者。
+// 位置 IK 不出姿态 —— 2026-10-06 接触诊断:面法向与反弹方向差 ~130°,
+// 球贴面滑行 10+ms 不反弹;对齐后仍受软接触限制,配合拍面 solref 调硬。
+double AlignFaceJ5(ArmIk& ik, const double q_ik[5], double bx, double by,
+                  const double n_star[3]) {
+  const double nm = std::sqrt(n_star[0]*n_star[0] + n_star[1]*n_star[1] + n_star[2]*n_star[2]);
+  if (nm < 0.5) return q_ik[4];
+  double q_best = q_ik[4], best = -2.0;
+  for (int k = 0; k < 24; ++k) {
+    double q[5];
+    for (int j = 0; j < 5; ++j) q[j] = q_ik[j];
+    q[4] = q_ik[4] + (k - 12) * (M_PI / 12.0);
+    double n[3];
+    ik.FaceNormal(q, bx, by, n);
+    const double s = (n[0]*n_star[0] + n[1]*n_star[1] + n[2]*n_star[2]) / nm;
+    if (s > best) { best = s; q_best = q[4]; }
+  }
+  return q_best;
+}
 }  // namespace
 
 void SwingGenerator::Init(const HitPlan& plan, const double q_current[5], ArmIk& ik) {
@@ -35,6 +56,7 @@ void SwingGenerator::Init(const HitPlan& plan, const double q_current[5], ArmIk&
   IkResult res = ik.Solve(plan.p_hit, plan.base_target[0], plan.base_target[1],
                           0.0, q_current);
   if (!res.converged) { active_ = false; return; }
+  res.q[4] = AlignFaceJ5(ik, res.q, plan.base_target[0], plan.base_target[1], plan.n_face);
   for (int j = 0; j < 5; ++j) {
     q0_[j] = q_current[j];
     q_hit_[j] = res.q[j];
@@ -51,6 +73,7 @@ bool SwingGenerator::UpdatePlan(const HitPlan& plan, ArmIk& ik) {
   IkResult res = ik.Solve(plan.p_hit, plan.base_target[0], plan.base_target[1],
                           0.0, q_hit_);  // 上一解作种子,保证连续;yaw=0 同 Init
   if (!res.converged) return false;
+  res.q[4] = AlignFaceJ5(ik, res.q, plan.base_target[0], plan.base_target[1], plan.n_face);
   for (int j = 0; j < 5; ++j) {
     q_hit_[j] = res.q[j];
     q_back_[j] = q_hit_[j] + kBackDelta[j];

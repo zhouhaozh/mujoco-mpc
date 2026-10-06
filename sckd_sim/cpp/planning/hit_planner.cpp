@@ -12,7 +12,7 @@ void HitPlanner::RefineAt(const BallPredictor& predictor, const BaseState& base,
   if (!hp || !hp->feasible) return;
   double p[3], v_in[3];
   if (!predictor.PredictFull(hp->t_hit, p, v_in)) return;
-  for (int i = 0; i < 3; ++i) hp->p_hit[i] = p[i];
+  for (int i = 0; i < 3; ++i) { hp->p_hit[i] = p[i]; hp->v_in[i] = v_in[i]; }
   double bc[3] = {base.x, base.y, base.yaw};
   BaseTargetFromHit(hp->p_hit, bc, hp->base_target);
   hp->time_margin = hp->t_hit - t_now - pp_.swing_time - 0.20;  // 服务窗口径
@@ -75,7 +75,7 @@ HitPlan HitPlanner::Plan(const BallPredictor& predictor, const BaseState& base,
     double vr[3], nf[3];
     ReboundInverse(v_in, v_out, vr, nf);
     HitPlan hp;
-    for (int i=0;i<3;++i) { hp.p_hit[i]=p[i]; hp.base_target[i]=bt[i]; hp.v_racket[i]=vr[i]; hp.n_face[i]=nf[i]; }
+    for (int i=0;i<3;++i) { hp.p_hit[i]=p[i]; hp.base_target[i]=bt[i]; hp.v_in[i]=v_in[i]; hp.v_racket[i]=vr[i]; hp.n_face[i]=nf[i]; }
     hp.t_hit=t; hp.time_margin=margin; hp.feasible=true;
     hp.score = Score(hp, base, t_now);
     if (hp.score > best.score) best = hp;

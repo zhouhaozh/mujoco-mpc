@@ -66,4 +66,14 @@ IkResult ArmIk::Solve(const double target[3], double base_x, double base_y,
   return r;
 }
 
+void ArmIk::FaceNormal(const double q[5], double base_x, double base_y, double n_out[3]) {
+  for (int j = 0; j < 5; ++j) d_->qpos[qadr_[j]] = q[j];
+  d_->qpos[0] = base_x; d_->qpos[1] = base_y; d_->qpos[2] = 0.209;
+  d_->qpos[3] = 1; d_->qpos[4] = 0; d_->qpos[5] = 0; d_->qpos[6] = 0;  // yaw=0
+  mj_kinematics(m_, d_);
+  const int rb = m_->site_bodyid[site_id_];
+  const double nl[3] = {0, 1, 0};  // 拍面法向 = 面盒薄轴 y_local
+  mju_rotVecQuat(n_out, nl, d_->xquat + rb * 4);
+}
+
 }  // namespace sckd
