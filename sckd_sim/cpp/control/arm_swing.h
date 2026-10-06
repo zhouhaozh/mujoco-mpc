@@ -13,15 +13,18 @@ class ArmSwing {
  public:
   static constexpr int kM = 9;             // 与 gen_arm_nlp.py META.M 一致
   static constexpr double kSHit = 0.72;    // 终值内点
-  static constexpr double kLead = 0.060;   // 终值提前(伺服滞后补偿,扫 0.03~0.09 最优)
+  static constexpr double kLead = 0.020;   // 终值提前基值(闭环 τ̂ 补偿主滞后)
 
   // 阶段1+2 一次性求解(t_now=当前绝对仿真时刻;dq=当前关节速度)
   void Init(const HitPlan& plan, const double q_current[5], const double dq_current[5],
             class ArmIk& ik, double t_now);
   // 重规划(锁止前):更新终值并重解 QP(~1ms)
   bool UpdatePlan(const HitPlan& plan, class ArmIk& ik, double t_now);
-  // 播放:绝对时刻 → q/dq/ddp + 增益(SwingCmd 契约,ddp 供惯性前馈)
-  bool Update(double t_abs, SwingCmd& cmd);
+  // 播放:绝对时刻 → q/dq/ddp + 增益(SwingCmd 契约,ddp 供惯性前馈)。
+  // q_meas(可空):实测关节角,用于闭环滞后补偿 —— τ̂=e·dq/|dq|²(指令轨迹的
+  // 最小二乘时间移位),播放时钟前移 τ̂:拍在 t_hit 实际抵达(替代常数提前量,
+  // 高位族轨迹激进滞后大,常数覆盖不了,2026-10-06)
+  bool Update(double t_abs, const double* q_meas, SwingCmd& cmd);
   bool active() const { return active_; }
   bool locked() const;                    // 接近触球(t_hit−t < 0.15)后锁止
   double t_hit() const { return t_hit_; }

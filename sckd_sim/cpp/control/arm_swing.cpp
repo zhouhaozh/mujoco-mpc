@@ -222,9 +222,27 @@ bool ArmSwing::Solve(const HitPlan& plan, ArmIk& ik, double t_now, bool retime) 
   return true;
 }
 
-bool ArmSwing::Update(double t_abs, SwingCmd& cmd) {
+bool ArmSwing::Update(double t_abs, const double* q_meas, SwingCmd& cmd) {
   if (!active_) return false;
-  const double s = std::clamp((t_abs - t0_) / T_, 0.0, 1.0);
+  double tau = 0.0;   // 闭环滞后:指令轨迹最小二乘时间移位(s 域)
+  if (q_meas) {
+    double snom = std::clamp((t_abs - t0_) / T_, 0.0, 1.0);
+    double tk[kM], d1[kM], d2[kM], d3[kM];
+    Basis(snom, tk, d1, d2, d3);
+    double num = 0, den = 0;
+    for (int j = 0; j < 5; ++j) {
+      double q = 0, dq = 0;
+      for (int a = 0; a < kM; ++a) {
+        const double c = coeff_[j * kM + a];
+        q += c * tk[a]; dq += c * d1[a];
+      }
+      const double dqs = dq / T_;
+      num += (q_meas[j] - q) * dqs;    // 负滞后(臂落后)→ τ>0
+      den += dqs * dqs;
+    }
+    if (den > 1e-6) tau = std::clamp(-num / den, 0.0, 0.10);
+  }
+  const double s = std::clamp((t_abs + tau - t0_) / T_, 0.0, 1.0);
   double tk[kM], d1[kM], d2[kM], d3[kM];
   Basis(s, tk, d1, d2, d3);
   for (int j = 0; j < 5; ++j) {

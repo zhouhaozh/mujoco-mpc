@@ -198,7 +198,7 @@ int main(int argc, char** argv) {
       ArmHybridCmd ac;
       for (int j = 0; j < 5; ++j) { ac.kp[j]=60; ac.kd[j]=(j==4?1.5:6.0); }
       SwingCmd sc;
-      if (use_qp ? aswing.Update(ts, sc) : (swing.active() && swing.Update(ts, sc))) {
+      if (use_qp ? aswing.Update(ts, q_cur, sc) : (swing.active() && swing.Update(ts, sc))) {
         for (int j = 0; j < 5; ++j) {
           ac.q[j]=sc.q[j]; ac.dq[j]=sc.dq[j]; ac.kp[j]=sc.kp[j]; ac.kd[j]=sc.kd[j];
         }
