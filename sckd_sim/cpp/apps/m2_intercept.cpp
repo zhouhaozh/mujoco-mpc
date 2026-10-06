@@ -47,6 +47,12 @@ int main(int argc, char** argv) {
   const std::string base_mode = (argc > 6) ? argv[6] : "";
   const bool fly = (base_mode == "mpcfly" || base_mode == "pfly");
   const bool use_mpc = (base_mode == "mpc" || base_mode == "mpcfly");
+  // 发球族(argv[7],默认 "fixed"):fixed = M2 定点族(回归口径不变);
+  // rand = 随机发球族(M3 验收):速度/仰角/方位/转速/落点全域随机。
+  // "可达域内"的判定 = 规划器找到可行计划(IK 可达+时间裕度+甜区),不可达的
+  // 发球单独计数、不入击球率分母(参数域按反弹后甜区落在工作空间构造,
+  // 不可达占比应 <20%,否则说明域取得过宽)
+  const bool rand_serve = (argc > 7 && std::strcmp(argv[7], "rand") == 0);
   SimBackend be(scene, "models/config/motors.json", "models/config/x4_tennis.json",
                 "models/config/chassis_m1.json");
   if (!be.ok()) { std::printf("[FAIL] init\n"); return 1; }
@@ -77,6 +83,7 @@ int main(int argc, char** argv) {
   double mpc_ms_max = 0;
 
   int hits = 0, contacts = 0;
+  int feasible_serves = 0;   // 随机族:规划器找到可行计划的发球数(可达域分母)
   double plan_err_sum = 0; int plan_err_n = 0;
   // M3 移动击球指标:触球底盘速度 / 拍速底盘贡献占比 / 出球速度
   double base_spd_sum = 0; int base_spd_n = 0;
@@ -106,18 +113,34 @@ int main(int argc, char** argv) {
     BaseRefGen::Schedule mpc_sched;   // MPC 参考:初规划起锚(绝对时间)
     double t_min_dist = -1;
     double t_ground = -1;   // 首次落地时刻(判"挥拍击球"还是"落地后撞拍")
+    double t_bounce_plan = -1;  // 初规划时预测的反弹时刻(与 t_ground 对照诊断)
     bool touch_printed = false;
     double min_dist_decomp[3] = {-1, -1, -1};  // [法向, 面内1, 面内2]@最近时刻
     double base_speed_hit = -1;                // 触球时刻底盘速度(M3 判据>0.5)
 
-    // 发球(微扰):慢弧线喂球,保证甜区落在管线可达时间窗内
+    // 发球:fixed = 微扰定点族(M2 回归口径);rand = 随机族(M3,全域均匀,
+    // 域按"反弹后甜区有机会落入工作空间"构造:y 半幅 ±1.6 内保证底盘跑道可达)
     ServerParams sp;
-    std::normal_distribution<double> jitter(0, 0.3);
-    sp.speed = 4.5 + jitter(rng) * 0.15;
-    sp.elevation_deg = 40.0 + jitter(rng);
-    sp.azimuth_deg = 185.0 + jitter(rng) * 2.0;
-    sp.spin_rpm = 800;
-    sp.spawn[0] = 4.8; sp.spawn[1] = -0.5; sp.spawn[2] = 3.0;
+    if (rand_serve) {
+      std::uniform_real_distribution<double> u(0.0, 1.0);
+      sp.speed = 3.8 + 2.0 * u(rng);
+      sp.elevation_deg = 28.0 + 22.0 * u(rng);
+      sp.azimuth_deg = 178.0 + 17.0 * u(rng);
+      sp.spin_rpm = 400.0 + 800.0 * u(rng);
+      sp.spawn[0] = 4.4 + 1.0 * u(rng);
+      sp.spawn[1] = -1.5 + 2.2 * u(rng);
+      sp.spawn[2] = 2.6 + 0.8 * u(rng);
+      std::printf("  [serve] %.1f m/s %.0f° %.0f° spin %.0f from (%.1f,%.1f,%.1f)\n",
+                  sp.speed, sp.elevation_deg, sp.azimuth_deg, sp.spin_rpm,
+                  sp.spawn[0], sp.spawn[1], sp.spawn[2]);
+    } else {
+      std::normal_distribution<double> jitter(0, 0.3);
+      sp.speed = 4.5 + jitter(rng) * 0.15;
+      sp.elevation_deg = 40.0 + jitter(rng);
+      sp.azimuth_deg = 185.0 + jitter(rng) * 2.0;
+      sp.spin_rpm = 800;
+      sp.spawn[0] = 4.8; sp.spawn[1] = -0.5; sp.spawn[2] = 3.0;
+    }
     BallServer server(sp);
     double q[7], v[3], w[3];
     server.Spawn(q, v, w);
@@ -159,6 +182,7 @@ int main(int argc, char** argv) {
         if (plan.feasible) {
           planned = true;
           t_plan0 = ts;
+          t_bounce_plan = predictor.NextBounceTime();
           // 定点模式清零 fly 意图:底盘不飞就不会有那份拍速,臂不得预支
           // (RefineAt 不改 v_base_star,一次清零覆盖全程)
           if (!fly) { plan.v_base_star[0] = plan.v_base_star[1] = 0; }
@@ -190,18 +214,27 @@ int main(int argc, char** argv) {
         }
       }
       // QP 延迟起挥触发
-      if (use_qp && planned && kInitDelay > 0 && !aswing.active() && ts >= t_plan0 + kInitDelay)
+      if (use_qp && planned && kInitDelay > 0 && !aswing.active() && ts >= t_plan0 + kInitDelay) {
         aswing.Init(plan, q_cur, dq_cur, ik, ts);
-      // 重规划(50Hz,后引锁止前):t_hit 锚定,RefineAt 仅精化 p_hit/base_target
+        if (!aswing.active() && ts - t_plan0 < kInitDelay + 0.60)   // 初解失败诊断(限窗打印)
+          std::printf("  [init-fail] t=%.2f p=(%.2f,%.2f,%.2f) base_t=(%.2f,%.2f) t_hit=%.2f\n",
+                      ts, plan.p_hit[0], plan.p_hit[1], plan.p_hit[2],
+                      plan.base_target[0], plan.base_target[1], plan.t_hit);
+      }
+      // 重规划(50Hz):t_hit 锚定,RefineAt 仅精化 p_hit/base_target
       // (评分比较会拒绝精化:高度偏好偏爱陈旧高 z 计划 —— 见 hit_planner 注)
-      // (aswing 未激活时 locked() 恒真,须判活,否则延迟起挥期会跳过精化)
-      if (planned && !(use_qp ? (aswing.active() && aswing.locked())
-                              : swing.locked()) && t % 20 == 0) {
+      // QP 路径锁止后仍调用(UpdatePlan 内部按 §6.5 限微调幅度,大改自拒);
+      // 五次基线保持锁止即冻结。aswing 未激活时 locked() 恒真,须判活
+      if (planned && (use_qp ? aswing.active() : !swing.locked()) && t % 20 == 0) {
         const BaseState bs2 = be.base_state();
         planner.RefineAt(predictor, bs2, &plan, ts);
         ++replans;
-        mpc_sched.tx = plan.base_target[0];   // 终点随精化更新(起锚不变)
-        mpc_sched.ty = plan.base_target[1];
+        // 底盘参考终点:锁止后冻结(fly-through 末段 chasing 收敛中的目标会
+        // 拉偏触球几何,随机族 plan_err 0.94/1.05 反例,2026-10-07);臂仍可微调
+        if (!(use_qp && aswing.locked())) {
+          mpc_sched.tx = plan.base_target[0];   // 终点随精化更新(起锚不变)
+          mpc_sched.ty = plan.base_target[1];
+        }
         if (use_qp) { if (aswing.active()) aswing.UpdatePlan(plan, ik, ts); }
         else if (swing.active()) swing.UpdatePlan(plan, ik);
         else swing.Init(plan, q_cur, ik);
@@ -408,9 +441,11 @@ int main(int argc, char** argv) {
     char pe_str[16];
     if (plan_err >= 0) std::snprintf(pe_str, sizeof(pe_str), "%.3f", plan_err);
     else std::snprintf(pe_str, sizeof(pe_str), "n/a");
-    std::printf("trial %2d: hit=%d min_dist=%.3fm@t=%.3f(plan t_hit=%.3f) 法向=%.3f 面内=%.3f plan_err=%s\n",
+    std::printf("trial %2d: hit=%d min_dist=%.3fm@t=%.3f(plan t_hit=%.3f) 法向=%.3f 面内=%.3f plan_err=%s"
+                " 落地=%.2f(预测%.2f)\n",
                 trial+1, ball_hit, min_ball_dist, t_min_dist, lock_t,
-                min_dist_decomp[0], min_dist_decomp[1], pe_str);
+                min_dist_decomp[0], min_dist_decomp[1], pe_str, t_ground, t_bounce_plan);
+    if (planned) ++feasible_serves;
   }
   const double rate = 100.0 * hits / kTrials;
   const double crate = 100.0 * contacts / kTrials;
@@ -433,6 +468,16 @@ int main(int argc, char** argv) {
                 share_n ? 100.0 * share_sum / share_n : 0.0,
                 out_spd_n ? out_spd_sum / out_spd_n : 0.0);
   std::printf("诊断: ②击球点偏差<0.2m ③拍球距离<0.15m ④命中率≥80%%\n");
+  if (rand_serve) {
+    // M3 随机族口径:击球率分母 = 可达发球(规划可行);不可达单独报告
+    const double fr = feasible_serves ? 100.0 * hits / feasible_serves : 0.0;
+    const double in_dom = 100.0 * feasible_serves / kTrials;
+    std::printf("随机发球族: 可达 %d/%d(%.0f%%) | 命中(可达域内) %d/%d = %.0f%%\n",
+                feasible_serves, kTrials, in_dom, hits, feasible_serves, fr);
+    std::printf("%s (M3 门槛: 可达域内 ≥60%%)\n", fr >= 60.0 ? "[PASS]" : "[FAIL]");
+    mj_deleteData(d_ik);
+    return fr >= 60.0 ? 0 : 1;
+  }
   std::printf("%s (门槛 ≥80%%)\n", rate >= 80.0 ? "[PASS]" : "[FAIL]");
   mj_deleteData(d_ik);
   return rate >= 80.0 ? 0 : 1;

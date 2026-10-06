@@ -18,7 +18,8 @@ class ArmSwing {
   // 阶段1+2 一次性求解(t_now=当前绝对仿真时刻;dq=当前关节速度)
   void Init(const HitPlan& plan, const double q_current[5], const double dq_current[5],
             class ArmIk& ik, double t_now);
-  // 重规划(锁止前):更新终值并重解 QP(~1ms)
+  // 重规划:锁止前自由更新终值;锁止后按 §6.5"冻结大改、仅微调"——终值构型
+  // 变化逐关节 ≤ kMicroAdj 才重解(等价拍心 ±cm 级),否则保持(挥拍中途大改必失稳)
   bool UpdatePlan(const HitPlan& plan, class ArmIk& ik, double t_now);
   // 播放:绝对时刻 → q/dq/ddp + 增益(SwingCmd 契约,ddp 供惯性前馈)。
   // q_meas(可空):实测关节角,用于闭环滞后补偿 —— τ̂=e·dq/|dq|²(指令轨迹的
@@ -34,11 +35,12 @@ class ArmSwing {
   // retime=true:初解,定 t0/T 锚;false:精化,仅更新终值目标
   bool Solve(const HitPlan& plan, class ArmIk& ik, double t_now, bool retime);
   double t0_ = 0, t_hit_ = 0, T_ = 0.65, t_last_solve_ = 0;
-  double q0_[5] = {0}, dq0_[5] = {0};
+  double q0_[5] = {0}, dq0_[5] = {0}, q_hit_[5] = {0}, q_lock_[5] = {0};
   double coeff_[45] = {0};                // x[j*M+a] = C[j][a]
-  bool active_ = false;
+  bool active_ = false, lock_snap_ = false;
   double solve_ms_ = 0.0;
   static constexpr double kLockMargin = 0.15;
+  static constexpr double kMicroAdj = 0.05;  // 锁止后终值微调界(rad/关节,对锁止快照)
 };
 
 }  // namespace sckd

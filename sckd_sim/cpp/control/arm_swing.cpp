@@ -163,12 +163,30 @@ void JPinvV(const double J[15], const double v[3], double dq[5]) {
 void ArmSwing::Init(const HitPlan& plan, const double q_current[5],
                     const double dq_current[5], ArmIk& ik, double t_now) {
   for (int j = 0; j < 5; ++j) { q0_[j] = q_current[j]; dq0_[j] = dq_current[j]; }
-  active_ = true;
-  Solve(plan, ik, t_now, /*retime=*/true);
+  lock_snap_ = false;
+  // 初解失败不得置活(2026-10-07 随机族定位):active_=true 而解失败时 t_hit_/T_
+  // 为陈旧零值 → locked() 恒真 → 上层停止重规划、也不再重 Init(臂瘫痪必 miss)。
+  // 失败返回非活,上层下一拍以精化后的计划重试 Init(自我恢复)
+  active_ = Solve(plan, ik, t_now, /*retime=*/true);
 }
 
 bool ArmSwing::UpdatePlan(const HitPlan& plan, ArmIk& ik, double t_now) {
-  if (!active_ || locked()) return false;
+  if (!active_) return false;
+  if (locked()) {
+    // 锁止后微调(§6.5:冻结大改、仅 ±cm 级微调;2026-10-07 实现):完全冻结会
+    // 丢弃 lock→t_hit 间 0.15-0.3s 的预测收敛,随机族实测陈旧终值面内未中
+    // 0.14-0.24m。微调界对【锁止快照】计(逐步界会使漂移累积成大改,反例
+    // plan_err 0.94/1.05,2026-10-07):新终值与快照差逐关节 ≤kMicroAdj 才重解
+    if (!lock_snap_) {
+      for (int j = 0; j < 5; ++j) q_lock_[j] = q_hit_[j];
+      lock_snap_ = true;
+    }
+    IkResult res = ik.Solve(plan.p_hit, plan.base_target[0], plan.base_target[1],
+                            0.0, q0_);
+    if (res.err > 0.03) return false;
+    for (int j = 0; j < 5; ++j)
+      if (std::fabs(res.q[j] - q_lock_[j]) > kMicroAdj) return false;
+  }
   // 精化:时间锚定(t0/T/q0/dq0 不变,仅终值目标更新)—— 若每次重置 t0,
   // 臂永远处于新轨迹起点,不会真正进入挥拍(滚动重规划病,2026-10-06 定位)
   return Solve(plan, ik, t_now, /*retime=*/false);
@@ -183,11 +201,15 @@ bool ArmSwing::Solve(const HitPlan& plan, ArmIk& ik, double t_now, bool retime) 
   // ---- 阶段1:终值构型/速度 ----
   IkResult res = ik.Solve(plan.p_hit, plan.base_target[0], plan.base_target[1],
                           0.0, q0_);
-  if (!res.converged) return false;
+  // 终值 IK 容差放宽到 3cm(非 converged 的 1cm):工作空间边缘(低位平击 z~0.5)
+  // 收敛残差 1-2cm 是常态,拍面半宽 11cm 下无损;按 1cm 拒解曾使随机族低位发球
+  // 的起挥 Init 连败数百次 → 臂瘫痪(2026-10-07 定位)。真不可达(>3cm)仍拒。
+  if (res.err > 0.03) return false;
   double q_hit[5];
   for (int j = 0; j < 5; ++j) q_hit[j] = res.q[j];
   q_hit[4] = AlignFaceJ5(ik, q_hit, plan.base_target[0], plan.base_target[1],
                          plan.n_face);
+  for (int j = 0; j < 5; ++j) q_hit_[j] = q_hit[j];   // 锁止后微调的比对基准
   double J[15], dq_hit[5];
   ik.SiteJacobian(q_hit, plan.base_target[0], plan.base_target[1], J);
   // 方案 B′ 终端交接(2026-10-07):拍速 = v_base + J·dq → 关节终值速度改为差项

@@ -12,6 +12,10 @@ void HitPlanner::RefineAt(const BallPredictor& predictor, const BaseState& base,
   if (!hp || !hp->feasible) return;
   double p[3], v_in[3];
   if (!predictor.PredictFull(hp->t_hit, p, v_in)) return;
+  // 精化合法性:预测噪声不得把锚定击球点拖出高度窗——早期(起拍后 ~0.3s)预测
+  // 会给出 z≈0.25 的地下候选,IK 必败 → 起挥 Init 失败(2026-10-07 随机族定位);
+  // 越窗即保持旧值,等预测收敛后再精化
+  if (p[2] < pp_.height_lo || p[2] > pp_.height_hi) return;
   for (int i = 0; i < 3; ++i) { hp->p_hit[i] = p[i]; hp->v_in[i] = v_in[i]; }
   double bc[3] = {base.x, base.y, base.yaw};
   BaseTargetFromHit(hp->p_hit, bc, hp->base_target);
@@ -57,9 +61,13 @@ double HitPlanner::Score(const HitPlan& hp, const BaseState& base, double t_now)
 HitPlan HitPlanner::Plan(const BallPredictor& predictor, const BaseState& base,
                          double t_now, const HitIntent& intent, double min_lead_s) {
   HitPlan best; best.feasible = false; best.score = -1e9;
-  // 基线策略:只打反弹前(反弹模型未标定,误差 ~0.8m;对齐 trobot MLP 域边界)
+  // 基线策略:只打反弹前(反弹模型未标定,误差 ~0.8m;对齐 trobot MLP 域边界)。
+  // 反弹时刻保护带:早期(起拍 ~0.1s)预测的反弹时刻误差 ±0.15s(vz 预热 σ0.7),
+  // 贴着 t_bounce 选锚会把 t_hit 锚进"真值已反弹"区——RefineAt 锚定不可移,
+  // 事后无法自救(随机族实测 plan_err 0.68/0.99,2026-10-07)
   const double t_bounce = predictor.NextBounceTime();
-  const double t_end = (t_bounce > 0.0) ? std::min(t_bounce, t_now + 2.5) : t_now + 2.5;
+  const double t_end = (t_bounce > 0.0)
+      ? std::min(t_bounce - pp_.bounce_guard, t_now + 2.5) : t_now + 2.5;
   const double lead = (min_lead_s > 0.0) ? min_lead_s : pp_.prep_time + pp_.swing_time;
   for (double t = t_now + lead; t < t_end; t += 0.02) {
     double p[3], v_in[3];
@@ -70,6 +78,10 @@ HitPlan HitPlanner::Plan(const BallPredictor& predictor, const BaseState& base,
     double bt[3]; double bc[3] = {base.x, base.y, base.yaw};
     BaseTargetFromHit(p, bc, bt);
     if (std::hypot(bt[0]-base.x, bt[1]-base.y) > pp_.max_base_travel) continue;
+    // 时间可达性:跑道须在 t_hit 前以 v_max 均速跑完(必要条件;无加速/跟踪裕度,
+    // 边界候选由 Score 的 −2·travel 再压)。随机族实测:1.9-2.2m 跑道配 0.9s 时窗
+    // (均速 2.1-2.4 m/s)被旧判据误收 → 底盘物理到不了,必 miss(2026-10-07)
+    if (std::hypot(bt[0]-base.x, bt[1]-base.y) > pp_.base_v_max * (t - t_now)) continue;
     const double yaw = intent.v_out_yaw_deg * M_PI / 180.0;
     const double el = intent.v_out_elev_deg * M_PI / 180.0;
     double v_out[3] = {intent.v_out_speed*std::cos(el)*std::cos(yaw),
