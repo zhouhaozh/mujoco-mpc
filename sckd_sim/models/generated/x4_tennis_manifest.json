@@ -6,7 +6,7 @@
     "config": "config/x4_tennis.json",
     "config_sha256": "d2004e9c9c47c8a78ba23f570e2529135ab44f9ccb2137d2db4a81bbd67624d3",
     "motors": "config/motors.json",
-    "motors_sha256": "d2266a62950ef49790e383f67219029f03f01b36760025180b16cdd859632e19",
+    "motors_sha256": "3665e2c389fff7dc2c9e241c3a5ea7243bc9eff078dfdc8e3a28b59e5c9e99bf",
     "mujoco_version": "3.14.0"
   },
   "edits": [
