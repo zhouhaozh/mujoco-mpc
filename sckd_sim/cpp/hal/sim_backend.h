@@ -75,6 +75,12 @@ class SimBackend : public RobotInterface {
   BallObs ball_obs_{};       // 带噪声+延迟戳的观测
   bool ball_obs_valid_ = false;
   uint64_t next_ball_obs_tick_ = 0;
+  // 延迟回放缓冲:每 ms 记球真值,emit 时回取 latency 前的样本,保证 obs.p 与
+  // obs.t 时刻一致(旧实现"当前位置+过去时间戳"使 EKF 系统性滞后一个延迟,
+  // 12 m/s 下 0.18m 常值偏差 —— 2026-10-06 验证①定位)
+  static constexpr int kBallHist = 64;   // 64ms @1kHz > 15ms 延迟
+  double ball_hist_p_[kBallHist][3] = {};
+  uint64_t ball_hist_tick_[kBallHist] = {};
   int ball_bid_ = -1, ball_qadr_ = -1;
   double ball_obs_noise_ = 0.030;   // σ(m,对齐真机 trobot)
   double ball_obs_rate_hz_ = 300.0;

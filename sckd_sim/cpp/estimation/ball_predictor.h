@@ -15,11 +15,13 @@ struct BounceParams {
 // ---------- 物理 EKF(主线):状态 [p(3), v(3)] ----------
 class BallPredictor {
  public:
+  // warmup_span_s:首次观测后等待该时距再差分定初速(300Hz 下约 18 帧,
+  // σ_v≈√2·σ/span≈0.7 m/s),避免 v=0/P_v=100 的慢收敛拖垮 200ms 级前视
   BallPredictor(const BallAeroParams& a, double obs_noise_std,
-                const BounceParams& bp = {});
+                const BounceParams& bp = {}, double warmup_span_s = 0.06);
 
-  void Reset(const BallObs& o);
-  void Update(const BallObs& o);                       // 预测至 o.t + 观测更新
+  void Reset(const BallObs& o);                        // 显式重置(v=0,供单测/对拍)
+  void Update(const BallObs& o);                       // 未初始化时内部走预热路径
   bool Predict(double t_query, double p_out[3]) const;
   bool PredictFull(double t_query, double p_out[3], double v_out[3]) const;
   // 拦截采样:t 自 t_now+0.15 起 20ms 步进,首个 z∈[zlo,zhi] 且水平距 base ≤ reach
@@ -35,6 +37,10 @@ class BallPredictor {
   BallAeroParams a_;
   BounceParams bp_;
   double r_std_ = 0.030;
+  double warm_span_ = 0.04;
+  bool warming_ = false;
+  double t_w0_ = 0;
+  double p_w0_[3] = {0};
   bool init_ = false;
   double x_[6] = {0};
   double P_[6][6] = {{0}};

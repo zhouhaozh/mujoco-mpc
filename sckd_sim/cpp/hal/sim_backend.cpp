@@ -85,6 +85,10 @@ bool SimBackend::reset(int keyframe) {
   rng_.seed(12345);                              // 噪声流固定 -> 确定性可回归
   imu_valid_ = false;
   next_imu_tick_ = 0;
+  ball_obs_valid_ = false;
+  next_ball_obs_tick_ = 0;
+  std::fill(std::begin(ball_hist_tick_), std::end(ball_hist_tick_), ~0ull);
+  std::fill(std::begin(ball_hist_p_[0]), std::begin(ball_hist_p_[0]) + 3 * kBallHist, 0.0);
   last_bvx_ = last_bvy_ = last_bvz_ = 0;
   tick_ = 0;
   return true;
@@ -231,14 +235,25 @@ BaseState SimBackend::base_state() const {
 
 void SimBackend::sample_ball_obs() {
   if (ball_bid_ < 0 || ball_qadr_ < 0) return;
+  // 每 ms 入环(本 tick 末的真值位置)
+  const int slot = static_cast<int>(tick_ % kBallHist);
+  for (int i = 0; i < 3; ++i) ball_hist_p_[slot][i] = d_->qpos[ball_qadr_ + i];
+  ball_hist_tick_[slot] = tick_;
+
   const uint64_t period = std::max<uint64_t>(
       1, static_cast<uint64_t>(std::lround(1000.0 / ball_obs_rate_hz_)));
   if (tick_ < next_ball_obs_tick_) return;
   next_ball_obs_tick_ = tick_ + period;
-  ball_obs_.t = tick_ * 0.001 - ball_obs_latency_ms_ * 0.001;
-  ball_obs_.p[0] = d_->qpos[ball_qadr_]     + gauss_(rng_) * ball_obs_noise_;
-  ball_obs_.p[1] = d_->qpos[ball_qadr_ + 1] + gauss_(rng_) * ball_obs_noise_;
-  ball_obs_.p[2] = d_->qpos[ball_qadr_ + 2] + gauss_(rng_) * ball_obs_noise_;
+  // 延迟回放:取 latency 前那个 tick 的位置,时间戳与其一致
+  const uint64_t lat = std::max<uint64_t>(
+      0, static_cast<uint64_t>(std::lround(ball_obs_latency_ms_)));
+  if (tick_ < lat) return;                        // 历史不足(刚 reset),本帧丢弃
+  const uint64_t want = tick_ - lat;
+  const int idx = static_cast<int>(want % kBallHist);
+  if (ball_hist_tick_[idx] != want) return;       // 环溢出/复位后残留,丢弃
+  ball_obs_.t = want * 0.001;
+  for (int i = 0; i < 3; ++i)
+    ball_obs_.p[i] = ball_hist_p_[idx][i] + gauss_(rng_) * ball_obs_noise_;
   ball_obs_valid_ = true;
 }
 

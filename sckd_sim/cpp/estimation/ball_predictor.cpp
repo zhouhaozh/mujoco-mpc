@@ -7,8 +7,8 @@ namespace sckd {
 // ---------- BallPredictor:物理 EKF ----------
 
 BallPredictor::BallPredictor(const BallAeroParams& a, double obs_noise_std,
-                             const BounceParams& bp)
-    : a_(a), bp_(bp), r_std_(obs_noise_std) {}
+                             const BounceParams& bp, double warmup_span_s)
+    : a_(a), bp_(bp), r_std_(obs_noise_std), warm_span_(warmup_span_s) {}
 
 void BallPredictor::Reset(const BallObs& o) {
   for (int i = 0; i < 3; ++i) {
@@ -80,8 +80,11 @@ void BallPredictor::Propagate(double dt) {
         for (int k = 0; k < 6; ++k) s2 += tmp[i][k] * F[j][k];
         P_[i][j] = s2;
       }
-    // 过程噪声(物理模型主导,取小);反弹时放大
-    const double qv = 2.0, qa = 100.0;
+    // 过程噪声:物理模型(重力+阻力)主导,仅留余量吸收未建模项(旋转/Magnus)。
+    // 旧值 qv=2/qa=100 使 v 稳态噪声 ~1 m/s(2026-10-06 验证①定位):
+    // 滤波器过度信任近期位置噪声、持续重估速度 → 0.3s 前视 ~0.3m 底噪。
+    // 实机标定(F3)接入含旋数据后再放宽。
+    const double qv = 0.05, qa = 2.0;
     for (int i = 0; i < 3; ++i) {
       P_[i][i] += qv * h;
       P_[3 + i][3 + i] += qa * h * (bounced ? 20.0 : 1.0);
@@ -91,7 +94,30 @@ void BallPredictor::Propagate(double dt) {
 
 void BallPredictor::Update(const BallObs& o) {
   if (!init_) {
-    Reset(o);
+    // 预热初始化:跨 warm_span_ 差分估计初速(真值差分误差 ~2σ/span ≈ 1 m/s,
+    // 远好于 v=0;之后由 300Hz 观测在 ~0.1s 内精化)
+    if (!warming_) {
+      warming_ = true;
+      t_w0_ = o.t;
+      for (int i = 0; i < 3; ++i) p_w0_[i] = o.p[i];
+      return;
+    }
+    const double dt = o.t - t_w0_;
+    if (dt < warm_span_) return;
+    for (int i = 0; i < 3; ++i) {
+      x_[i] = o.p[i];
+      x_[3 + i] = (o.p[i] - p_w0_[i]) / dt;
+    }
+    for (int i = 0; i < 6; ++i)
+      for (int j = 0; j < 6; ++j) P_[i][j] = 0.0;
+    for (int i = 0; i < 3; ++i) {
+      P_[i][i] = r_std_ * r_std_;
+      P_[3 + i][3 + i] = 4.0 * r_std_ * r_std_ / (dt * dt) + 1.0;  // 差分误差+曲率余量
+    }
+    t_last_ = o.t;
+    t_last_bounce_ = -10.0;
+    warming_ = false;
+    init_ = true;
     return;
   }
   Propagate(o.t - t_last_);
