@@ -27,6 +27,7 @@
 #include "planning/hit_planner.h"
 #include "sim/ball_aero.h"
 #include "sim/ball_server.h"
+#include "sim/analytic_contact.h"
 
 using namespace sckd;
 
@@ -65,6 +66,8 @@ int main(int argc, char** argv) {
   const int ball_vadr = m->jnt_dofadr[mj_name2id(m, mjOBJ_JOINT, "ball_free")];
   const int ball_bid = mj_name2id(m, mjOBJ_BODY, "ball");
   const int ball_gid = mj_name2id(m, mjOBJ_GEOM, "ball_geom");
+  const int face_gid = mj_name2id(m, mjOBJ_GEOM, "racket_face");
+  const RacketImpulseParams ric_pp;   // 拍-球解析冲量(§3.5;k=0.5 待实机替换)
   const int site_id = mj_name2id(m, mjOBJ_SITE, "racket_center");
 
   BallAeroParams aero;
@@ -121,6 +124,12 @@ int main(int argc, char** argv) {
     bool touch_printed = false;
     double min_dist_decomp[3] = {-1, -1, -1};  // [法向, 面内1, 面内2]@最近时刻
     double base_speed_hit = -1;                // 触球时刻底盘速度(M3 判据>0.5)
+    // 反弹标定数据(拍面支,§3.5):接触首帧的入射量,配方向翻转帧的出射量
+    double calib_vin[3] = {0}, calib_win[3] = {0}, calib_n[3] = {0};
+    double calib_bp[3] = {0}, calib_sp[3] = {0}, calib_rv[3] = {0};
+    char calib_other[32] = "";
+    bool calib_saved = false;
+    int post_contact = -1;      // 方向翻转后再观察的毫秒数(取稳态出射速度)
 
     // 发球:fixed = 微扰定点族(M2 回归口径);rand = 随机族(M3,全域均匀,
     // 域按"反弹后甜区有机会落入工作空间"构造:y 半幅 ±1.6 内保证底盘跑道可达)
@@ -365,6 +374,28 @@ int main(int argc, char** argv) {
       static constexpr double kArmInertia[5] = {1.2, 2.0, 0.8, 0.3, 0.05};
       for (int j = 0; j < 5; ++j) ac.tau_ff[j] += kArmInertia[j] * sc.ddp[j];
       be.set_arm_hybrid(ac);
+      // 拍-球解析冲量(§3.5 已知碰撞模型;求解器接触对已排除,真值侧在此施
+      // 加)。命中事件接管 [calib] 标定捕获
+      {
+        const RacketImpulseEvent ev =
+            ApplyRacketImpulse(m, d, face_gid, ball_qadr, ball_vadr, ric_pp);
+        if (ev.fired) {
+          mj_kinematics(m, d);
+          double rp[3] = {0, 0, 0};
+          mju_rotVecQuat(rp, m->site_pos+site_id*3, d->xquat+m->site_bodyid[site_id]*4);
+          const double* sbp = d->xpos + m->site_bodyid[site_id]*3;
+          for (int k = 0; k < 3; ++k) {
+            calib_vin[k] = ev.v_in[k]; calib_win[k] = d->qvel[ball_vadr+3+k];
+            calib_n[k] = -ev.n[k];      // [calib] 口径:n=球→拍(内向)
+            calib_bp[k] = d->qpos[ball_qadr+k];
+            calib_sp[k] = sbp[k] + rp[k]; calib_rv[k] = ev.v_face[k];
+          }
+          std::snprintf(calib_other, sizeof(calib_other), "racket_face");
+          calib_saved = true;
+          std::printf("  [touch-a] v_close=%.2f → vn_out=%.2f off=(%.3f,%.3f)\n",
+                      ev.v_close, ev.vn_out, ev.off_l, ev.off_h);
+        }
+      }
       be.run(1);
 
       // 接触检测:球速方向改变(-x → +x)
@@ -384,13 +415,30 @@ int main(int argc, char** argv) {
                       ts, mj_id2name(m, mjOBJ_GEOM, other),
                       nball[0], nball[1], nball[2],
                       d->qvel[ball_vadr], d->qvel[ball_vadr+1], d->qvel[ball_vadr+2]);
+          if (!calib_saved) {   // 首个球接触帧:入射量快照(标定数据,§3.5)
+            mj_kinematics(m, d);
+            double rp[3] = {0, 0, 0};
+            mju_rotVecQuat(rp, m->site_pos+site_id*3, d->xquat+m->site_bodyid[site_id]*4);
+            const double* sbp = d->xpos + m->site_bodyid[site_id]*3;
+            double rv6[6];
+            mj_objectVelocity(m, d, mjOBJ_SITE, site_id, rv6, /*flg_local=*/0);
+            for (int k = 0; k < 3; ++k) {
+              calib_vin[k] = d->qvel[ball_vadr+k]; calib_win[k] = d->qvel[ball_vadr+3+k];
+              calib_n[k] = nball[k]; calib_bp[k] = d->qpos[ball_qadr+k];
+              calib_sp[k] = sbp[k] + rp[k]; calib_rv[k] = rv6[3+k];
+            }
+            std::snprintf(calib_other, sizeof(calib_other), "%s",
+                          mj_id2name(m, mjOBJ_GEOM, other));
+            calib_saved = true;
+          }
           touch_printed = true;
         }
       }
       if (t_ground < 0 && d->qpos[ball_qadr+2] < 0.033 && d->qvel[ball_vadr+2] < 0)
         t_ground = ts;
-      if (vx > 0 && vx0 < 0) {
+      if (!ball_hit && vx > 0 && vx0 < 0) {   // 一次性(观察窗内不再重复计)
         ball_hit = true;
+        if (post_contact < 0) post_contact = 30;   // 翻转拍≠冲量完毕,再走 30ms
         // M3 拍速分解:拍速 = 底盘贡献 + 臂贡献;出球速度 vs 意图(8 m/s)
         {
           double rv[6];
@@ -410,7 +458,7 @@ int main(int argc, char** argv) {
                       (t_ground > 0) ? "(落地后!非挥拍击球)" : "(落地前·有效)",
                       rk, vbp, 100.0*vbp/rk, vout);
         }
-        break;
+        // 不立即 break:翻转拍≠冲量完毕,再观察 30ms 取稳态出射(标定数据质量)
       }
       // 拍-球距离
       {
@@ -437,6 +485,23 @@ int main(int argc, char** argv) {
         }
       }
       // 终止:落地(越过规划击球时刻后)/超时
+      if (post_contact > 0 && --post_contact == 0) {
+        // 稳态出射:反弹标定 CSV(拍面支,python 拟合 a/b 用;§3.5)
+        if (calib_saved)
+          std::printf("[calib] other=%s vin=%.3f,%.3f,%.3f rv=%.3f,%.3f,%.3f "
+                      "n=%.3f,%.3f,%.3f bp=%.3f,%.3f,%.3f sp=%.3f,%.3f,%.3f "
+                      "vout=%.3f,%.3f,%.3f win=%.2f,%.2f,%.2f wout=%.2f,%.2f,%.2f\n",
+                      calib_other,
+                      calib_vin[0], calib_vin[1], calib_vin[2],
+                      calib_rv[0], calib_rv[1], calib_rv[2],
+                      calib_n[0], calib_n[1], calib_n[2],
+                      calib_bp[0], calib_bp[1], calib_bp[2],
+                      calib_sp[0], calib_sp[1], calib_sp[2],
+                      d->qvel[ball_vadr], d->qvel[ball_vadr+1], d->qvel[ball_vadr+2],
+                      calib_win[0], calib_win[1], calib_win[2],
+                      d->qvel[ball_vadr+3], d->qvel[ball_vadr+4], d->qvel[ball_vadr+5]);
+        break;
+      }
       if (d->qpos[ball_qadr+2] < 0.05 && (locked_saved ? ts > lock_t + 0.3 : ts > 1.0)) break;
       if (ts > 5.0) break;
     }

@@ -41,7 +41,9 @@ struct PlannerParams {
   double max_base_travel = 5.0;
   double base_v_max = 2.1;         // 底盘速度上限(伺服 clamp 同源):时间可达性判据
   double bounce_guard = 0.08;      // 反弹时刻保护带(s):锚定 t_hit 须早于预测反弹−此值
-  double restitution = 0.60;
+  double restitution = 0.60;      // 已废弃:被 rebound_a/b 取代(拍-球解析冲量)
+  double rebound_a = 1.5;         // v_out·n = a·vr_n + b·v_in_n(a=1+k;§3.5)
+  double rebound_b = -0.5;        // b=−k(k=回弹系数 0.5,与 analytic_contact.h 同源)
   double fly_speed_max = 1.2;      // v_base* 上限(m/s,移动击球方案 B′)
   int fly_rule = 0;                // 0=B′ 原规则;1=方案B v0 OCP 蒸馏规则
   double fly_sat = 0.55;           // 规则 1 的饱和系数(见 hit_planner.cpp 注)

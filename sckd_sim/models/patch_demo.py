@@ -99,6 +99,16 @@ for name in ("x4_tennis_demo.mjcf", "x4_tennis_demo.xml"):
         s = s.replace("</worldbody>", court + "</worldbody>", 1)
     else:
         s = s.replace("</mujoco>", "<worldbody>" + court + "</worldbody></mujoco>", 1)
+    # 5) 拍-球接触改解析冲量(§3.5 已知碰撞模型,2026-10-07):软接触在合速
+    #    >10 m/s 处于穿透态(停球距离 v·τ ≫ 面厚+球半径的几何预算,1ms 步长下
+    #    timeconst 收到稳定界内也救不回,受控台架实测 R²<0)——排除求解器
+    #    接触对,由 app 真值侧 cpp/sim/analytic_contact.h 施加参数化冲量;
+    #    planner ReboundInverse 用同一映射逆解(自洽),实机实测后换 k
+    s = re.sub(r'<contact>\s*<exclude name="ball_vs_racket"[^>]*/>\s*</contact>', "", s)
+    s = re.sub(r'<exclude name="ball_vs_racket"[^>]*/>', "", s)
+    s = s.replace("</worldbody>",
+                  '</worldbody><contact><exclude name="ball_vs_racket" '
+                  'body1="ball" body2="Link5"/></contact>', 1)
     # 注:待机位姿(实机 sckd-robot home,J2 抬臂 35°)不写入 keyframe —— keyframe
     # 零位是 M0/M1 验收基线;且 app 侧 IK 种子取实测 qpos,keyframe 抬臂会改变
     # 解支(实测命中 5/10→2/10)。待机由 m2_demo 自主驱动(待机→就位 0.25s 过渡)。

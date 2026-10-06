@@ -29,9 +29,12 @@ void HitPlanner::ReboundInverse(const double v_in[3], const double v_out[3],
                                 double v_racket[3], double n_face[3]) const {
   const double vo = std::sqrt(v_out[0]*v_out[0]+v_out[1]*v_out[1]+v_out[2]*v_out[2]);
   for (int i = 0; i < 3; ++i) n_face[i] = v_out[i] / std::max(vo, 0.01);
-  const double e = pp_.restitution;
+  // 拍-球解析冲量映射(§3.5 拍面支,2026-10-07):真值侧 analytic_contact.h
+  // v_out·n = a·vr_n + b·v_in_n(a=1+k,b=−k,k=0.5 待实机标定),此处同映射
+  // 逆解 vr_n = (vo − b·v_in_n)/a。旧 e=0.6 模型 b 符号为正(入射逆风抵消
+  // 出球),与反射物理相反、与真值行为不符(实测出球 4.4 vs 意图 8.0)
   const double v_in_n = v_in[0]*n_face[0] + v_in[1]*n_face[1] + v_in[2]*n_face[2];
-  const double vr_n = (vo - (1.0 - e) * v_in_n) / (1.0 + e);
+  const double vr_n = (vo - pp_.rebound_b * v_in_n) / pp_.rebound_a;
   for (int i = 0; i < 3; ++i) v_racket[i] = n_face[i] * vr_n;
 }
 
