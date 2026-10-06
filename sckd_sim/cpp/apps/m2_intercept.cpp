@@ -41,7 +41,11 @@ int main(int argc, char** argv) {
   BounceParams bp;
   PlannerParams pp;
   ChassisServo servo(be.chassis_config(), &be);
-  ArmIk ik(const_cast<mjModel*>(m), d);
+  // IK 必须用独立 scratch mjData:ArmIk::Solve 直接写 qpos(base+臂),
+  // 传活体 d 会每次重规划把整车瞬移到 IK 姿态(假接触/物理污染,2026-10-06 定位)
+  mjData* d_ik = mj_makeData(const_cast<mjModel*>(m));
+  mj_resetDataKeyframe(m, d_ik, 0);
+  ArmIk ik(const_cast<mjModel*>(m), d_ik);
   std::mt19937 rng(2026);
 
   int hits = 0, contacts = 0;
@@ -62,6 +66,9 @@ int main(int argc, char** argv) {
     // 诊断②:锁止时刻的击球点/时刻,与真值到时对比
     bool locked_saved = false, hit_eval_done = false;
     double lock_p[3] = {0}, lock_t = 0, plan_err = -1;
+    int replans = 0;
+    double t_min_dist = -1;
+    double min_dist_decomp[3] = {-1, -1, -1};  // [法向, 面内1, 面内2]@最近时刻
 
     // 发球(微扰):慢弧线喂球,保证甜区落在管线可达时间窗内
     ServerParams sp;
@@ -114,21 +121,32 @@ int main(int argc, char** argv) {
                       plan.t_hit, plan.time_margin, plan.base_target[0], plan.base_target[1]);
         }
       }
-      // 重规划(50Hz,后引锁止前):只更新 q_hit/t_hit,不重启已开始的挥拍
+      // 重规划(50Hz,后引锁止前):t_hit 锚定,RefineAt 仅精化 p_hit/base_target
+      // (评分比较会拒绝精化:高度偏好偏爱陈旧高 z 计划 —— 见 hit_planner 注)
       if (planned && !swing.locked() && t % 20 == 0) {
         const BaseState bs2 = be.base_state();
-        HitPlan np = planner.Plan(predictor, bs2, ts, intent);
-        if (np.feasible && np.score > plan.score) {
-          plan = np;
-          if (swing.active()) swing.UpdatePlan(plan, ik);
-          else swing.Init(plan, q_cur, ik);
-        }
+        planner.RefineAt(predictor, bs2, &plan, ts);
+        ++replans;
+        if (swing.active()) swing.UpdatePlan(plan, ik);
+        else swing.Init(plan, q_cur, ik);
       }
       // 诊断②:锁止时刻快照;到 t_hit 与真值对比
       if (planned && swing.active() && swing.locked() && !locked_saved) {
         locked_saved = true;
         for (int i = 0; i < 3; ++i) lock_p[i] = plan.p_hit[i];
         lock_t = plan.t_hit;
+        std::printf("  [lock] t=%.3f t_hit=%.3f p=(%.2f,%.2f,%.2f) replans=%d base_err=%.2f\n",
+                    ts, lock_t, lock_p[0], lock_p[1], lock_p[2], replans,
+                    std::hypot(be.base_state().x-plan.base_target[0],
+                               be.base_state().y-plan.base_target[1]));
+        {
+          const double* xs = predictor.state();
+          std::printf("  [lock] flt t=%.3f p=(%.2f,%.2f,%.2f) v=(%.2f,%.2f,%.2f)\n"
+                      "  [lock] tru      p=(%.2f,%.2f,%.2f) v=(%.2f,%.2f,%.2f)\n",
+                      predictor.t_last(), xs[0], xs[1], xs[2], xs[3], xs[4], xs[5],
+                      d->qpos[ball_qadr], d->qpos[ball_qadr+1], d->qpos[ball_qadr+2],
+                      d->qvel[ball_vadr], d->qvel[ball_vadr+1], d->qvel[ball_vadr+2]);
+        }
       }
       if (locked_saved && !hit_eval_done && ts >= lock_t) {
         hit_eval_done = true;
@@ -136,6 +154,23 @@ int main(int argc, char** argv) {
                               d->qpos[ball_qadr+1]-lock_p[1],
                               d->qpos[ball_qadr+2]-lock_p[2]);
         plan_err_sum += plan_err; ++plan_err_n;
+        double rx[3] = {0,0,0};
+        mj_kinematics(m, d);
+        mju_rotVecQuat(rx, m->site_pos+site_id*3, d->xquat+m->site_bodyid[site_id]*4);
+        const double* sb = d->xpos + m->site_bodyid[site_id]*3;
+        std::printf("  [eval] ball@(t_hit)=(%.2f,%.2f,%.2f) plan_err=%.3f racket=(%.2f,%.2f,%.2f) rk_err=%.3f\n",
+                    d->qpos[ball_qadr], d->qpos[ball_qadr+1], d->qpos[ball_qadr+2], plan_err,
+                    sb[0]+rx[0], sb[1]+rx[1], sb[2]+rx[2],
+                    std::hypot(sb[0]+rx[0]-lock_p[0], sb[1]+rx[1]-lock_p[1], sb[2]+rx[2]-lock_p[2]));
+        IkResult chk = ik.Solve(lock_p, plan.base_target[0], plan.base_target[1], 0.0, q_cur);
+        double qm[5], dq_max = 0;
+        for (int j = 0; j < 5; ++j) {
+          qm[j] = be.joint_measured(AxisArm(j)).q;
+          dq_max = std::max(dq_max, std::fabs(chk.q[j] - qm[j]));
+        }
+        std::printf("  [eval] ik conv=%d err=%.4f  max|q_ik-q_meas|=%.3f rad  base=(%.2f,%.2f)\n",
+                    (int)chk.converged, chk.err, dq_max,
+                    be.base_state().x, be.base_state().y);
       }
       // 底盘:就位(P 控;M3 换 MPC)
       if (planned && plan.feasible) {
@@ -159,10 +194,13 @@ int main(int argc, char** argv) {
       }
       double ff[5];
       if (be.arm_gravity(ac.q, ff)) for (int j=0;j<5;++j) ac.tau_ff[j]=ff[j];
+      // 惯性前馈:τ_ff += Î·q̈(对角估计;挥拍段跟踪误差 I·a/kp 的直接抵消)
+      static constexpr double kArmInertia[5] = {1.2, 2.0, 0.8, 0.3, 0.05};
+      for (int j = 0; j < 5; ++j) ac.tau_ff[j] += kArmInertia[j] * sc.ddp[j];
       be.set_arm_hybrid(ac);
       be.run(1);
 
-      // 接触检测:球速方向改变(-x → +x)
+      // 接触检测:球速方向改变(-x → +x);有效性要求拍曾接近(排除碰臂/车体误计)
       const double vx = d->qvel[ball_vadr];
       if (vx > 0 && vx0 < 0) { ball_hit = true; break; }
       // 拍-球距离
@@ -174,19 +212,33 @@ int main(int argc, char** argv) {
         const double dd = std::hypot(d->qpos[ball_qadr]-sp2[0]-x[0],
                                      d->qpos[ball_qadr+1]-sp2[1]-x[1],
                                      d->qpos[ball_qadr+2]-sp2[2]-x[2]);
-        if (dd < min_ball_dist) min_ball_dist = dd;
+        if (dd < min_ball_dist) {
+          min_ball_dist = dd; t_min_dist = ts;
+          // 分解:球-拍心偏差在拍面系(法向=盒薄轴 y_local)
+          const int rb = m->site_bodyid[site_id];
+          double nrm[3] = {0, 1, 0}, nrm_w[3];
+          mju_rotVecQuat(nrm_w, nrm, d->xquat + rb * 4);
+          const double dvec[3] = {d->qpos[ball_qadr]-(sp2[0]+x[0]),
+                                  d->qpos[ball_qadr+1]-(sp2[1]+x[1]),
+                                  d->qpos[ball_qadr+2]-(sp2[2]+x[2])};
+          min_dist_decomp[0] = dvec[0]*nrm_w[0] + dvec[1]*nrm_w[1] + dvec[2]*nrm_w[2];
+          const double ip = std::hypot(dvec[0], dvec[1], dvec[2]);
+          min_dist_decomp[1] = std::sqrt(std::max(0.0, ip*ip - min_dist_decomp[0]*min_dist_decomp[0]));
+          min_dist_decomp[2] = ip;
+        }
       }
       // 终止:落地(越过规划击球时刻后)/超时
       if (d->qpos[ball_qadr+2] < 0.05 && (locked_saved ? ts > lock_t + 0.3 : ts > 1.0)) break;
       if (ts > 5.0) break;
     }
-    if (ball_hit) ++hits;
+    if (ball_hit && min_ball_dist < 0.30) ++hits;  // 有效:方向改变且拍曾接近(排除碰臂)
     if (min_ball_dist < 0.15) ++contacts;
     char pe_str[16];
     if (plan_err >= 0) std::snprintf(pe_str, sizeof(pe_str), "%.3f", plan_err);
     else std::snprintf(pe_str, sizeof(pe_str), "n/a");
-    std::printf("trial %2d: hit=%d min_dist=%.3fm plan_err=%s\n",
-                trial+1, ball_hit, min_ball_dist, pe_str);
+    std::printf("trial %2d: hit=%d min_dist=%.3fm@t=%.3f(plan t_hit=%.3f) 法向=%.3f 面内=%.3f plan_err=%s\n",
+                trial+1, ball_hit, min_ball_dist, t_min_dist, lock_t,
+                min_dist_decomp[0], min_dist_decomp[1], pe_str);
   }
   const double rate = 100.0 * hits / kTrials;
   const double crate = 100.0 * contacts / kTrials;
@@ -199,5 +251,6 @@ int main(int argc, char** argv) {
               hits, kTrials, rate, crate, mean_pe_str);
   std::printf("诊断: ②击球点偏差<0.2m ③拍球距离<0.15m ④命中率≥80%%\n");
   std::printf("%s (门槛 ≥80%%)\n", rate >= 80.0 ? "[PASS]" : "[FAIL]");
+  mj_deleteData(d_ik);
   return rate >= 80.0 ? 0 : 1;
 }

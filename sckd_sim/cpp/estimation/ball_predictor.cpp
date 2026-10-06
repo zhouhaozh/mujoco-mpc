@@ -156,6 +156,18 @@ bool BallPredictor::Predict(double t_query, double p_out[3]) const {
   return PredictFull(t_query, p_out, v);
 }
 
+double BallPredictor::NextBounceTime() const {
+  if (!init_) return -1.0;
+  double x[6] = {x_[0], x_[1], x_[2], x_[3], x_[4], x_[5]};
+  const double h = 0.002;
+  double tb = t_last_bounce_;
+  for (double t = t_last_; t < t_last_ + 2.5; t += h) {
+    const bool bounced = PropagateState(a_, bp_, x, t + h, h, &tb);
+    if (bounced) return t + h;
+  }
+  return -1.0;
+}
+
 bool BallPredictor::Intercept(const double base[3], double t_now, double zlo, double zhi,
                               double reach, double p_hit[3], double* t_hit) const {
   for (double t = t_now + 0.15; t < t_now + 2.0; t += 0.02) {

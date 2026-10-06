@@ -11,6 +11,7 @@ namespace sckd {
 
 struct SwingCmd {
   double q[5] = {0}, dq[5] = {0};
+  double ddp[5] = {0};        // 关节加速度(供惯性前馈 τ_ff += Î·q̈)
   double kp[5] = {120,120,120,120,60};
   double kd[5] = {8,8,8,8,1.5};
   double tau_ff[5] = {0};
@@ -33,7 +34,7 @@ class SwingGenerator {
   double q_hit_[5] = {0};     // 击球构型(穿击段中点)
   double q_follow_[5] = {0};  // 随拍构型(= 2*q_hit - q_back,保证中点过 q_hit)
   double t_hit_ = 0;
-  double t_swing_ = 0.35;     // 穿击段全长
+  double t_swing_ = 0.45;     // 穿击段全长(0.35→0.45:压 J1/J2 加速度需求)
   double t_back_ = 0.30;      // 后引段时长
   bool active_ = false;
   bool locked_ = false;

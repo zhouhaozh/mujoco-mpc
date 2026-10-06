@@ -31,6 +31,10 @@ class BallPredictor {
   bool initialized() const { return init_; }
   double t_last() const { return t_last_; }
   const double* state() const { return x_; }
+  // 当前估计外推:首次反弹的绝对时刻(2.5s 内无反弹返回 -1)。
+  // 规划器用它把候选限制在反弹前(基线策略,对齐 trobot MLP 域边界;
+  // 跨反弹规划待反弹模型标定后开启)
+  double NextBounceTime() const;
 
  private:
   void Propagate(double dt);   // 状态+协方差(Euler+阻力雅可比);含反弹事件
