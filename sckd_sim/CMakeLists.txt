@@ -26,7 +26,7 @@ add_library(sckd_core STATIC
   cpp/sim/ball_server.cpp
   cpp/estimation/ball_predictor.cpp
   cpp/planning/hit_planner.cpp  cpp/control/arm_ik.cpp
-  cpp/control/swing_generator.cpp)
+  cpp/control/swing_generator.cpp cpp/control/arm_swing.cpp)
 set_source_files_properties(cpp/control/gen/chassis_mpc.c PROPERTIES LANGUAGE CXX)
 target_include_directories(sckd_core PUBLIC third_party/osqp/include)
 target_link_libraries(sckd_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/osqp/libosqp.a)

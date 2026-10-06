@@ -76,4 +76,16 @@ void ArmIk::FaceNormal(const double q[5], double base_x, double base_y, double n
   mju_rotVecQuat(n_out, nl, d_->xquat + rb * 4);
 }
 
+void ArmIk::SiteJacobian(const double q[5], double base_x, double base_y, double J[15]) {
+  for (int j = 0; j < 5; ++j) d_->qpos[qadr_[j]] = q[j];
+  d_->qpos[0] = base_x; d_->qpos[1] = base_y; d_->qpos[2] = 0.209;
+  d_->qpos[3] = 1; d_->qpos[4] = 0; d_->qpos[5] = 0; d_->qpos[6] = 0;  // yaw=0
+  mj_kinematics(m_, d_);
+  std::vector<double> jacp(3 * m_->nv), jacr(3 * m_->nv);
+  mj_jacSite(m_, d_, jacp.data(), jacr.data(), site_id_);
+  for (int r = 0; r < 3; ++r)
+    for (int c = 0; c < 5; ++c)
+      J[r * 5 + c] = jacp[r * m_->nv + vadr_[c]];
+}
+
 }  // namespace sckd

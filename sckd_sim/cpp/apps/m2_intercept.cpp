@@ -14,6 +14,7 @@
 #include <mujoco/mujoco.h>
 
 #include "control/arm_ik.h"
+#include "control/arm_swing.h"
 #include "control/chassis_servo.h"
 #include "control/swing_generator.h"
 #include "estimation/ball_predictor.h"
@@ -27,6 +28,8 @@ using namespace sckd;
 int main(int argc, char** argv) {
   const std::string scene = argc > 1 ? argv[1] : "models/generated/x4_tennis_demo.mjcf";
   const int kTrials = argc > 2 ? atoi(argv[2]) : 10;
+  // 挥拍层选择:quintic(五次多项式基线)/ qp(轨迹 QP,§6.4 臂优化)
+  const bool use_qp = (argc > 3 && std::strcmp(argv[3], "qp") == 0);
   SimBackend be(scene, "models/config/motors.json", "models/config/x4_tennis.json",
                 "models/config/chassis_m1.json");
   if (!be.ok()) { std::printf("[FAIL] init\n"); return 1; }
@@ -59,6 +62,8 @@ int main(int argc, char** argv) {
     BallPredictor predictor(aero, 0.030, bp);
     HitPlanner planner(pp, aero);
     SwingGenerator swing;
+    ArmSwing aswing;
+    double dq_cur[5] = {0};
     HitPlan plan; plan.feasible = false;
     bool planned = false;
     double q_cur[5] = {0, -1.0, 0.5, 0, 0.8};
@@ -110,7 +115,10 @@ int main(int argc, char** argv) {
       // 观测 → 预测;当前臂构型取实测
       BallObs obs;
       if (be.get_ball_obs(&obs)) predictor.Update(obs);
-      for (int j = 0; j < 5; ++j) q_cur[j] = be.joint_measured(AxisArm(j)).q;
+      for (int j = 0; j < 5; ++j) {
+        const JointReport jr = be.joint_measured(AxisArm(j));
+        q_cur[j] = jr.q; dq_cur[j] = jr.dq;
+      }
 
       // 初次规划:预测器就绪即规划(越早裕度越大)
       if (!planned && predictor.initialized()) {
@@ -118,7 +126,8 @@ int main(int argc, char** argv) {
         plan = planner.Plan(predictor, bs, ts, intent);
         if (plan.feasible) {
           planned = true;
-          swing.Init(plan, q_cur, ik);
+          if (use_qp) aswing.Init(plan, q_cur, dq_cur, ik, ts);
+          else swing.Init(plan, q_cur, ik);
           std::printf("  [plan] t=%.2f hit=(%.2f,%.2f,%.2f) t_hit=%.2f margin=%.2f base=(%.2f,%.2f)\n",
                       ts, plan.p_hit[0], plan.p_hit[1], plan.p_hit[2],
                       plan.t_hit, plan.time_margin, plan.base_target[0], plan.base_target[1]);
@@ -126,15 +135,16 @@ int main(int argc, char** argv) {
       }
       // 重规划(50Hz,后引锁止前):t_hit 锚定,RefineAt 仅精化 p_hit/base_target
       // (评分比较会拒绝精化:高度偏好偏爱陈旧高 z 计划 —— 见 hit_planner 注)
-      if (planned && !swing.locked() && t % 20 == 0) {
+      if (planned && !(use_qp ? aswing.locked() : swing.locked()) && t % 20 == 0) {
         const BaseState bs2 = be.base_state();
         planner.RefineAt(predictor, bs2, &plan, ts);
         ++replans;
-        if (swing.active()) swing.UpdatePlan(plan, ik);
+        if (use_qp) aswing.UpdatePlan(plan, ik, ts);
+        else if (swing.active()) swing.UpdatePlan(plan, ik);
         else swing.Init(plan, q_cur, ik);
       }
       // 诊断②:锁止时刻快照;到 t_hit 与真值对比
-      if (planned && swing.active() && swing.locked() && !locked_saved) {
+      if (planned && !locked_saved && (use_qp ? aswing.locked() : (swing.active() && swing.locked()))) {
         locked_saved = true;
         for (int i = 0; i < 3; ++i) lock_p[i] = plan.p_hit[i];
         lock_t = plan.t_hit;
@@ -188,7 +198,7 @@ int main(int argc, char** argv) {
       ArmHybridCmd ac;
       for (int j = 0; j < 5; ++j) { ac.kp[j]=60; ac.kd[j]=(j==4?1.5:6.0); }
       SwingCmd sc;
-      if (swing.active() && swing.Update(ts, sc)) {
+      if (use_qp ? aswing.Update(ts, sc) : (swing.active() && swing.Update(ts, sc))) {
         for (int j = 0; j < 5; ++j) {
           ac.q[j]=sc.q[j]; ac.dq[j]=sc.dq[j]; ac.kp[j]=sc.kp[j]; ac.kd[j]=sc.kd[j];
         }

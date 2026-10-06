@@ -20,6 +20,8 @@ class ArmIk {
                  double base_yaw, const double q_seed[5], int max_iter = 300);
   // 拍面法向(世界系)FK:给定 q 与底盘位姿(yaw=0 约定同 Solve)
   void FaceNormal(const double q[5], double base_x, double base_y, double n_out[3]);
+  // 拍心位置雅可比(3×5,世界系,yaw=0):dq_hit=J⁺v* 用(臂轨迹 QP 阶段1)
+  void SiteJacobian(const double q[5], double base_x, double base_y, double J[15]);
 
  private:
   mjModel* m_;

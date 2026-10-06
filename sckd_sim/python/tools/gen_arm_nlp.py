@@ -168,19 +168,44 @@ def main():
         print(f"   dq(sh)={np.round(dh, 2)} 峰|dq|={vmax:.1f} 峰|ddq|={amax:.0f}")
 
     if not args.nocodegen:
+        # 数据头导出(2026-10-06 改版):H/A 全常数、b 线性依赖 p → 不需要 codegen
+        # 运行时求解器(casadi qpsol codegen 包装层与 vendored OSQP 互操作失败:
+        # 同数据 python 内置 OSQP 收敛、生成 C+vendored OSQP 判不可行,根因未深挖)。
+        # 导出 H/A/B_eq 常量,C++ 直调 vendored OSQP(osqp_setup/update_data_vec)。
         OUT_C.parent.mkdir(parents=True, exist_ok=True)
-        solver.generate("arm_nlp")            # 与底盘 MPC 同法(generate,非 generate_dependencies)
-        for f in ("arm_nlp.c", "arm_nlp.h"):
-            src = Path(f)
-            if src.exists():
-                (OUT_C.parent / f).write_text(src.read_text())
-                src.unlink()
+        _, _, _, (A_eq, B_eq, A_in, b_in, H) = 0, 0, 0, build_qp()[3]
+        A = np.vstack([A_eq, A_in])                       # (355,45)
+        m_ng, n_x = A.shape
+        row_ub = np.concatenate([np.zeros(n_eq), b_in])   # 行上界(等式行占位 0)
+        hdr = [f"// 自动生成:python/tools/gen_arm_nlp.py —— 臂轨迹 QP 常量数据",
+               f"// 问题: min ½xᵀHx  s.t.  l ≤ Ax ≤ u(前 {n_eq} 行等式,其余 ≤)",
+               f"#pragma once", "#include <array>", "",
+               f"namespace sckd::arm_qp_data {{",
+               f"inline constexpr int kNx = {n_x};",
+               f"inline constexpr int kNg = {m_ng};",
+               f"inline constexpr int kNeq = {n_eq};", ""]
+        def arr(name, mat, fmt="%.10e"):
+            if mat.ndim == 1:
+                vals = ", ".join(fmt % v for v in mat)
+                return f"inline constexpr double {name}[{mat.size}] = {{{vals}}};"
+            rows = []
+            for r in mat:
+                rows.append("{%s}" % ", ".join(fmt % v for v in r))
+            return (f"inline constexpr double {name}[{mat.shape[0]}][{mat.shape[1]}] = {{"
+                    + ", ".join(rows) + "};")
+        hdr.append(arr("H", H))
+        hdr.append(arr("A", A))
+        hdr.append(arr("B_eq", B_eq))                     # 等式右端 = B_eq @ p
+        hdr.append(arr("u_row", row_ub))                  # 不等式行上界(等式行忽略)
+        hdr.append("}  // namespace sckd::arm_qp_data")
+        (OUT_C.parent / "arm_qp_data.h").write_text("\n".join(hdr) + "\n")
         meta = dict(META)
         meta["n_eq"], meta["n_ineq"] = n_eq, n_in
-        meta["param_order"] = "q0(5),dq0(5),q_hit(5),dq_hit(5),T(标称;速度类已乘T入s域)"
+        meta["param_order"] = "q0(5),dq0(5),q_hit(5),dq_hit(5),T(dq 类已乘T入s域)"
         meta["var_layout"] = "x[j*M+a] = C[j][a](关节 j 连续块)"
         OUT_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=2))
-        print(f"[OK] codegen → {OUT_C} ({OUT_C.stat().st_size // 1024} KB) + {OUT_JSON}")
+        print(f"[OK] 数据头 → {OUT_C.parent / 'arm_qp_data.h'} "
+              f"(H {H.shape}, A {A.shape}, B_eq {B_eq.shape}) + {OUT_JSON}")
     return 0
 
 
