@@ -7,14 +7,19 @@
 //      甜区(高 0.7~1.3m、距机器人 0.4~1.1m)出现在 t≈0.95~1.1s,
 //      与管线最小提前量 prep(0.55)+swing(0.35)=0.9s 兼容。
 // 分步诊断:②锁止击球点 vs 真值偏差(<0.2m)③拍-球最小距离(<0.15m)④命中(方向改变)。
+#include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <random>
 
 #include <mujoco/mujoco.h>
 
 #include "control/arm_ik.h"
 #include "control/arm_swing.h"
+#include "control/base_ref_gen.h"
+#include "control/chassis_mpc.h"
 #include "control/chassis_servo.h"
 #include "control/swing_generator.h"
 #include "estimation/ball_predictor.h"
@@ -34,6 +39,8 @@ int main(int argc, char** argv) {
   // 延迟起挥缩短轨迹时窗 T,伺服滞后显著减小 —— 三种子扫 0/0.20/0.25/0.30/0.35
   // 得 40%/86.7%/93.3%/70%/60%,0.25 为平台中心(2026-10-06,验收达标配置)。
   const double kInitDelay = (argc > 4 ? atof(argv[4]) : 0.25);
+  // 底盘走位层:P(默认)/ mpc(argv[6]="mpc";底盘 MPC 上场,2026-10-07)
+  const bool use_mpc = (argc > 6 && std::strcmp(argv[6], "mpc") == 0);
   SimBackend be(scene, "models/config/motors.json", "models/config/x4_tennis.json",
                 "models/config/chassis_m1.json");
   if (!be.ok()) { std::printf("[FAIL] init\n"); return 1; }
@@ -55,6 +62,13 @@ int main(int argc, char** argv) {
   mj_resetDataKeyframe(m, d_ik, 0);
   ArmIk ik(const_cast<mjModel*>(m), d_ik);
   std::mt19937 rng(argc > 5 ? std::atoi(argv[5]) : 2026);   // 种子( argv[5],鲁棒性验证 )
+  // 底盘 MPC(跨 trial 复用:解兼 warm start;统计全程累计)
+  ChassisMpc mpc;
+  ChassisMpc::Limits mpc_lim;
+  BaseRefGen::Ref mpc_ref{};
+  double mpc_cs2[2 * ChassisMpc::kN] = {0};
+  int mpc_solves = 0, mpc_fails = 0;
+  double mpc_ms_max = 0;
 
   int hits = 0, contacts = 0;
   double plan_err_sum = 0; int plan_err_n = 0;
@@ -78,6 +92,7 @@ int main(int argc, char** argv) {
     double lock_p[3] = {0}, lock_t = 0, plan_err = -1;
     int replans = 0;
     double t_plan0 = -1;    // 初规划时刻(延迟起挥基准)
+    BaseRefGen::Schedule mpc_sched;   // MPC 参考:初规划起锚(绝对时间)
     double t_min_dist = -1;
     double t_ground = -1;   // 首次落地时刻(判"挥拍击球"还是"落地后撞拍")
     bool touch_printed = false;
@@ -132,6 +147,12 @@ int main(int argc, char** argv) {
         if (plan.feasible) {
           planned = true;
           t_plan0 = ts;
+          // MPC 参考起锚:当前位置 → base_target,锁止前 0.15s 到达
+          mpc_sched.t0 = ts;
+          mpc_sched.ax = bs.x; mpc_sched.ay = bs.y;
+          mpc_sched.tx = plan.base_target[0];
+          mpc_sched.ty = plan.base_target[1];
+          mpc_sched.t_arrive = std::clamp(plan.t_hit - ts - 0.15, 0.30, 1.2);
           if (use_qp && kInitDelay > 0) {
             // 延迟起挥:此处不 Init,由下方触发块在 t_plan0+kInitDelay 起挥
             // (等待期臂保持就位构型,RefineAt 持续精化计划)
@@ -153,6 +174,8 @@ int main(int argc, char** argv) {
         const BaseState bs2 = be.base_state();
         planner.RefineAt(predictor, bs2, &plan, ts);
         ++replans;
+        mpc_sched.tx = plan.base_target[0];   // 终点随精化更新(起锚不变)
+        mpc_sched.ty = plan.base_target[1];
         if (use_qp) { if (aswing.active()) aswing.UpdatePlan(plan, ik, ts); }
         else if (swing.active()) swing.UpdatePlan(plan, ik);
         else swing.Init(plan, q_cur, ik);
@@ -200,13 +223,44 @@ int main(int argc, char** argv) {
                     (int)chk.converged, chk.err, dq_max,
                     be.base_state().x, be.base_state().y);
       }
-      // 底盘:就位(P 控;M3 换 MPC)
+      // 底盘就位:MPC(50Hz 重解,到位目标 = 锁止前 0.15s 到达;非解算拍保持上一拍
+      // twist)或 P 控(argv[6]="mpc" 切换;P 控解算失败时兜底)
       if (planned && plan.feasible) {
         const BaseState bs = be.base_state();
-        const double ex = plan.base_target[0] - bs.x;
-        const double ey = plan.base_target[1] - bs.y;
-        servo.set_twist(Twist{std::clamp(2.5*ex, -1.5, 1.5),
-                              std::clamp(2.5*ey, -1.5, 1.5), 0});
+        bool mpc_applied = false;
+        if (use_mpc && t % 20 == 0) {
+          double x0[6] = {bs.x, bs.y, bs.yaw, bs.vx, bs.vy,
+                          std::clamp(bs.wz, -mpc_lim.wz_max + 0.01,
+                                     mpc_lim.wz_max - 0.01)};
+          const double vn = std::hypot(x0[3], x0[4]);
+          const double vcap = mpc_lim.v_max - 0.05;
+          if (vn > vcap) { x0[3] *= vcap / vn; x0[4] *= vcap / vn; }
+          // 到位时窗在起锚时已定(Build 按 Schedule 绝对时刻取值)
+          BaseRefGen::Build(mpc_sched, ts, x0, mpc_ref, mpc_cs2);
+          double pp[ChassisMpc::kNp];
+          ChassisMpc::PackParams(pp, x0, mpc_ref, mpc_cs2, mpc_lim);
+          const auto tc0 = std::chrono::steady_clock::now();
+          const bool ok = mpc.Solve(pp);
+          const double ms = std::chrono::duration<double>(
+              std::chrono::steady_clock::now() - tc0).count() * 1e3;
+          mpc_ms_max = std::max(mpc_ms_max, ms);
+          ++mpc_solves;
+          if (ok) {
+            double vx, vy, wz;
+            mpc.NextTwist(&vx, &vy, &wz);
+            servo.set_twist(Twist{vx, vy, wz});
+            mpc_applied = true;
+          } else {
+            ++mpc_fails;
+          }
+        }
+        // P 控兜底:仅当 MPC 关闭,或本拍求解失败(非解算拍保持 MPC twist,勿覆盖)
+        if (!use_mpc || (t % 20 == 0 && !mpc_applied)) {
+          const double ex = plan.base_target[0] - bs.x;
+          const double ey = plan.base_target[1] - bs.y;
+          servo.set_twist(Twist{std::clamp(2.5*ex, -1.5, 1.5),
+                                std::clamp(2.5*ey, -1.5, 1.5), 0});
+        }
       }
       servo.update(ts);
       // 臂:挥拍(绝对时序)或保持实测构型
@@ -302,6 +356,10 @@ int main(int argc, char** argv) {
   std::printf("\n=== M2 拦截验收 ===\n");
   std::printf("命中 %d/%d(%.0f%%) 接近率 %.0f%% 平均击球点偏差 %sm\n",
               hits, kTrials, rate, crate, mean_pe_str);
+  if (use_mpc)
+    std::printf("底盘 MPC:%d 解 %d 失败(%.1f%%) 最大单解 %.2fms\n",
+                mpc_solves, mpc_fails, 100.0 * mpc_fails / std::max(mpc_solves, 1),
+                mpc_ms_max);
   std::printf("诊断: ②击球点偏差<0.2m ③拍球距离<0.15m ④命中率≥80%%\n");
   std::printf("%s (门槛 ≥80%%)\n", rate >= 80.0 ? "[PASS]" : "[FAIL]");
   mj_deleteData(d_ik);
