@@ -16,6 +16,9 @@ void HitPlanner::RefineAt(const BallPredictor& predictor, const BaseState& base,
   double bc[3] = {base.x, base.y, base.yaw};
   BaseTargetFromHit(hp->p_hit, bc, hp->base_target);
   hp->time_margin = hp->t_hit - t_now - pp_.swing_time - 0.20;  // 服务窗口径
+  // v_base_star 不动:fly-through 可行性取决于初规划时跑道 D₀(锚点→目标),
+  // 用途中位置重算会使 D 随接近收缩、v_base* 在触球前塌到 0 —— 意图与参考
+  // 起锚一样属"冻结量"(方案 B′ 交接契约,2026-10-07)。
 }
 
 void HitPlanner::ReboundInverse(const double v_in[3], const double v_out[3],
@@ -76,6 +79,19 @@ HitPlan HitPlanner::Plan(const BallPredictor& predictor, const BaseState& base,
     ReboundInverse(v_in, v_out, vr, nf);
     HitPlan hp;
     for (int i=0;i<3;++i) { hp.p_hit[i]=p[i]; hp.base_target[i]=bt[i]; hp.v_in[i]=v_in[i]; hp.v_racket[i]=vr[i]; hp.n_face[i]=nf[i]; }
+    // v_base*:接近方向 d̂ 上 v*_xy 投影(≤0 不飞);上限含 Hermite 可行域
+    // v·Ta/D₀ ≤ 2.2(base_ref_gen 终端速度剖面单调性约束),D₀=本次跑道
+    {
+      const double ddx = bt[0]-base.x, ddy = bt[1]-base.y;
+      const double D0 = std::hypot(ddx, ddy);
+      const double va = (vr[0]*ddx + vr[1]*ddy) / std::max(D0, 1e-6);
+      if (D0 > 0.30 && va > 0.05) {
+        const double cap = std::min(pp_.fly_speed_max, 2.2 * D0 / std::max(t - t_now, 0.3));
+        const double vf = std::min(va, cap);
+        hp.v_base_star[0] = vf * ddx / D0;
+        hp.v_base_star[1] = vf * ddy / D0;
+      }
+    }
     hp.t_hit=t; hp.time_margin=margin; hp.feasible=true;
     hp.score = Score(hp, base, t_now);
     if (hp.score > best.score) best = hp;

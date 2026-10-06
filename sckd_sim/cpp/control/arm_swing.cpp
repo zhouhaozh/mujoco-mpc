@@ -190,7 +190,14 @@ bool ArmSwing::Solve(const HitPlan& plan, ArmIk& ik, double t_now, bool retime) 
                          plan.n_face);
   double J[15], dq_hit[5];
   ik.SiteJacobian(q_hit, plan.base_target[0], plan.base_target[1], J);
-  JPinvV(J, plan.v_racket, dq_hit);
+  // 方案 B′ 终端交接(2026-10-07):拍速 = v_base + J·dq → 关节终值速度改为差项
+  // dq_hit = J⁺(v* − v_base*)——底盘 fly-through 先贡献,臂只补余量(高位族
+  // 关节速度需求随之下降)。J 按 yaw=0 解(hit_planner 契约),v_base* 世界系
+  // 可直接减;v_base*=0(定点模式)时退化为原 JPinvV(J, v*)。
+  double v_term[3];
+  for (int i = 0; i < 3; ++i)
+    v_term[i] = plan.v_racket[i] - ((i < 2) ? plan.v_base_star[i] : 0.0);
+  JPinvV(J, v_term, dq_hit);
 
   // ---- 时间窗:仅初解定锚;终值(=触球内点)落在 t_hit − kLead ----
   t_last_solve_ = t_now;

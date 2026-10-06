@@ -23,6 +23,12 @@ struct HitPlan {
   double v_in[3] = {0, 0, 0};      // 预测来球速度@t_hit(拍面姿态对准用)
   double v_racket[3] = {0, 0, 0};
   double n_face[3] = {0, 0, 1};
+  // 方案 B′ 交接契约(2026-10-07 设计,§6.2):底盘 fly-through 终端速度意图(世界系
+  // xy)。0 = 定点模式(底盘到点停住,t* 时 v_base=0,拍速全由臂出——M2 现状);
+  // 非 0 = 底盘在 t* 通过 base_target 时保持该速度,臂 QP 终值改为差项
+  // dq_hit = J⁺(v_racket − v_base*)。方向取接近方向 d̂ 上 v*_xy 的投影分量:
+  // 拍速需求与走位方向不对齐时投影≤0 → 不飞(底盘贡献为负不如不做,诚实分解)。
+  double v_base_star[2] = {0, 0};
   bool feasible = false;
   double score = 0;
   double time_margin = 0;
@@ -34,6 +40,7 @@ struct PlannerParams {
   double swing_time = 0.35, prep_time = 0.55;
   double max_base_travel = 5.0;
   double restitution = 0.60;
+  double fly_speed_max = 1.2;      // v_base* 上限(m/s,移动击球方案 B′)
 };
 
 class HitPlanner {

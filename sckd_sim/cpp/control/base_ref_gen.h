@@ -27,22 +27,48 @@ class BaseRefGen {
     double ax = 0, ay = 0;  // 起锚位置(世界系)
     double tx = 0, ty = 0;  // 终点(RefineAt 可更新)
     double t_arrive = 0.8;  // 到位时长(自 t0 起)
+    // 方案 B′ fly-through(2026-10-07):v_fly>0 = 到达 t0+Ta 时不停,沿接近方向
+    // 以 v_fly 通过目标(触球时刻底盘在动,拍速获得底盘贡献),之后 t_dec 内刹停。
+    // v_fly=0 = 原梯形到位即停(M2 定点口径,不变)。
+    double v_fly = 0;       // 终端速度(m/s,沿锚点→终点方向,世界系)
+    double t_dec = 0.40;    // 过靶后刹停时长(s;越程 = 0.5·v_fly·t_dec)
   };
 
   // x0=[px,py,ψ,vx,vy,wz](vx,vy 车体系;t0 已按绝对时刻取值)
-  // 速度剖面:梯形(0.15s 爬升 / 巡航 / 0.25s 收敛)—— smoothstep 起步慢,早期
-  // 位置误差≈0 无驱动力,MPC 系统性落后参考速度 30-40%(2026-10-07 实测);
+  // v_fly=0 速度剖面:梯形(0.15s 爬升 / 巡航 / 0.25s 收敛)—— smoothstep 起步慢,
+  // 早期位置误差≈0 无驱动力,MPC 系统性落后参考速度 30-40%(2026-10-07 实测);
   // 梯形早发力,到位即停。
+  // v_fly>0(fly-through):三次 Hermite(0,v0=0)→(1,w)(w=v_fly·Ta/D 归一终端
+  // 速度)+ 过靶后线性减速 v_fly→0(t_dec 内)。单调性要求 w<3(dp=τ[(6−2w)+
+  // τ(3w−6)],w<3 时两端点为正、线性中段为正;规划器按 w≤2.2 截 v_base*)。
+  // 起步加速度 (6−2w)·D/Ta² ≠0(对比 smoothstep 的 0),无"慢起步"病。
   static void Build(const Schedule& sc, double t_now, const double x0[6],
                     Ref& ref, double cs2[2 * ChassisMpc::kN]) {
     constexpr int N = ChassisMpc::kN, NX = ChassisMpc::kNx;
     const double dx = sc.tx - sc.ax, dy = sc.ty - sc.ay;
+    const double D = std::hypot(dx, dy);
     const double Ta = std::max(sc.t_arrive, 1e-3);
-    // 归一化梯形位移剖面 p(τ),τ∈[0,1]:爬升 a=0.15/Ta、收敛 b=0.25/Ta(单位 τ)
+    const bool fly = sc.v_fly > 0.01 && D > 1e-3;
+    const double w = fly ? std::clamp(sc.v_fly * Ta / D, 0.0, 2.5) : 0.0;
+    const double dtn = std::max(sc.t_dec / Ta, 1e-3); // 刹停时长(τ 单位)
+    // v_fly=0:归一化梯形位移剖面 p(τ),τ∈[0,1]:爬升 a=0.15/Ta、收敛 b=0.25/Ta
     const double a = std::min(0.15 / Ta, 0.45), b = std::min(0.25 / Ta, 0.45);
     // 面积归一:∫v dτ=1,v_peak = 1/(1-(a+b)/2)
     const double vp = 1.0 / (1.0 - (a + b) / 2.0);
     auto prof = [&](double tau, double* p, double* dp) {
+      if (fly) {
+        if (tau <= 1.0) {
+          const double t2 = tau * tau, t3 = t2 * tau;
+          *p = (3.0 * t2 - 2.0 * t3) + w * (t3 - t2);
+          *dp = (6.0 * tau - 6.0 * t2) + w * (3.0 * t2 - 2.0 * tau);
+        } else {
+          // 过靶减速:s = (t−t_arrive)/t_dec ∈[0,1],越程 e = v_fly·s·t_dec·(1−s/2)
+          const double s = std::clamp((tau - 1.0) / dtn, 0.0, 1.0);
+          *p = 1.0 + w * dtn * s * (1.0 - 0.5 * s);
+          *dp = w * (1.0 - s);
+        }
+        return;
+      }
       tau = std::clamp(tau, 0.0, 1.0);
       if (tau < a) { *p = 0.5 * vp * tau * tau / a; *dp = vp * tau / a; }
       else if (tau <= 1.0 - b) { *p = vp * (tau - 0.5 * a); *dp = vp; }

@@ -39,8 +39,14 @@ int main(int argc, char** argv) {
   // 延迟起挥缩短轨迹时窗 T,伺服滞后显著减小 —— 三种子扫 0/0.20/0.25/0.30/0.35
   // 得 40%/86.7%/93.3%/70%/60%,0.25 为平台中心(2026-10-06,验收达标配置)。
   const double kInitDelay = (argc > 4 ? atof(argv[4]) : 0.25);
-  // 底盘走位层:P(默认)/ mpc(argv[6]="mpc";底盘 MPC 上场,2026-10-07)
-  const bool use_mpc = (argc > 6 && std::strcmp(argv[6], "mpc") == 0);
+  // 底盘走位层(argv[6]):默认 P 控到位即停 / "mpc" MPC 到位即停 / "mpcfly"
+  // MPC fly-through / "pfly" P+前馈 fly-through(方案 B′ 移动击球,2026-10-07:
+  // 触球时刻底盘以 v_base* 通过目标,拍速获底盘贡献,臂终值改差项——联合优化的
+  // 协调分解。mpcfly 首测:速度到位(1.26 m/s)但 MPC 位置滞后 0.2-0.3m → 有效
+  // 命中 2/10;pfly 用速度前馈消相位滞后)
+  const std::string base_mode = (argc > 6) ? argv[6] : "";
+  const bool fly = (base_mode == "mpcfly" || base_mode == "pfly");
+  const bool use_mpc = (base_mode == "mpc" || base_mode == "mpcfly");
   SimBackend be(scene, "models/config/motors.json", "models/config/x4_tennis.json",
                 "models/config/chassis_m1.json");
   if (!be.ok()) { std::printf("[FAIL] init\n"); return 1; }
@@ -72,6 +78,11 @@ int main(int argc, char** argv) {
 
   int hits = 0, contacts = 0;
   double plan_err_sum = 0; int plan_err_n = 0;
+  // M3 移动击球指标:触球底盘速度 / 拍速底盘贡献占比 / 出球速度
+  double base_spd_sum = 0; int base_spd_n = 0;
+  double share_sum = 0; int share_n = 0;
+  double out_spd_sum = 0; int out_spd_n = 0;
+  int fly_ok = 0;   // 命中且触球底盘速度>0.5 m/s
   for (int trial = 0; trial < kTrials; ++trial) {
     be.reset(0);
     be.enable(-1, true);
@@ -97,6 +108,7 @@ int main(int argc, char** argv) {
     double t_ground = -1;   // 首次落地时刻(判"挥拍击球"还是"落地后撞拍")
     bool touch_printed = false;
     double min_dist_decomp[3] = {-1, -1, -1};  // [法向, 面内1, 面内2]@最近时刻
+    double base_speed_hit = -1;                // 触球时刻底盘速度(M3 判据>0.5)
 
     // 发球(微扰):慢弧线喂球,保证甜区落在管线可达时间窗内
     ServerParams sp;
@@ -147,12 +159,21 @@ int main(int argc, char** argv) {
         if (plan.feasible) {
           planned = true;
           t_plan0 = ts;
-          // MPC 参考起锚:当前位置 → base_target,锁止前 0.15s 到达
+          // 定点模式清零 fly 意图:底盘不飞就不会有那份拍速,臂不得预支
+          // (RefineAt 不改 v_base_star,一次清零覆盖全程)
+          if (!fly) { plan.v_base_star[0] = plan.v_base_star[1] = 0; }
+          // MPC 参考起锚:当前位置 → base_target。fly-through 恰在 t_hit 通过
+          // 目标(触球时刻底盘在动,拍速含底盘贡献);定点提前 0.15s 到达停稳
           mpc_sched.t0 = ts;
           mpc_sched.ax = bs.x; mpc_sched.ay = bs.y;
           mpc_sched.tx = plan.base_target[0];
           mpc_sched.ty = plan.base_target[1];
-          mpc_sched.t_arrive = std::clamp(plan.t_hit - ts - 0.15, 0.30, 1.2);
+          if (fly) {
+            mpc_sched.t_arrive = std::clamp(plan.t_hit - ts, 0.35, 1.5);
+            mpc_sched.v_fly = std::hypot(plan.v_base_star[0], plan.v_base_star[1]);
+          } else {
+            mpc_sched.t_arrive = std::clamp(plan.t_hit - ts - 0.15, 0.30, 1.2);
+          }
           if (use_qp && kInitDelay > 0) {
             // 延迟起挥:此处不 Init,由下方触发块在 t_plan0+kInitDelay 起挥
             // (等待期臂保持就位构型,RefineAt 持续精化计划)
@@ -161,6 +182,11 @@ int main(int argc, char** argv) {
           std::printf("  [plan] t=%.2f hit=(%.2f,%.2f,%.2f) t_hit=%.2f margin=%.2f base=(%.2f,%.2f)\n",
                       ts, plan.p_hit[0], plan.p_hit[1], plan.p_hit[2],
                       plan.t_hit, plan.time_margin, plan.base_target[0], plan.base_target[1]);
+          if (fly)
+            std::printf("  [fly] v_base*=(%.2f,%.2f) %.2f m/s,过靶时刻=t_hit=%.2f(跑程 %.2fm)\n",
+                        plan.v_base_star[0], plan.v_base_star[1],
+                        std::hypot(plan.v_base_star[0], plan.v_base_star[1]), plan.t_hit,
+                        std::hypot(plan.base_target[0]-bs.x, plan.base_target[1]-bs.y));
         }
       }
       // QP 延迟起挥触发
@@ -222,13 +248,33 @@ int main(int argc, char** argv) {
         std::printf("  [eval] ik conv=%d err=%.4f  max|q_ik-q_meas|=%.3f rad  base=(%.2f,%.2f)\n",
                     (int)chk.converged, chk.err, dq_max,
                     be.base_state().x, be.base_state().y);
+        // M3 指标:t_hit 时刻底盘速度(fly-through 达标判据 >0.5 m/s)
+        {
+          const BaseState bse = be.base_state();
+          base_speed_hit = std::hypot(bse.vx, bse.vy);
+          base_spd_sum += base_speed_hit; ++base_spd_n;
+          std::printf("  [eval] 触球底盘速度=%.2f m/s%s\n", base_speed_hit,
+                      base_speed_hit > 0.5 ? "(>0.5 达标)" : "");
+        }
       }
       // 底盘就位:MPC(50Hz 重解,到位目标 = 锁止前 0.15s 到达;非解算拍保持上一拍
       // twist)或 P 控(argv[6]="mpc" 切换;P 控解算失败时兜底)
       if (planned && plan.feasible) {
         const BaseState bs = be.base_state();
         bool mpc_applied = false;
-        if (use_mpc && t % 20 == 0) {
+        if (fly && !use_mpc) {
+          // pfly:P + 速度前馈跟踪 BaseRefGen 参考(每拍)。前馈承担巡航速度,
+          // P 项只纠残差 —— 无 MPC 的位置相位滞后;参考 k=0 即当前时刻值
+          double x0p[6] = {bs.x, bs.y, bs.yaw, bs.vx, bs.vy, 0};
+          BaseRefGen::Build(mpc_sched, ts, x0p, mpc_ref, mpc_cs2);
+          const double* r0 = &mpc_ref[0];
+          const double c = std::cos(bs.yaw), sn = std::sin(bs.yaw);
+          const double vwx = c*r0[3] - sn*r0[4], vwy = sn*r0[3] + c*r0[4];
+          const double cx = vwx + 2.5*(r0[0]-bs.x);   // 世界系命令
+          const double cy = vwy + 2.5*(r0[1]-bs.y);
+          servo.set_twist(Twist{std::clamp(c*cx + sn*cy, -1.5, 1.5),
+                                std::clamp(-sn*cx + c*cy, -1.5, 1.5), 0});
+        } else if (use_mpc && t % 20 == 0) {
           double x0[6] = {bs.x, bs.y, bs.yaw, bs.vx, bs.vy,
                           std::clamp(bs.wz, -mpc_lim.wz_max + 0.01,
                                      mpc_lim.wz_max - 0.01)};
@@ -254,8 +300,10 @@ int main(int argc, char** argv) {
             ++mpc_fails;
           }
         }
-        // P 控兜底:仅当 MPC 关闭,或本拍求解失败(非解算拍保持 MPC twist,勿覆盖)
-        if (!use_mpc || (t % 20 == 0 && !mpc_applied)) {
+        // P 控兜底:仅定点模式 MPC 求解失败时(非解算拍保持 MPC twist,勿覆盖);
+        // fly 模式禁用——P 控奔向目标收敛会把飞行中的底盘中途刹停,触球时刻
+        // v_base 归零;解算失败时保持上一拍 twist 更安全(MPC 全程 0 失败)
+        if (!use_mpc && !fly) {
           const double ex = plan.base_target[0] - bs.x;
           const double ey = plan.base_target[1] - bs.y;
           servo.set_twist(Twist{std::clamp(2.5*ex, -1.5, 1.5),
@@ -306,8 +354,25 @@ int main(int argc, char** argv) {
         t_ground = ts;
       if (vx > 0 && vx0 < 0) {
         ball_hit = true;
-        std::printf("  [contact] t=%.3f ball_z=%.3f %s\n", ts, d->qpos[ball_qadr+2],
-                    (t_ground > 0) ? "(落地后!非挥拍击球)" : "(落地前·有效)");
+        // M3 拍速分解:拍速 = 底盘贡献 + 臂贡献;出球速度 vs 意图(8 m/s)
+        {
+          double rv[6];
+          mj_objectVelocity(m, d, mjOBJ_SITE, site_id, rv, /*flg_local=*/0);
+          const double rk = std::hypot(rv[3], rv[4], rv[5]);        // 拍速(世界系)
+          const BaseState bsc = be.base_state();
+          const double vbx = std::cos(bsc.yaw)*bsc.vx - std::sin(bsc.yaw)*bsc.vy;
+          const double vby = std::sin(bsc.yaw)*bsc.vx + std::cos(bsc.yaw)*bsc.vy;
+          const double vbp = (rk > 0.1) ? (vbx*rv[3] + vby*rv[4]) / rk : 0.0;
+          const double vout = std::hypot(d->qvel[ball_vadr], d->qvel[ball_vadr+1],
+                                         d->qvel[ball_vadr+2]);
+          share_sum += vbp / rk; ++share_n;
+          out_spd_sum += vout; ++out_spd_n;
+          if (std::hypot(bsc.vx, bsc.vy) > 0.5) ++fly_ok;   // 触球时刻底盘速度达标
+          std::printf("  [contact] t=%.3f ball_z=%.3f %s 拍速=%.1f 底盘贡献=%.1f(%.0f%%) 出球=%.1f\n",
+                      ts, d->qpos[ball_qadr+2],
+                      (t_ground > 0) ? "(落地后!非挥拍击球)" : "(落地前·有效)",
+                      rk, vbp, 100.0*vbp/rk, vout);
+        }
         break;
       }
       // 拍-球距离
@@ -360,6 +425,13 @@ int main(int argc, char** argv) {
     std::printf("底盘 MPC:%d 解 %d 失败(%.1f%%) 最大单解 %.2fms\n",
                 mpc_solves, mpc_fails, 100.0 * mpc_fails / std::max(mpc_solves, 1),
                 mpc_ms_max);
+  if (base_spd_n > 0)
+    std::printf("M3 指标: t_hit 底盘速度均值 %.2f m%s | 命中且触球底盘速度>0.5: %d/%d"
+                " | 拍速底盘贡献 %.0f%% | 出球速度 %.1f m/s\n",
+                base_spd_sum / base_spd_n, (fly ? "(fly-through)" : "(定点)"),
+                fly_ok, hits,
+                share_n ? 100.0 * share_sum / share_n : 0.0,
+                out_spd_n ? out_spd_sum / out_spd_n : 0.0);
   std::printf("诊断: ②击球点偏差<0.2m ③拍球距离<0.15m ④命中率≥80%%\n");
   std::printf("%s (门槛 ≥80%%)\n", rate >= 80.0 ? "[PASS]" : "[FAIL]");
   mj_deleteData(d_ik);
