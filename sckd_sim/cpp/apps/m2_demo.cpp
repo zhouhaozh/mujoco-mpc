@@ -56,7 +56,14 @@ int main(int argc, char** argv) {
     SwingGenerator swing;
     HitPlan plan; plan.feasible = false;
     bool planned = false;
-    double q_cur[5] = {0, -1.0, 0.5, 0, 0.8};
+    // 待机位姿 = 实机 sckd-robot home(J2 抬臂 35°);挥拍就位 = 验收管线就位构型。
+    // 首次规划后 0.25s 五次平滑过渡 待机→就位(后引开始前完成),
+    // 既保待机视觉正确,又保已验证的挥拍几何(直接以抬臂待机作 IK 种子会使
+    // 解支漂移、命中降到 1-2/10 —— 2026-10-06 实测)
+    static constexpr double kStandby[5] = {-0.0244, 0.6109, -0.3927, -1.5359, 0.0};
+    static constexpr double kReady[5] = {0, -1.0, 0.5, 0, 0.8};
+    double q_cur[5] = {kStandby[0], kStandby[1], kStandby[2], kStandby[3], kStandby[4]};
+    double t_ready0 = -1;
     double min_ball_dist = 1e9;
     bool ball_hit = false;
     double t_ground = -1;
@@ -101,13 +108,14 @@ int main(int argc, char** argv) {
       if (be.get_ball_obs(&obs)) predictor.Update(obs);
       for (int j = 0; j < 5; ++j) q_cur[j] = be.joint_measured(AxisArm(j)).q;
 
-      // 初次规划
+      // 初次规划(启动待机→就位过渡;IK 种子=就位构型)
       if (!planned && predictor.initialized()) {
         const BaseState bs = be.base_state();
         plan = planner.Plan(predictor, bs, ts, intent);
         if (plan.feasible) {
           planned = true;
-          swing.Init(plan, q_cur, ik);
+          t_ready0 = ts;
+          swing.Init(plan, kReady, ik);
           std::printf("[规划] t=%.2f 击球点=(%.2f,%.2f,%.2f) t_hit=%.2f 底盘目标=(%.2f,%.2f)\n",
                       ts, plan.p_hit[0], plan.p_hit[1], plan.p_hit[2],
                       plan.t_hit, plan.base_target[0], plan.base_target[1]);
@@ -118,7 +126,7 @@ int main(int argc, char** argv) {
         const BaseState bs2 = be.base_state();
         planner.RefineAt(predictor, bs2, &plan, ts);
         if (swing.active()) swing.UpdatePlan(plan, ik);
-        else swing.Init(plan, q_cur, ik);
+        else swing.Init(plan, kReady, ik);
       }
       // 底盘 P 控就位
       if (planned && plan.feasible) {
@@ -138,7 +146,16 @@ int main(int argc, char** argv) {
           ac.q[j]=sc.q[j]; ac.dq[j]=sc.dq[j]; ac.kp[j]=sc.kp[j]; ac.kd[j]=sc.kd[j];
         }
       } else {
-        for (int j = 0; j < 5; ++j) ac.q[j] = q_cur[j];
+        // 待机,或待机→就位过渡(五次平滑,0.25s)
+        double s = 1.0;
+        if (t_ready0 >= 0.0) {
+          s = std::clamp((ts - t_ready0) / 0.25, 0.0, 1.0);
+          const double p = 10*s*s*s - 15*s*s*s*s + 6*s*s*s*s*s;
+          for (int j = 0; j < 5; ++j)
+            ac.q[j] = kStandby[j] + (kReady[j] - kStandby[j]) * p;
+        } else {
+          for (int j = 0; j < 5; ++j) ac.q[j] = kStandby[j];
+        }
       }
       double ff[5];
       if (be.arm_gravity(ac.q, ff)) for (int j=0;j<5;++j) ac.tau_ff[j]=ff[j];
