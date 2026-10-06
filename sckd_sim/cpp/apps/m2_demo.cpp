@@ -2,16 +2,20 @@
 // 精化→IK(scratch)→绝对时序挥拍→底盘 P 控),增加:
 //   1) 实时节拍(墙钟对齐,观感真实速度)
 //   2) 60Hz 状态写 /tmp/sckd_demo_state.bin 供 python/tools/demo_viewer.py 同步
+// 挥拍层:qp(轨迹 QP+闭环滞后补偿,当前最优,默认)/ base(五次多项式基线)。
 // 用法:先启动 viewer(DISPLAY=:1 python python/tools/demo_viewer.py),再运行本程序。
+//   ./build/m2_demo [N|0连续] [base]
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <random>
 #include <thread>
 
 #include <mujoco/mujoco.h>
 
 #include "control/arm_ik.h"
+#include "control/arm_swing.h"
 #include "control/chassis_servo.h"
 #include "control/swing_generator.h"
 #include "estimation/ball_predictor.h"
@@ -24,6 +28,8 @@ using namespace sckd;
 
 int main(int argc, char** argv) {
   const int kTrials = argc > 1 ? atoi(argv[1]) : 3;
+  // qp = 轨迹 QP + 闭环滞后补偿(与 m2_intercept ... qp 同管线,当前最优)
+  const bool use_qp = !(argc > 2 && std::strcmp(argv[2], "base") == 0);
   SimBackend be("models/generated/x4_tennis_demo.mjcf", "models/config/motors.json",
                 "models/config/x4_tennis.json", "models/config/chassis_m1.json");
   if (!be.ok()) { std::printf("[FAIL] init\n"); return 1; }
@@ -45,8 +51,9 @@ int main(int argc, char** argv) {
 
   FILE* sh = fopen("/tmp/sckd_demo_state.bin", "wb");
   const bool kForever = (kTrials <= 0);   // 0 = 连续模式(viewer 长挂)
-  std::printf("=== M2 闭环拦截 GUI 演示(%s,实时节拍)===\n",
-              kForever ? "连续模式,Ctrl+C 退出" : "有限次喂球");
+  std::printf("=== M2 闭环拦截 GUI 演示(%s挥拍=%s,实时节拍)===\n",
+              kForever ? "连续模式,Ctrl+C 退出," : "有限次喂球,",
+              use_qp ? "轨迹QP+闭环滞后补偿" : "五次多项式基线");
   int hits = 0, n_trials = 0;
   for (int trial = 0; kForever || trial < kTrials; ++trial) {
     ++n_trials;
@@ -57,6 +64,8 @@ int main(int argc, char** argv) {
     BallPredictor predictor(aero, 0.030, bp);
     HitPlanner planner(pp, aero);
     SwingGenerator swing;
+    ArmSwing aswing;
+    double dq_cur[5] = {0};
     HitPlan plan; plan.feasible = false;
     bool planned = false;
     // 待机位姿 = 实机 sckd-robot home(J2 抬臂 35°);挥拍就位 = 验收管线就位构型。
@@ -109,7 +118,10 @@ int main(int argc, char** argv) {
       // 观测 → 预测;臂构型取实测
       BallObs obs;
       if (be.get_ball_obs(&obs)) predictor.Update(obs);
-      for (int j = 0; j < 5; ++j) q_cur[j] = be.joint_measured(AxisArm(j)).q;
+      for (int j = 0; j < 5; ++j) {
+        const JointReport jr = be.joint_measured(AxisArm(j));
+        q_cur[j] = jr.q; dq_cur[j] = jr.dq;
+      }
 
       // 初次规划(启动待机→就位过渡;IK 种子=就位构型)
       if (!planned && predictor.initialized()) {
@@ -118,18 +130,27 @@ int main(int argc, char** argv) {
         if (plan.feasible) {
           planned = true;
           t_ready0 = ts;
-          swing.Init(plan, kReady, ik);
+          if (!use_qp) swing.Init(plan, kReady, ik);
           std::printf("[规划] t=%.2f 击球点=(%.2f,%.2f,%.2f) t_hit=%.2f 底盘目标=(%.2f,%.2f)\n",
                       ts, plan.p_hit[0], plan.p_hit[1], plan.p_hit[2],
                       plan.t_hit, plan.base_target[0], plan.base_target[1]);
         }
       }
+      // QP 起挥:待机→就位过渡完成后再 Init(臂实际处于 kReady,边界=种子=实测,
+      // 与验收几何一致 —— 直接以待机构型作种子会解支漂移,见上注)
+      if (use_qp && planned && !aswing.active() && ts >= t_ready0 + 0.25)
+        aswing.Init(plan, q_cur, dq_cur, ik, ts);
       // 重规划精化(50Hz,穿击锁止前):t_hit 锚定,仅精化 p_hit
-      if (planned && !swing.locked() && t % 20 == 0) {
-        const BaseState bs2 = be.base_state();
-        planner.RefineAt(predictor, bs2, &plan, ts);
-        if (swing.active()) swing.UpdatePlan(plan, ik);
-        else swing.Init(plan, kReady, ik);
+      if (planned && t % 20 == 0) {
+        const bool locked = use_qp ? (aswing.active() && aswing.locked())
+                                   : (swing.active() && swing.locked());
+        if (!locked) {
+          const BaseState bs2 = be.base_state();
+          planner.RefineAt(predictor, bs2, &plan, ts);
+          if (use_qp) { if (aswing.active()) aswing.UpdatePlan(plan, ik, ts); }
+          else if (swing.active()) swing.UpdatePlan(plan, ik);
+          else swing.Init(plan, kReady, ik);
+        }
       }
       // 底盘 P 控就位
       if (planned && plan.feasible) {
@@ -144,7 +165,8 @@ int main(int argc, char** argv) {
       ArmHybridCmd ac;
       for (int j = 0; j < 5; ++j) { ac.kp[j]=60; ac.kd[j]=(j==4?1.5:6.0); }
       SwingCmd sc;
-      if (swing.active() && swing.Update(ts, sc)) {
+      if (use_qp ? aswing.Update(ts, q_cur, sc)
+                 : (swing.active() && swing.Update(ts, sc))) {
         for (int j = 0; j < 5; ++j) {
           ac.q[j]=sc.q[j]; ac.dq[j]=sc.dq[j]; ac.kp[j]=sc.kp[j]; ac.kd[j]=sc.kd[j];
         }

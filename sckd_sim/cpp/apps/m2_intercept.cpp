@@ -30,6 +30,10 @@ int main(int argc, char** argv) {
   const int kTrials = argc > 2 ? atoi(argv[2]) : 10;
   // 挥拍层选择:quintic(五次多项式基线)/ qp(轨迹 QP,§6.4 臂优化)
   const bool use_qp = (argc > 3 && std::strcmp(argv[3], "qp") == 0);
+  // QP 起挥延迟(秒,argv[4],默认 0.25):初规划后等待该时长再 Init。
+  // 延迟起挥缩短轨迹时窗 T,伺服滞后显著减小 —— 三种子扫 0/0.20/0.25/0.30/0.35
+  // 得 40%/86.7%/93.3%/70%/60%,0.25 为平台中心(2026-10-06,验收达标配置)。
+  const double kInitDelay = (argc > 4 ? atof(argv[4]) : 0.25);
   SimBackend be(scene, "models/config/motors.json", "models/config/x4_tennis.json",
                 "models/config/chassis_m1.json");
   if (!be.ok()) { std::printf("[FAIL] init\n"); return 1; }
@@ -50,7 +54,7 @@ int main(int argc, char** argv) {
   mjData* d_ik = mj_makeData(const_cast<mjModel*>(m));
   mj_resetDataKeyframe(m, d_ik, 0);
   ArmIk ik(const_cast<mjModel*>(m), d_ik);
-  std::mt19937 rng(2026);
+  std::mt19937 rng(argc > 5 ? std::atoi(argv[5]) : 2026);   // 种子( argv[5],鲁棒性验证 )
 
   int hits = 0, contacts = 0;
   double plan_err_sum = 0; int plan_err_n = 0;
@@ -73,6 +77,7 @@ int main(int argc, char** argv) {
     bool locked_saved = false, hit_eval_done = false;
     double lock_p[3] = {0}, lock_t = 0, plan_err = -1;
     int replans = 0;
+    double t_plan0 = -1;    // 初规划时刻(延迟起挥基准)
     double t_min_dist = -1;
     double t_ground = -1;   // 首次落地时刻(判"挥拍击球"还是"落地后撞拍")
     bool touch_printed = false;
@@ -126,25 +131,35 @@ int main(int argc, char** argv) {
         plan = planner.Plan(predictor, bs, ts, intent);
         if (plan.feasible) {
           planned = true;
-          if (use_qp) aswing.Init(plan, q_cur, dq_cur, ik, ts);
+          t_plan0 = ts;
+          if (use_qp && kInitDelay > 0) {
+            // 延迟起挥:此处不 Init,由下方触发块在 t_plan0+kInitDelay 起挥
+            // (等待期臂保持就位构型,RefineAt 持续精化计划)
+          } else if (use_qp) aswing.Init(plan, q_cur, dq_cur, ik, ts);
           else swing.Init(plan, q_cur, ik);
           std::printf("  [plan] t=%.2f hit=(%.2f,%.2f,%.2f) t_hit=%.2f margin=%.2f base=(%.2f,%.2f)\n",
                       ts, plan.p_hit[0], plan.p_hit[1], plan.p_hit[2],
                       plan.t_hit, plan.time_margin, plan.base_target[0], plan.base_target[1]);
         }
       }
+      // QP 延迟起挥触发
+      if (use_qp && planned && kInitDelay > 0 && !aswing.active() && ts >= t_plan0 + kInitDelay)
+        aswing.Init(plan, q_cur, dq_cur, ik, ts);
       // 重规划(50Hz,后引锁止前):t_hit 锚定,RefineAt 仅精化 p_hit/base_target
       // (评分比较会拒绝精化:高度偏好偏爱陈旧高 z 计划 —— 见 hit_planner 注)
-      if (planned && !(use_qp ? aswing.locked() : swing.locked()) && t % 20 == 0) {
+      // (aswing 未激活时 locked() 恒真,须判活,否则延迟起挥期会跳过精化)
+      if (planned && !(use_qp ? (aswing.active() && aswing.locked())
+                              : swing.locked()) && t % 20 == 0) {
         const BaseState bs2 = be.base_state();
         planner.RefineAt(predictor, bs2, &plan, ts);
         ++replans;
-        if (use_qp) aswing.UpdatePlan(plan, ik, ts);
+        if (use_qp) { if (aswing.active()) aswing.UpdatePlan(plan, ik, ts); }
         else if (swing.active()) swing.UpdatePlan(plan, ik);
         else swing.Init(plan, q_cur, ik);
       }
       // 诊断②:锁止时刻快照;到 t_hit 与真值对比
-      if (planned && !locked_saved && (use_qp ? aswing.locked() : (swing.active() && swing.locked()))) {
+      if (planned && !locked_saved && (use_qp ? (aswing.active() && aswing.locked())
+                                              : (swing.active() && swing.locked()))) {
         locked_saved = true;
         for (int i = 0; i < 3; ++i) lock_p[i] = plan.p_hit[i];
         lock_t = plan.t_hit;
