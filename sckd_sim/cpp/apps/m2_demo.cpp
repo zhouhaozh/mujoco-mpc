@@ -44,9 +44,12 @@ int main(int argc, char** argv) {
   std::mt19937 rng(2026);
 
   FILE* sh = fopen("/tmp/sckd_demo_state.bin", "wb");
-  std::printf("=== M2 闭环拦截 GUI 演示(%d 次喂球,实时节拍)===\n", kTrials);
-  int hits = 0;
-  for (int trial = 0; trial < kTrials; ++trial) {
+  const bool kForever = (kTrials <= 0);   // 0 = 连续模式(viewer 长挂)
+  std::printf("=== M2 闭环拦截 GUI 演示(%s,实时节拍)===\n",
+              kForever ? "连续模式,Ctrl+C 退出" : "有限次喂球");
+  int hits = 0, n_trials = 0;
+  for (int trial = 0; kForever || trial < kTrials; ++trial) {
+    ++n_trials;
     be.reset(0);
     be.enable(-1, true);
     be.hold_arm(60.0, 1.5);
@@ -209,7 +212,7 @@ int main(int argc, char** argv) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1200));
   }
   if (sh) fclose(sh);
-  std::printf("\n=== 演示结束: %d/%d 命中 ===\n", hits, kTrials);
+  std::printf("\n=== 演示结束: %d/%d 命中 ===\n", hits, n_trials);
   mj_deleteData(d_ik);
   return 0;
 }
