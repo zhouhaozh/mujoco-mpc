@@ -43,6 +43,8 @@ struct PlannerParams {
   double bounce_guard = 0.08;      // 反弹时刻保护带(s):锚定 t_hit 须早于预测反弹−此值
   double restitution = 0.60;
   double fly_speed_max = 1.2;      // v_base* 上限(m/s,移动击球方案 B′)
+  int fly_rule = 0;                // 0=B′ 原规则;1=方案B v0 OCP 蒸馏规则
+  double fly_sat = 0.55;           // 规则 1 的饱和系数(见 hit_planner.cpp 注)
 };
 
 class HitPlanner {

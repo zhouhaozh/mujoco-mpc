@@ -53,6 +53,9 @@ int main(int argc, char** argv) {
   // 发球单独计数、不入击球率分母(参数域按反弹后甜区落在工作空间构造,
   // 不可达占比应 <20%,否则说明域取得过宽)
   const bool rand_serve = (argc > 7 && std::strcmp(argv[7], "rand") == 0);
+  // v_base* 规则(argv[8],默认 0=B′ 原规则):"v2" = 方案 B v0 OCP 蒸馏规则
+  // (2.2x/(1+0.55x) 饱和上限,wholebody_ocp sweep 蒸馏;闭环 A/B 用)
+  const int fly_rule = (argc > 8 && std::strcmp(argv[8], "v2") == 0) ? 1 : 0;
   SimBackend be(scene, "models/config/motors.json", "models/config/x4_tennis.json",
                 "models/config/chassis_m1.json");
   if (!be.ok()) { std::printf("[FAIL] init\n"); return 1; }
@@ -67,6 +70,7 @@ int main(int argc, char** argv) {
   BallAeroParams aero;
   BounceParams bp;
   PlannerParams pp;
+  pp.fly_rule = fly_rule;
   ChassisServo servo(be.chassis_config(), &be);
   // IK 必须用独立 scratch mjData:ArmIk::Solve 直接写 qpos(base+臂),
   // 传活体 d 会每次重规划把整车瞬移到 IK 姿态(假接触/物理污染,2026-10-06 定位)

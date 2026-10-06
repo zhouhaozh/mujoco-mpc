@@ -98,7 +98,16 @@ HitPlan HitPlanner::Plan(const BallPredictor& predictor, const BaseState& base,
       const double D0 = std::hypot(ddx, ddy);
       const double va = (vr[0]*ddx + vr[1]*ddy) / std::max(D0, 1e-6);
       if (D0 > 0.30 && va > 0.05) {
-        const double cap = std::min(pp_.fly_speed_max, 2.2 * D0 / std::max(t - t_now, 0.3));
+        // 上限:规则 0(B′ 原)= min(1.2, 2.2x) 标量封顶;规则 1(方案 B v0
+        // 蒸馏,wholebody_ocp sweep 2026-10-07)= 2.2x/(1+0.55x) 饱和曲线——
+        // 联合最优的 d̂ 投影拟合(40 工况 OCP:小 x 退化为原 Hermite 渐近,
+        // 长 x 长到 ~2.0 顶每轴钳;OCP 显示长跑道最优把出球方向分量顶满每轴
+        // clamp,旧 1.2 封顶丢掉该红利;w=v·T/D=2.2/(1+0.55x)≤2.2 恒满足
+        // Hermite 单调域)。每轴伺服 clamp 1.5 仍是物理兜底
+        const double x = D0 / std::max(t - t_now, 0.3);
+        const double cap = (pp_.fly_rule == 1)
+            ? 2.2 * x / (1.0 + pp_.fly_sat * x)
+            : std::min(pp_.fly_speed_max, 2.2 * x);
         const double vf = std::min(va, cap);
         hp.v_base_star[0] = vf * ddx / D0;
         hp.v_base_star[1] = vf * ddy / D0;

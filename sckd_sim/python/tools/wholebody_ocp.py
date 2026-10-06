@@ -209,5 +209,54 @@ def main():
                   f'({100 * dc / max(r_free["cost"], 1e-9):+.1f}%)')
 
 
+def sweep():
+    """v1 第一步:联合最优 v_base* 的参数扫描(方向 θ×跑道 D0×时窗 T)。
+
+    目标:检验 v0 两点发现是否成规律——幅值 ≈ k·D0/T、方向 ≈ d̂ 与 v̂* 的
+    混合;若干净 → 蒸馏成闭合规则进 hit_planner 闭环 A/B,否则结论为
+    "启发式不可蒸馏,须在线 OCP"。
+    """
+    fk = build('models/generated/x4_tennis_demo.mjcf')
+    h_base = float(base_height('models/generated/x4_tennis_demo.mjcf')[2])
+    m = mujoco.MjModel.from_xml_path('models/generated/x4_tennis_demo.mjcf')
+    q_lo, q_hi = np.zeros(5), np.zeros(5)
+    b = m.site_bodyid[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, 'racket_center')]
+    i = 4
+    while mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b) != 'base_link':
+        j = m.body_jntadr[b]
+        q_lo[i], q_hi[i] = m.jnt_range[j] if m.jnt_limited[j] else (-3.5, 3.5)
+        b = m.body_parentid[b]
+        i -= 1
+    v_out = V_OUT_SPEED * np.array([
+        np.cos(np.radians(V_OUT_ELEV)), 0.0, np.sin(np.radians(V_OUT_ELEV))])
+    print('  θ(°)   D0    T   |v_opt| ang_opt  |v_heur| ang_heur  D0/T  v_opt/(D0/T)  '
+          'cost_heur/cost_opt')
+    for T in (0.95, 1.25):
+        for th in (0.0, -20.0, -40.0, -60.0):
+            for D0 in (0.4, 0.7, 1.0, 1.4, 1.8):
+                r_hit = D0 + BACK          # |p_hit_xy|(BaseTargetFromHit 反解)
+                ph = (r_hit * np.cos(np.radians(th)),
+                      r_hit * np.sin(np.radians(th)), 1.1)
+                scen = dict(p_hit=ph, v_in=(-3.4, -0.5, -6.0), T=T,
+                            q_lo=q_lo, q_hi=q_hi)
+                r_free, v_star, _ = solve_ocp(fk, h_base, scen, None)
+                if not r_free['ok']:
+                    print(f'  {th:5.0f} {D0:4.1f} {T:4.2f}  FAIL')
+                    continue
+                vb_he, _, _ = bprime_vbase_star(v_star, ph[:2] - BACK * np.array(
+                    [np.cos(np.radians(th)), np.sin(np.radians(th))]), T)
+                r_fix, _, _ = solve_ocp(fk, h_base, scen, vb_he)
+                vo = np.array(r_free['v_base'])
+                ratio = np.hypot(*vo) / (D0 / T)
+                cr = (r_fix['cost'] / r_free['cost']) if r_fix['ok'] else np.nan
+                print(f'  {th:5.0f} {D0:4.1f} {T:4.2f}  {np.hypot(*vo):6.2f} '
+                      f'{np.degrees(np.arctan2(vo[1], vo[0])):6.1f}  '
+                      f'{np.hypot(*vb_he):6.2f}   {np.hypot(*vb_he) * 0 + np.degrees(np.arctan2(vb_he[1], vb_he[0])):6.1f}  '
+                      f'{D0 / T:4.2f}  {ratio:6.2f}  {cr:8.2f}')
+
+
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == 'sweep':
+        sweep()
+    else:
+        main()
