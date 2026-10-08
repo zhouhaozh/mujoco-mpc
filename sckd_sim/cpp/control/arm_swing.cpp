@@ -172,6 +172,8 @@ void ArmSwing::Init(const HitPlan& plan, const double q_current[5],
 
 bool ArmSwing::UpdatePlan(const HitPlan& plan, ArmIk& ik, double t_now) {
   if (!active_) return false;
+  const double bx = plan.base_pred_ok ? plan.base_pred[0] : plan.base_target[0];
+  const double by = plan.base_pred_ok ? plan.base_pred[1] : plan.base_target[1];
   if (locked()) {
     // 锁止后微调(§6.5:冻结大改、仅 ±cm 级微调;2026-10-07 实现):完全冻结会
     // 丢弃 lock→t_hit 间 0.15-0.3s 的预测收敛,随机族实测陈旧终值面内未中
@@ -181,7 +183,7 @@ bool ArmSwing::UpdatePlan(const HitPlan& plan, ArmIk& ik, double t_now) {
       for (int j = 0; j < 5; ++j) q_lock_[j] = q_hit_[j];
       lock_snap_ = true;
     }
-    IkResult res = ik.Solve(plan.p_hit, plan.base_target[0], plan.base_target[1],
+    IkResult res = ik.Solve(plan.p_hit, bx, by,
                             0.0, q_lock_);   // 播种锁止快照(同支微调)
     if (res.err > 0.03) return false;
     for (int j = 0; j < 5; ++j)
@@ -198,6 +200,10 @@ bool ArmSwing::locked() const {
 }
 
 bool ArmSwing::Solve(const HitPlan& plan, ArmIk& ik, double t_now, bool retime) {
+  // 终值锚定基座:v2 triage(2026-10-08)——优先预测实际底盘位姿(app 外推填充),
+  // 拍终值随"底盘真正会在的位置"解;未填时退回规划 base_target(旧行为)
+  const double bx = plan.base_pred_ok ? plan.base_pred[0] : plan.base_target[0];
+  const double by = plan.base_pred_ok ? plan.base_pred[1] : plan.base_target[1];
   // ---- 阶段1:终值构型/速度 ----
   // 解支搜索(2026-10-08,抽球族定位):位置 IK 存在解流形,拍面朝向随解支
   // 漂移——低位平击(z 0.6-0.8)实测触球法向偏 25-60°(n=(0.41,−0.64,0.65)
@@ -208,17 +214,15 @@ bool ArmSwing::Solve(const HitPlan& plan, ArmIk& ik, double t_now, bool retime) 
   // 的支不因重解落回默认盆)
   double seed5[5];
   for (int j = 0; j < 5; ++j) seed5[j] = retime ? q0_[j] : q_hit_[j];
-  IkResult res = ik.Solve(plan.p_hit, plan.base_target[0], plan.base_target[1],
-                          0.0, seed5);
+  IkResult res = ik.Solve(plan.p_hit, bx, by, 0.0, seed5);
   // 终值 IK 容差放宽到 3cm(非 converged 的 1cm):工作空间边缘(低位平击 z~0.5)
   // 收敛残差 1-2cm 是常态,拍面半宽 11cm 下无损;按 1cm 拒解曾使随机族低位发球
   // 的起挥 Init 连败数百次 → 臂瘫痪(2026-10-07 定位)。真不可达(>3cm)仍拒。
   if (res.err > 0.03) return false;
-  res.q[4] = AlignFaceJ5(ik, res.q, plan.base_target[0], plan.base_target[1],
-                         plan.n_face);
+  res.q[4] = AlignFaceJ5(ik, res.q, bx, by, plan.n_face);
   if (retime) {   // 仅 Init 定支:重解期换支会打断轨迹连续性(面内 0.89 反例)
     double n0[3];
-    ik.FaceNormal(res.q, plan.base_target[0], plan.base_target[1], n0);
+    ik.FaceNormal(res.q, bx, by, n0);
     double best_al = n0[0]*plan.n_face[0] + n0[1]*plan.n_face[1] +
                      n0[2]*plan.n_face[2];
     static const double kSeed[7][2] = {{0.35,0},{-0.35,0},{0,0.25},{0,-0.25},
@@ -227,13 +231,11 @@ bool ArmSwing::Solve(const HitPlan& plan, ArmIk& ik, double t_now, bool retime) 
       double q_seed[5];
       for (int j = 0; j < 5; ++j) q_seed[j] = q0_[j];
       q_seed[0] += sd[0]; q_seed[1] += sd[1];
-      IkResult r = ik.Solve(plan.p_hit, plan.base_target[0], plan.base_target[1],
-                            0.0, q_seed);
+      IkResult r = ik.Solve(plan.p_hit, bx, by, 0.0, q_seed);
       if (r.err > 0.03) continue;
-      r.q[4] = AlignFaceJ5(ik, r.q, plan.base_target[0], plan.base_target[1],
-                           plan.n_face);
+      r.q[4] = AlignFaceJ5(ik, r.q, bx, by, plan.n_face);
       double n[3];
-      ik.FaceNormal(r.q, plan.base_target[0], plan.base_target[1], n);
+      ik.FaceNormal(r.q, bx, by, n);
       const double al = n[0]*plan.n_face[0] + n[1]*plan.n_face[1] +
                         n[2]*plan.n_face[2];
       if (al > best_al + 0.02) { best_al = al; res = r; }
@@ -243,7 +245,7 @@ bool ArmSwing::Solve(const HitPlan& plan, ArmIk& ik, double t_now, bool retime) 
   for (int j = 0; j < 5; ++j) q_hit[j] = res.q[j];
   for (int j = 0; j < 5; ++j) q_hit_[j] = q_hit[j];   // 锁止后微调的比对基准
   double J[15], dq_hit[5];
-  ik.SiteJacobian(q_hit, plan.base_target[0], plan.base_target[1], J);
+  ik.SiteJacobian(q_hit, bx, by, J);
   // 方案 B′ 终端交接(2026-10-07):拍速 = v_base + J·dq → 关节终值速度改为差项
   // dq_hit = J⁺(v* − v_base*)——底盘 fly-through 先贡献,臂只补余量(高位族
   // 关节速度需求随之下降)。J 按 yaw=0 解(hit_planner 契约),v_base* 世界系

@@ -31,6 +31,34 @@
 
 using namespace sckd;
 
+// v2 triage(2026-10-08):预测实际底盘位姿@t_hit,ArmSwing 终值 IK/J/J5 对准
+// 按它解——fly-through 底盘滞后 0.1-0.2m,按规划 base_target 解则拍随基座
+// 平移、无人补偿(面内 miss 0.16-0.47,抽球族定位)。
+// 模型 = P 控误差动力学:pred = base_target − lag·exp(−dtg/τ),τ=1/kP=0.4s
+// (t_hit 时参考恰为 base_target,当前位置误差按闭环时间常数衰减)。比线性
+// 外推稳:加速段外推会把锚拖离目标 0.4-0.7m(fixed 族实测 100%→30-40%);
+// 误差衰减模型对 lag≈0 的族自然回目标(无阈值跳变)。仅 fly 模式调用
+static void FillBasePred(HitPlan& plan, SimBackend& be, double t_now,
+                         double ref_x, double ref_y) {
+  if (!plan.feasible) return;
+  const double dtg = plan.t_hit - t_now;
+  if (dtg <= 0) { plan.base_pred_ok = false; return; }
+  const BaseState b = be.base_state();
+  const double lag_x = ref_x - b.x, lag_y = ref_y - b.y;   // 参考−实际(滞后>0)
+  const double decay = std::exp(-dtg / 0.40);
+  double px = plan.base_target[0] - lag_x * decay;
+  double py = plan.base_target[1] - lag_y * decay;
+  const double ddx = px - plan.base_target[0], ddy = py - plan.base_target[1];
+  const double dd = std::hypot(ddx, ddy);
+  if (dd > 0.40) {   // 限幅(异常 lag 不把终值拖出工作空间)
+    px = plan.base_target[0] + ddx / dd * 0.40;
+    py = plan.base_target[1] + ddy / dd * 0.40;
+  }
+  plan.base_pred[0] = px;
+  plan.base_pred[1] = py;
+  plan.base_pred_ok = true;
+}
+
 int main(int argc, char** argv) {
   const std::string scene = argc > 1 ? argv[1] : "models/generated/x4_tennis_demo.mjcf";
   const int kTrials = argc > 2 ? atoi(argv[2]) : 10;
@@ -92,6 +120,7 @@ int main(int argc, char** argv) {
   ChassisMpc mpc;
   ChassisMpc::Limits mpc_lim;
   BaseRefGen::Ref mpc_ref{};
+  bool ref_built = false;       // pfly 参考已构建(首次 Build 前 base_pred 不填)
   double mpc_cs2[2 * ChassisMpc::kN] = {0};
   int mpc_solves = 0, mpc_fails = 0;
   double mpc_ms_max = 0;
@@ -240,7 +269,10 @@ int main(int argc, char** argv) {
           if (use_qp && kInitDelay > 0) {
             // 延迟起挥:此处不 Init,由下方触发块在 t_plan0+kInitDelay 起挥
             // (等待期臂保持就位构型,RefineAt 持续精化计划)
-          } else if (use_qp) aswing.Init(plan, q_cur, dq_cur, ik, ts);
+          } else if (use_qp) {
+            if (fly && ref_built) FillBasePred(plan, be, ts, mpc_ref[0], mpc_ref[1]);
+            aswing.Init(plan, q_cur, dq_cur, ik, ts);
+          }
           else swing.Init(plan, q_cur, ik);
           std::printf("  [plan] t=%.2f hit=(%.2f,%.2f,%.2f) t_hit=%.2f margin=%.2f base=(%.2f,%.2f)\n",
                       ts, plan.p_hit[0], plan.p_hit[1], plan.p_hit[2],
@@ -254,6 +286,7 @@ int main(int argc, char** argv) {
       }
       // QP 延迟起挥触发
       if (use_qp && planned && kInitDelay > 0 && !aswing.active() && ts >= t_plan0 + kInitDelay) {
+        if (fly && ref_built) FillBasePred(plan, be, ts, mpc_ref[0], mpc_ref[1]);
         aswing.Init(plan, q_cur, dq_cur, ik, ts);
         if (!aswing.active() && ts - t_plan0 < kInitDelay + 0.60)   // 初解失败诊断(限窗打印)
           std::printf("  [init-fail] t=%.2f p=(%.2f,%.2f,%.2f) base_t=(%.2f,%.2f) t_hit=%.2f\n",
@@ -274,7 +307,11 @@ int main(int argc, char** argv) {
           mpc_sched.tx = plan.base_target[0];   // 终点随精化更新(起锚不变)
           mpc_sched.ty = plan.base_target[1];
         }
-        if (use_qp) { if (aswing.active()) aswing.UpdatePlan(plan, ik, ts); }
+        if (use_qp) {
+          if (fly && ref_built)  // v2 triage:臂终值按预测实际底盘解
+            FillBasePred(plan, be, ts, mpc_ref[0], mpc_ref[1]);
+          if (aswing.active()) aswing.UpdatePlan(plan, ik, ts);
+        }
         else if (swing.active()) swing.UpdatePlan(plan, ik);
         else swing.Init(plan, q_cur, ik);
       }
@@ -339,6 +376,7 @@ int main(int argc, char** argv) {
           // P 项只纠残差 —— 无 MPC 的位置相位滞后;参考 k=0 即当前时刻值
           double x0p[6] = {bs.x, bs.y, bs.yaw, bs.vx, bs.vy, 0};
           BaseRefGen::Build(mpc_sched, ts, x0p, mpc_ref, mpc_cs2);
+          ref_built = true;
           const double* r0 = &mpc_ref[0];
           const double c = std::cos(bs.yaw), sn = std::sin(bs.yaw);
           const double vwx = c*r0[3] - sn*r0[4], vwy = sn*r0[3] + c*r0[4];

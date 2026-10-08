@@ -29,6 +29,12 @@ struct HitPlan {
   // dq_hit = J⁺(v_racket − v_base*)。方向取接近方向 d̂ 上 v*_xy 的投影分量:
   // 拍速需求与走位方向不对齐时投影≤0 → 不飞(底盘贡献为负不如不做,诚实分解)。
   double v_base_star[2] = {0, 0};
+  // 预测实际底盘位姿@t_hit(世界系 xy;app 侧由 base_state+v·Δt 外推并填充)。
+  // 臂终值 IK/J/J5 对准按它解而非规划 base_target——fly-through 底盘实际滞后
+  // 0.1-0.2m,终值按规划位姿解则拍随基座平移、无人补偿(面内 miss 0.16-0.47,
+  // 2026-10-08 抽球族定位;方案 B v2 triage 补丁)。false = 走 base_target(旧行为)
+  double base_pred[2] = {0, 0};
+  bool base_pred_ok = false;
   bool feasible = false;
   double score = 0;
   double time_margin = 0;
