@@ -20,7 +20,8 @@ import numpy as np
 from arm_fk_sym import build, base_height
 
 # ---- 与 C++ 同源的参数(hit_planner/base_ref_gen/m2_intercept 契约) ----
-E_RESTITUTION = 0.60          # pp_.restitution
+REBOUND_A, REBOUND_B = 1.5, -0.5   # a=1+k,b=−k(k=0.5;§3.5 拍面支,与 C++ 同源;
+                                    # 2026-10-08 由旧 e=0.6 更新——旧 b 符号与反射物理相反)
 V_OUT_SPEED, V_OUT_ELEV = 8.0, 15.0     # intent
 FLY_SPEED_MAX, HERMITE_W = 1.2, 2.2     # v_base* 上限
 BACK = 0.8                    # BaseTargetFromHit 后撤距
@@ -36,13 +37,25 @@ SCENARIOS = {
     'S2 随机族远跑': dict(p_hit=(1.67, -1.00, 1.28), v_in=(-3.2, -0.8, -5.6), T=0.94),
 }
 
+# v2 场景:抽球族(2026-10-08),起点 = 闭环 Init 时刻的滞后底盘状态
+# (base0/vbase0 取自 m2_intercept gs 日志量级;lag 沿 d̂ ~0.15-0.25 是实测)
+V2_SCENARIOS = {
+    'G1 gs 中央': dict(p_hit=(0.95, -0.55, 0.70), v_in=(-5.5, -0.3, -1.7), T=0.85,
+                      base0=(-0.05, -0.10), vbase0=(0.8, -0.4)),
+    'G2 gs 侧向': dict(p_hit=(0.70, 0.90, 0.62), v_in=(-5.8, 0.2, -1.5), T=0.95,
+                      base0=(0.05, 0.30), vbase0=(0.2, -1.0)),
+    'G3 gs 远跑紧时': dict(p_hit=(1.30, -0.85, 0.75), v_in=(-5.2, -0.5, -1.8), T=0.80,
+                        base0=(0.0, -0.20), vbase0=(1.1, -0.5)),
+}
+V2_LAG = 0.18      # triage 补丁口径的闭环残差(沿 d̂,P 控误差动力学终值量级)
+
 
 def rebound_inverse(v_in, v_out):
     """hit_planner.cpp ReboundInverse 同式:n*=v_out/|v_out|,v*=n*·vr_n。"""
     n = np.array(v_out) / max(np.linalg.norm(v_out), 0.01)
     vo = np.linalg.norm(v_out)
     v_in_n = np.dot(v_in, n)
-    vr_n = (vo - (1.0 - E_RESTITUTION) * v_in_n) / (1.0 + E_RESTITUTION)
+    vr_n = (vo - REBOUND_B * v_in_n) / REBOUND_A
     return n * vr_n, n
 
 
@@ -61,8 +74,10 @@ def bprime_vbase_star(v_star, base_target, T):
     return vf * dhat, D0, va
 
 
-def solve_ocp(fk, h_base, scen, v_base_fix=None):
-    """解整机 OCP;v_base_fix 非 None 时终端底盘速度钉死(对照 run)。"""
+def solve_ocp(fk, h_base, scen, v_base_fix=None, pin_base=None):
+    """解整机 OCP;v_base_fix 非 None 时终端底盘速度钉死(对照 run);
+    pin_base 非 None 时终端底盘【位置】钉死(v2:闭环现状/补丁对照);
+    起点取 scen['base0']/['vbase0'](缺省原点零速,v0 口径)。"""
     p_hit = np.array(scen['p_hit'])
     v_in = np.array(scen['v_in'])
     v_out = V_OUT_SPEED * np.array([
@@ -85,7 +100,10 @@ def solve_ocp(fk, h_base, scen, v_base_fix=None):
     s_pos = opti.variable(3)      # 终端松弛(诊断;重罚)
     s_vel = opti.variable(3)
 
-    opti.subject_to(X[0] == np.concatenate([[0, 0, 0, 0], Q_READY, np.zeros(5)]))
+    x0_full = np.concatenate([list(scen.get('base0', (0.0, 0.0)))
+                              + list(scen.get('vbase0', (0.0, 0.0))),
+                              Q_READY, np.zeros(5)])
+    opti.subject_to(X[0] == x0_full)
     for k in range(N):
         xk, uk = X[k], U[k]
         x, y, vx, vy = xk[0], xk[1], xk[2], xk[3]
@@ -121,6 +139,9 @@ def solve_ocp(fk, h_base, scen, v_base_fix=None):
     if v_base_fix is not None:
         opti.subject_to(X[N][2] == v_base_fix[0])
         opti.subject_to(X[N][3] == v_base_fix[1])
+    if pin_base is not None:
+        opti.subject_to(X[N][0] == pin_base[0])
+        opti.subject_to(X[N][1] == pin_base[1])
 
     cost = 0
     for k in range(N):
@@ -153,6 +174,8 @@ def solve_ocp(fk, h_base, scen, v_base_fix=None):
     u = np.array([val(U[k]) for k in range(N)]) if ok else None
     r = dict(ok=ok, ms=ms, cost=float(sol.value(cost)) if ok else np.nan,
              v_base=(xN[2], xN[3]) if ok else None,
+             base=(xN[0], xN[1]) if ok else None,
+             q_hit=xN[4:9] if ok else None,
              dq=xN[9:14] if ok else None, slack_p=val(s_pos) if ok else None,
              slack_v=val(s_vel) if ok else None,
              n_dot=float(sol.value(ca.dot(Fk_n(qN), n_star))) if ok else np.nan, u=u)
@@ -255,8 +278,118 @@ def sweep():
                       f'{D0 / T:4.2f}  {ratio:6.2f}  {cr:8.2f}')
 
 
+def v2():
+    """v2 原型:终端底盘位置自由的红利(triage 后,2026-10-08)。
+
+    三跑对照(同一工况,起点 = 闭环 Init 时刻的滞后底盘状态 base0/vbase0):
+      A joint :终端底盘位置/速度全自由(联合最优)
+      B bprime:位置钉 base_target(back=0.8)+速度钉 B′ 启发式 = 闭环现状
+      C pred  :位置钉 base_pred(base_target−lag·d̂)= triage 补丁的锚
+    关键读数:B/C 的终端松弛 |sp| = 拍心偏离 p* 的距离 —— 闭环"面内 miss"
+    的离线代理;A 的 base 位置 = 联合最优想把底盘放哪(距 base_target 多远)。
+    """
+    fk = build('models/generated/x4_tennis_demo.mjcf')
+    h_base = float(base_height('models/generated/x4_tennis_demo.mjcf')[2])
+    m = mujoco.MjModel.from_xml_path('models/generated/x4_tennis_demo.mjcf')
+    q_lo, q_hi = np.zeros(5), np.zeros(5)
+    b = m.site_bodyid[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, 'racket_center')]
+    i = 4
+    while mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b) != 'base_link':
+        j = m.body_jntadr[b]
+        q_lo[i], q_hi[i] = m.jnt_range[j] if m.jnt_limited[j] else (-3.5, 3.5)
+        b = m.body_parentid[b]
+        i -= 1
+
+    print('== 方案 B v2 原型:终端底盘位置自由 vs 钉死(抽球族工况,起点=滞后底盘) ==\n')
+    for name, scen0 in V2_SCENARIOS.items():
+        scen = dict(scen0, q_lo=q_lo, q_hi=q_hi)
+        p_hit = np.array(scen['p_hit'])
+        base0 = np.array(scen['base0'], dtype=float)
+        # BaseTargetFromHit 同式:yaw = 当前底盘→击球点方向
+        yaw = np.arctan2(p_hit[1] - base0[1], p_hit[0] - base0[0])
+        dhat = np.array([np.cos(yaw), np.sin(yaw)])
+        bt = p_hit[:2] - BACK * dhat
+        pred = bt - V2_LAG * dhat
+        rA, v_star, n_star = solve_ocp(fk, h_base, scen, None, None)
+        vb_he, D0, va = bprime_vbase_star(v_star, bt, scen['T'])
+        rB, _, _ = solve_ocp(fk, h_base, scen, vb_he, bt)
+        rC, _, _ = solve_ocp(fk, h_base, scen, vb_he, pred)
+        print(f'-- {name}:p*={scen["p_hit"]} T={scen["T"]}s 起点 base={scen["base0"]}'
+              f' v={scen["vbase0"]}')
+        print(f'   base_target=({bt[0]:.2f},{bt[1]:.2f}) D0={D0:.2f}m '
+              f'base_pred=({pred[0]:.2f},{pred[1]:.2f}) '
+              f'|v*|={np.linalg.norm(v_star):.2f} B′v_base*={np.hypot(*vb_he):.2f} m/s')
+        for tag, r in (('A 联合自由', rA), ('B 钉B′(闭环现状)', rB),
+                       ('C 钉pred(triage锚)', rC)):
+            if not r['ok']:
+                print(f'   [{tag}] 求解失败({r["ms"]:.0f}ms)')
+                continue
+            bN = np.array(r['base'])
+            print(f'   [{tag}] cost={r["cost"]:.4f} {r["ms"]:.0f}ms '
+                  f'终端base=({bN[0]:.2f},{bN[1]:.2f})'
+                  f'(离target {np.hypot(*(bN - bt)):.2f}m) '
+                  f'|sp|={np.linalg.norm(r["slack_p"]):.3f} '
+                  f'|sv|={np.linalg.norm(r["slack_v"]):.3f} '
+                  f'peak|dq|={np.abs(r["dq"]).max():.1f} n·n*={r["n_dot"]:.3f}')
+        if rA['ok'] and rB['ok'] and rC['ok']:
+            dc = rB['cost'] - rA['cost']
+            print(f'   红利:B 相对 A cost {100 * dc / max(rA["cost"], 1e-9):+.1f}%'
+                  f' | 拍心松弛 |sp|: B={np.linalg.norm(rB["slack_p"]):.3f}'
+                  f' C={np.linalg.norm(rC["slack_p"]):.3f}'
+                  f' A={np.linalg.norm(rA["slack_p"]):.3f} m')
+        print()
+
+
+def v2sweep():
+    """v2 第二步:联合最优的终端后撤距 back*(z) 扫描——可蒸馏性检验。
+
+    v2 三跑发现:低位抽球(back=0.8 钉死)拍心松弛 7.2cm + 法向偏 39°,联合
+    最优把底盘前移到离 p* 仅 ~0.34m——0.8 后撤把低位击球推到臂边缘。若
+    back* 随击球高 z 有干净规律 → 蒸馏进 BaseTargetFromHit(v1 方法论:先蒸馏
+    再上在线 OCP);否则须真 OCP。
+    """
+    fk = build('models/generated/x4_tennis_demo.mjcf')
+    h_base = float(base_height('models/generated/x4_tennis_demo.mjcf')[2])
+    m = mujoco.MjModel.from_xml_path('models/generated/x4_tennis_demo.mjcf')
+    q_lo, q_hi = np.zeros(5), np.zeros(5)
+    b = m.site_bodyid[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, 'racket_center')]
+    i = 4
+    while mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b) != 'base_link':
+        j = m.body_jntadr[b]
+        q_lo[i], q_hi[i] = m.jnt_range[j] if m.jnt_limited[j] else (-3.5, 3.5)
+        b = m.body_parentid[b]
+        i -= 1
+
+    print('== v2 sweep:back*(击球高 z;θ=0 正前,r=1.05,T=0.9,起点(0,0)v=(0.6,0)) ==')
+    print('   z*   back*  |sp|@0.8  |sp|@0.45  n·n*@free  peak|dq|  cost比(0.8/free)')
+    for z in (0.55, 0.65, 0.75, 0.90, 1.10, 1.30, 1.60):
+        p_hit = np.array([1.05, 0.0, z])
+        scen = dict(p_hit=p_hit, v_in=(-5.5, -0.2, -1.6), T=0.9,
+                    base0=(0.0, 0.0), vbase0=(0.6, 0.0), q_lo=q_lo, q_hi=q_hi)
+        rA, v_star, _ = solve_ocp(fk, h_base, scen, None, None)
+        if not rA['ok']:
+            print(f'  {z:4.2f}  FAIL')
+            continue
+        bA = np.array(rA['base'])
+        back_star = (p_hit[:2] - bA)[0]          # θ=0:d̂=x̂,投影即 x 差
+        sp08 = sp045 = np.nan
+        for back, tag in ((0.8, 'sp08'), (0.45, 'sp045')):
+            rB, _, _ = solve_ocp(fk, h_base, scen, None, (1.05 - back, 0.0))
+            if rB['ok']:
+                if tag == 'sp08':
+                    sp08 = np.linalg.norm(rB['slack_p'])
+                else:
+                    sp045 = np.linalg.norm(rB['slack_p'])
+        print(f'  {z:4.2f}  {back_star:5.2f}   {sp08:6.3f}    {sp045:6.3f}'
+              f'      {rA["n_dot"]:.3f}      {np.abs(rA["dq"]).max():4.1f}')
+
+
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'sweep':
         sweep()
+    elif len(sys.argv) > 1 and sys.argv[1] == 'v2':
+        v2()
+    elif len(sys.argv) > 1 and sys.argv[1] == 'v2sweep':
+        v2sweep()
     else:
         main()
