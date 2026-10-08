@@ -25,7 +25,10 @@ void BallPredictor::Reset(const BallObs& o) {
 }
 
 namespace {
-// 单步传播(共享给 Propagate 与 Predict):含反弹事件;返回是否发生反弹
+// 单步传播(共享给 Propagate 与 Predict):含反弹事件;返回是否发生反弹。
+// 反弹映射 = 已知碰撞模型(§3.5 地面支):法向 vz'=−e_z·vz;切向 Coulomb+stick
+// (粘滞 P=(2/7)|v_t| / 滑动 P=μ(1+e_z)|vz| 取小)——与真值侧
+// analytic_contact.h ApplyGroundImpulse 同式同参(自洽;平抽 v1 无旋)
 bool PropagateState(const BallAeroParams& a, const BounceParams& bp,
                     double x[6], double t_now, double h, double* t_bounce) {
   double v[3] = {x[3], x[4], x[5]}, acc[3];
@@ -36,9 +39,15 @@ bool PropagateState(const BallAeroParams& a, const BounceParams& bp,
   }
   if (x[2] < a.radius && x[5] < 0 && (t_now - *t_bounce) > bp.min_interval_s) {
     x[2] = a.radius;
-    x[5] = -x[5] * bp.restitution_z;
-    x[3] *= bp.friction_xy;
-    x[4] *= bp.friction_xy;
+    const double vz_in = x[5];
+    x[5] = -vz_in * bp.restitution_z;
+    const double vt = std::hypot(x[3], x[4]);
+    if (vt > 1e-9) {
+      const double jn = (1.0 + bp.restitution_z) * (-vz_in);   // 法向冲量(单位质量)
+      const double p = std::min((2.0 / 7.0) * vt, bp.mu * jn);
+      x[3] -= p * x[3] / vt;
+      x[4] -= p * x[4] / vt;
+    }
     *t_bounce = t_now;
     return true;
   }

@@ -12,6 +12,7 @@
 
 #include "estimation/ball_predictor.h"
 #include "hal/sim_backend.h"
+#include "sim/analytic_contact.h"
 #include "sim/ball_aero.h"
 #include "sim/ball_server.h"
 
@@ -72,6 +73,12 @@ int main(int argc, char** argv) {
       d->xfrc_applied[ball_bid*6+i] = -kk*vm*bv[i];
     d->xfrc_applied[ball_bid*6+3] = d->xfrc_applied[ball_bid*6+4] = d->xfrc_applied[ball_bid*6+5] = 0;
 
+    // 地面解析冲量(§3.5 地面支,2026-10-08):真值侧反弹 = 已知模型
+    // (e_z=0.73/μ=0.20),与预测器 BounceParams 同参数——跨反弹段残差从此
+    // 只含估计误差,不再有模型失配(旧:预测器 0.73 vs 求解器实测 0.09)
+    static const GroundImpulseParams gnd_pp;
+    ApplyGroundImpulse(d, ball_qadr, ball_vadr, gnd_pp);
+
     be.run(1);
     const double ts = t * 0.001;
     // 反弹检测(真值 z)
@@ -125,7 +132,8 @@ int main(int argc, char** argv) {
   const double pre = (n[1] ? std::sqrt(e2[1]/n[1]) : 1e9);
   const double early = (n[4] ? std::sqrt(e2[4]/n[4]) : 1e9);
   std::printf("[INFO] EKF 初始化 t=%.3fs,反弹 t=%.2fs,未对拍 %zu 条;"
-              "反弹后段未标定(待 MuJoCo 接触参数拟合,非本门槛对象)\n",
+              "反弹 = 已知模型(真值侧 ApplyGroundImpulse 与预测器同参数,"
+              "§3.5 地面支 2026-10-08;跨反弹段残差 = 估计误差)\n",
               t_ekf_init, t_bounce, pend.size());
   std::printf("%s (干净反弹前 RMSE %.4f 门槛 0.10;早期 RMSE %.4f 门槛 0.15)\n",
               (pre < 0.10 && early < 0.15) ? "[PASS]" : "[FAIL]", pre, early);

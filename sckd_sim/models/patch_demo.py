@@ -104,11 +104,21 @@ for name in ("x4_tennis_demo.mjcf", "x4_tennis_demo.xml"):
     #    timeconst 收到稳定界内也救不回,受控台架实测 R²<0)——排除求解器
     #    接触对,由 app 真值侧 cpp/sim/analytic_contact.h 施加参数化冲量;
     #    planner ReboundInverse 用同一映射逆解(自洽),实机实测后换 k
+    # 6) 地面接触改解析冲量(§3.5 地面支,2026-10-08):原始求解器 ball↔floor
+    #    为 solref(0.02,1) 临界阻尼,无旋落球 e_z≈0.09≈死球(ground_calib.py
+    #    实测,与网球 ITF 0.73 差 8 倍)→ 排除 ball↔floor(worldbody 直接可
+    #    碰撞 geom 仅 floor 一个,已核实;球网/立柱在 court body 不受影响),
+    #    真值侧 analytic_contact.h ApplyGroundImpulse(e_z=0.73 文献初值/
+    #    μ=0.20 台架无旋拟合,预测器 BounceParams 同参数自洽;平抽 v1 无旋,
+    #    旋转耦合后续迭代)。app 必须每拍调 ApplyGroundImpulse,否则球穿地。
     s = re.sub(r'<contact>\s*<exclude name="ball_vs_racket"[^>]*/>\s*</contact>', "", s)
     s = re.sub(r'<exclude name="ball_vs_racket"[^>]*/>', "", s)
+    s = re.sub(r'\s*<exclude name="ball_vs_floor"[^>]*/>', "", s)
     s = s.replace("</worldbody>",
-                  '</worldbody><contact><exclude name="ball_vs_racket" '
-                  'body1="ball" body2="Link5"/></contact>', 1)
+                  '</worldbody><contact>'
+                  '<exclude name="ball_vs_racket" body1="ball" body2="Link5"/>'
+                  '<exclude name="ball_vs_floor" body1="ball" body2="world"/>'
+                  '</contact>', 1)
     # 注:待机位姿(实机 sckd-robot home,J2 抬臂 35°)不写入 keyframe —— keyframe
     # 零位是 M0/M1 验收基线;且 app 侧 IK 种子取实测 qpos,keyframe 抬臂会改变
     # 解支(实测命中 5/10→2/10)。待机由 m2_demo 自主驱动(待机→就位 0.25s 过渡)。

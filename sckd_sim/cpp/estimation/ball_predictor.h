@@ -7,8 +7,12 @@
 namespace sckd {
 
 struct BounceParams {
-  double restitution_z = 0.73;   // 参数化映射的常数起点(F3/仿真真值拟合替换)
-  double friction_xy = 0.80;
+  // 已知碰撞模型(§3.5 地面支,2026-10-08):与真值侧 analytic_contact.h
+  // ApplyGroundImpulse 同参数(自洽);e_z=0.73 ITF 文献初值、μ=0.20 为
+  // ground_calib.py 无旋台架拟合初值——实机实测后同形式直接替换。
+  // 平抽 v1 无旋(用户定向 2026-10-08:旋转球后续迭代)。
+  double restitution_z = 0.73;   // 法向恢复 vz' = −e_z·vz
+  double mu = 0.20;              // Coulomb 滑动摩擦(切向粘滞/滑动取小)
   double min_interval_s = 0.10;  // 去抖
 };
 

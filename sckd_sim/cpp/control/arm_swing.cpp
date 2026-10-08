@@ -182,7 +182,7 @@ bool ArmSwing::UpdatePlan(const HitPlan& plan, ArmIk& ik, double t_now) {
       lock_snap_ = true;
     }
     IkResult res = ik.Solve(plan.p_hit, plan.base_target[0], plan.base_target[1],
-                            0.0, q0_);
+                            0.0, q_lock_);   // 播种锁止快照(同支微调)
     if (res.err > 0.03) return false;
     for (int j = 0; j < 5; ++j)
       if (std::fabs(res.q[j] - q_lock_[j]) > kMicroAdj) return false;
@@ -199,16 +199,48 @@ bool ArmSwing::locked() const {
 
 bool ArmSwing::Solve(const HitPlan& plan, ArmIk& ik, double t_now, bool retime) {
   // ---- 阶段1:终值构型/速度 ----
+  // 解支搜索(2026-10-08,抽球族定位):位置 IK 存在解流形,拍面朝向随解支
+  // 漂移——低位平击(z 0.6-0.8)实测触球法向偏 25-60°(n=(0.41,−0.64,0.65)
+  // 反例:球被弹向侧上,vx 不反转),J5 纯滚转只能补绕柄轴 1 维。J1/J2 扰动
+  // 种子各解位置 IK + J5 对准,取法向对准最优解支;首种子 = 原行为,仅当
+  // 对准显著更优(>+0.02)才改换 —— 固定/随机族既有解不受扰
+  // 播种:Init 从当前臂构型 q0_;重解从上次终值 q_hit_(解支连续性——Init 选定
+  // 的支不因重解落回默认盆)
+  double seed5[5];
+  for (int j = 0; j < 5; ++j) seed5[j] = retime ? q0_[j] : q_hit_[j];
   IkResult res = ik.Solve(plan.p_hit, plan.base_target[0], plan.base_target[1],
-                          0.0, q0_);
+                          0.0, seed5);
   // 终值 IK 容差放宽到 3cm(非 converged 的 1cm):工作空间边缘(低位平击 z~0.5)
   // 收敛残差 1-2cm 是常态,拍面半宽 11cm 下无损;按 1cm 拒解曾使随机族低位发球
   // 的起挥 Init 连败数百次 → 臂瘫痪(2026-10-07 定位)。真不可达(>3cm)仍拒。
   if (res.err > 0.03) return false;
+  res.q[4] = AlignFaceJ5(ik, res.q, plan.base_target[0], plan.base_target[1],
+                         plan.n_face);
+  if (retime) {   // 仅 Init 定支:重解期换支会打断轨迹连续性(面内 0.89 反例)
+    double n0[3];
+    ik.FaceNormal(res.q, plan.base_target[0], plan.base_target[1], n0);
+    double best_al = n0[0]*plan.n_face[0] + n0[1]*plan.n_face[1] +
+                     n0[2]*plan.n_face[2];
+    static const double kSeed[7][2] = {{0.35,0},{-0.35,0},{0,0.25},{0,-0.25},
+                                       {0.6,0},{-0.6,0},{0,0.45}};
+    for (const auto& sd : kSeed) {
+      double q_seed[5];
+      for (int j = 0; j < 5; ++j) q_seed[j] = q0_[j];
+      q_seed[0] += sd[0]; q_seed[1] += sd[1];
+      IkResult r = ik.Solve(plan.p_hit, plan.base_target[0], plan.base_target[1],
+                            0.0, q_seed);
+      if (r.err > 0.03) continue;
+      r.q[4] = AlignFaceJ5(ik, r.q, plan.base_target[0], plan.base_target[1],
+                           plan.n_face);
+      double n[3];
+      ik.FaceNormal(r.q, plan.base_target[0], plan.base_target[1], n);
+      const double al = n[0]*plan.n_face[0] + n[1]*plan.n_face[1] +
+                        n[2]*plan.n_face[2];
+      if (al > best_al + 0.02) { best_al = al; res = r; }
+    }
+  }
   double q_hit[5];
   for (int j = 0; j < 5; ++j) q_hit[j] = res.q[j];
-  q_hit[4] = AlignFaceJ5(ik, q_hit, plan.base_target[0], plan.base_target[1],
-                         plan.n_face);
   for (int j = 0; j < 5; ++j) q_hit_[j] = q_hit[j];   // 锁止后微调的比对基准
   double J[15], dq_hit[5];
   ik.SiteJacobian(q_hit, plan.base_target[0], plan.base_target[1], J);

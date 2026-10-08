@@ -21,6 +21,7 @@
 #include "estimation/ball_predictor.h"
 #include "hal/sim_backend.h"
 #include "planning/hit_planner.h"
+#include "sim/analytic_contact.h"
 #include "sim/ball_aero.h"
 #include "sim/ball_server.h"
 
@@ -39,6 +40,9 @@ int main(int argc, char** argv) {
   const int ball_vadr = m->jnt_dofadr[mj_name2id(m, mjOBJ_JOINT, "ball_free")];
   const int ball_bid = mj_name2id(m, mjOBJ_BODY, "ball");
   const int site_id = mj_name2id(m, mjOBJ_SITE, "racket_center");
+  const int face_gid = mj_name2id(m, mjOBJ_GEOM, "racket_face");
+  const RacketImpulseParams ric_pp;   // 拍-球解析冲量(§3.5;模型已排除对)
+  const GroundImpulseParams gnd_pp;   // 地面解析冲量(§3.5 地面支)
 
   BallAeroParams aero;
   BounceParams bp;
@@ -187,12 +191,17 @@ int main(int argc, char** argv) {
       static constexpr double kArmInertia[5] = {1.2, 2.0, 0.8, 0.3, 0.05};
       for (int j = 0; j < 5; ++j) ac.tau_ff[j] += kArmInertia[j] * sc.ddp[j];
       be.set_arm_hybrid(ac);
+      // 解析冲量(§3.5:模型已排除拍-球/球-地求解器对,GUI 演示同样须真值侧施加)
+      ApplyRacketImpulse(m, d, face_gid, ball_qadr, ball_vadr, ric_pp);
+      {
+        const GroundImpulseEvent gev =
+            ApplyGroundImpulse(d, ball_qadr, ball_vadr, gnd_pp);
+        if (gev.fired && !gev.resting && t_ground < 0) t_ground = ts;
+      }
       be.run(1);
 
       // 接触:球速方向改变(须在首次落地前,判"挥拍击球"而非"落地后撞拍")
       const double vx = d->qvel[ball_vadr];
-      if (t_ground < 0 && d->qpos[ball_qadr+2] < 0.033 && d->qvel[ball_vadr+2] < 0)
-        t_ground = ts;
       if (vx > 0 && vx0 < 0 && t_ground < 0) { ball_hit = true; }
       // 拍-球距离
       {

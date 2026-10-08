@@ -109,11 +109,17 @@ TEST_CASE("bounce: predictor segments at ground contact") {
     double v3[3] = {x[3], x[4], x[5]}, a3[3];
     BallAeroAccelNoSpin(p, v3, a3);
     for (int j = 0; j < 3; ++j) { x[j] += 0.001 * x[3 + j]; x[3 + j] += 0.001 * a3[j]; }
-    if (x[2] < 0.033 && x[5] < 0) {
+    if (x[2] < 0.033 && x[5] < 0) {  // 真值生成 = 已知碰撞模型(与预测器同式)
       x[2] = 0.033;
-      x[5] = -x[5] * bp.restitution_z;
-      x[3] *= bp.friction_xy;
-      x[4] *= bp.friction_xy;
+      const double vz_in = x[5];
+      x[5] = -vz_in * bp.restitution_z;
+      const double vt = std::hypot(x[3], x[4]);
+      if (vt > 1e-9) {
+        const double jn = (1.0 + bp.restitution_z) * (-vz_in);
+        const double pr = std::min((2.0 / 7.0) * vt, bp.mu * jn);
+        x[3] -= pr * x[3] / vt;
+        x[4] -= pr * x[4] / vt;
+      }
     }
     if (i % 5 == 0) {
       BallObs o{t, {x[0] + noise(rng), x[1] + noise(rng), x[2] + noise(rng)}};

@@ -49,13 +49,18 @@ int main(int argc, char** argv) {
   const bool fly = (base_mode == "mpcfly" || base_mode == "pfly");
   const bool use_mpc = (base_mode == "mpc" || base_mode == "mpcfly");
   // 发球族(argv[7],默认 "fixed"):fixed = M2 定点族(回归口径不变);
-  // rand = 随机发球族(M3 验收):速度/仰角/方位/转速/落点全域随机。
+  // rand = 随机发球族(M3 验收):速度/仰角/方位/转速/落点全域随机;
+  // gs = 抽球族(平抽,2026-10-08):平击低 spawn,甜区只在反弹后上升段
+  // (跨反弹规划端到端演示;配 argv[8]="xb")。
   // "可达域内"的判定 = 规划器找到可行计划(IK 可达+时间裕度+甜区),不可达的
   // 发球单独计数、不入击球率分母(参数域按反弹后甜区落在工作空间构造,
   // 不可达占比应 <20%,否则说明域取得过宽)
   const bool rand_serve = (argc > 7 && std::strcmp(argv[7], "rand") == 0);
+  const bool gs_serve = (argc > 7 && std::strcmp(argv[7], "gs") == 0);
   // v_base* 规则(argv[8],默认 0=B′ 原规则):"v2" = 方案 B v0 OCP 蒸馏规则
-  // (2.2x/(1+0.55x) 饱和上限,wholebody_ocp sweep 蒸馏;闭环 A/B 用)
+  // (2.2x/(1+0.55x) 饱和上限,wholebody_ocp sweep 蒸馏;闭环 A/B 用);
+  // "xb" = 跨反弹规划(反弹后候选入窗,§3.5 地面支落地后开启)
+  const bool cross_bounce = (argc > 8 && std::strcmp(argv[8], "xb") == 0);
   const int fly_rule = (argc > 8 && std::strcmp(argv[8], "v2") == 0) ? 1 : 0;
   SimBackend be(scene, "models/config/motors.json", "models/config/x4_tennis.json",
                 "models/config/chassis_m1.json");
@@ -68,12 +73,14 @@ int main(int argc, char** argv) {
   const int ball_gid = mj_name2id(m, mjOBJ_GEOM, "ball_geom");
   const int face_gid = mj_name2id(m, mjOBJ_GEOM, "racket_face");
   const RacketImpulseParams ric_pp;   // 拍-球解析冲量(§3.5;k=0.5 待实机替换)
+  const GroundImpulseParams gnd_pp;   // 地面解析冲量(§3.5 地面支;模型已排除对)
   const int site_id = mj_name2id(m, mjOBJ_SITE, "racket_center");
 
   BallAeroParams aero;
   BounceParams bp;
   PlannerParams pp;
   pp.fly_rule = fly_rule;
+  pp.cross_bounce = cross_bounce ? 1 : 0;
   ChassisServo servo(be.chassis_config(), &be);
   // IK 必须用独立 scratch mjData:ArmIk::Solve 直接写 qpos(base+臂),
   // 传活体 d 会每次重规划把整车瞬移到 IK 姿态(假接触/物理污染,2026-10-06 定位)
@@ -120,6 +127,7 @@ int main(int argc, char** argv) {
     BaseRefGen::Schedule mpc_sched;   // MPC 参考:初规划起锚(绝对时间)
     double t_min_dist = -1;
     double t_ground = -1;   // 首次落地时刻(判"挥拍击球"还是"落地后撞拍")
+    double t_flip = -1;     // 球速方向翻转时刻(跨反弹模式下判翻转是否在挥拍窗内)
     double t_bounce_plan = -1;  // 初规划时预测的反弹时刻(与 t_ground 对照诊断)
     bool touch_printed = false;
     double min_dist_decomp[3] = {-1, -1, -1};  // [法向, 面内1, 面内2]@最近时刻
@@ -134,7 +142,25 @@ int main(int argc, char** argv) {
     // 发球:fixed = 微扰定点族(M2 回归口径);rand = 随机族(M3,全域均匀,
     // 域按"反弹后甜区有机会落入工作空间"构造:y 半幅 ±1.6 内保证底盘跑道可达)
     ServerParams sp;
-    if (rand_serve) {
+    if (gs_serve) {
+      // 抽球族(平抽,2026-10-08):平击低 spawn,反弹后上升段进甜区——
+      // 无旋(用户定向:旋转球后续迭代)。域两次整定:①z 1.2-2.0/elev 8°
+      // → 球反弹前以甜区高度横穿机器人,全选反弹前截击;②speed 8.5-11/
+      // spawn 6.8-7.6 → 反弹点 x≈1 贴脸,球升到打击高度前已冲过机器人,
+      // 规划器倒退追打(边缘擦击 off_l 0.132,冲量不反 vx)。终版:降速+
+      // 拉远,反弹点落在机器人前方 2.4-4.6m,上升段在 reach 内过甜区
+      std::uniform_real_distribution<double> u(0.0, 1.0);
+      sp.speed = 7.0 + 2.0 * u(rng);
+      sp.elevation_deg = 3.0 * u(rng);
+      sp.azimuth_deg = 178.0 + 17.0 * u(rng);
+      sp.spin_rpm = 0.0;
+      sp.spawn[0] = 7.4 + 0.8 * u(rng);
+      sp.spawn[1] = -0.9 + 1.4 * u(rng);   // 平抽 y 几乎不漂:域须按打击点可达收窄
+      sp.spawn[2] = 1.4 + 0.5 * u(rng);
+      std::printf("  [serve·gs] %.1f m/s %.0f° %.0f° from (%.1f,%.1f,%.1f)\n",
+                  sp.speed, sp.elevation_deg, sp.azimuth_deg,
+                  sp.spawn[0], sp.spawn[1], sp.spawn[2]);
+    } else if (rand_serve) {
       std::uniform_real_distribution<double> u(0.0, 1.0);
       sp.speed = 3.8 + 2.0 * u(rng);
       sp.elevation_deg = 28.0 + 22.0 * u(rng);
@@ -392,9 +418,19 @@ int main(int argc, char** argv) {
           }
           std::snprintf(calib_other, sizeof(calib_other), "racket_face");
           calib_saved = true;
-          std::printf("  [touch-a] v_close=%.2f → vn_out=%.2f off=(%.3f,%.3f)\n",
-                      ev.v_close, ev.vn_out, ev.off_l, ev.off_h);
+          std::printf("  [touch-a] v_close=%.2f → vn_out=%.2f off=(%.3f,%.3f) n=(%.2f,%.2f,%.2f) vout=(%.1f,%.1f,%.1f)\n",
+                      ev.v_close, ev.vn_out, ev.off_l, ev.off_h,
+                      ev.n[0], ev.n[1], ev.n[2],
+                      d->qvel[ball_vadr], d->qvel[ball_vadr+1], d->qvel[ball_vadr+2]);
         }
+      }
+      // 地面解析冲量(§3.5 地面支;模型已排除 ball↔floor 求解器对,不调则
+      // 球穿地)。事件置 t_ground:保持"落地后撞拍无效"判据语义(解析冲量
+      // 下球不会持续处于 z<R 且 vz<0,旧观测式永不触发)
+      {
+        const GroundImpulseEvent gev =
+            ApplyGroundImpulse(d, ball_qadr, ball_vadr, gnd_pp);
+        if (gev.fired && !gev.resting && t_ground < 0) t_ground = ts;
       }
       be.run(1);
 
@@ -438,6 +474,7 @@ int main(int argc, char** argv) {
         t_ground = ts;
       if (!ball_hit && vx > 0 && vx0 < 0) {   // 一次性(观察窗内不再重复计)
         ball_hit = true;
+        t_flip = ts;
         if (post_contact < 0) post_contact = 30;   // 翻转拍≠冲量完毕,再走 30ms
         // M3 拍速分解:拍速 = 底盘贡献 + 臂贡献;出球速度 vs 意图(8 m/s)
         {
@@ -505,7 +542,16 @@ int main(int argc, char** argv) {
       if (d->qpos[ball_qadr+2] < 0.05 && (locked_saved ? ts > lock_t + 0.3 : ts > 1.0)) break;
       if (ts > 5.0) break;
     }
-    if (ball_hit && min_ball_dist < 0.30 && t_ground < 0) ++hits;  // 有效:落地前方向改变且拍接近
+    // 有效命中:拍接近 + 方向翻转。基线口径不变(落地前翻转,与 M2/M3 历史
+    // 逐位可比);跨反弹模式另加挥拍窗因果(翻转须在锁止计划 ±0.35s 内,且
+    // 抽球为反弹后翻转/截击为反弹前——排除"落地后滚进静止拍"的假命中)
+    if (cross_bounce) {
+      const bool swing_cause = locked_saved && t_flip > 0 && std::fabs(t_flip - lock_t) < 0.35;
+      if (ball_hit && min_ball_dist < 0.30 && swing_cause &&
+          (t_ground < 0 || t_flip > t_ground)) ++hits;
+    } else if (ball_hit && min_ball_dist < 0.30 && t_ground < 0) {
+      ++hits;
+    }
     if (min_ball_dist < 0.15) ++contacts;
     char pe_str[16];
     if (plan_err >= 0) std::snprintf(pe_str, sizeof(pe_str), "%.3f", plan_err);
@@ -537,8 +583,8 @@ int main(int argc, char** argv) {
                 share_n ? 100.0 * share_sum / share_n : 0.0,
                 out_spd_n ? out_spd_sum / out_spd_n : 0.0);
   std::printf("诊断: ②击球点偏差<0.2m ③拍球距离<0.15m ④命中率≥80%%\n");
-  if (rand_serve) {
-    // M3 随机族口径:击球率分母 = 可达发球(规划可行);不可达单独报告
+  if (rand_serve || gs_serve) {
+    // M3 随机/抽球族口径:击球率分母 = 可达发球(规划可行);不可达单独报告
     const double fr = feasible_serves ? 100.0 * hits / feasible_serves : 0.0;
     const double in_dom = 100.0 * feasible_serves / kTrials;
     std::printf("随机发球族: 可达 %d/%d(%.0f%%) | 命中(可达域内) %d/%d = %.0f%%\n",

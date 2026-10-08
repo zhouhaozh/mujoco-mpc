@@ -47,6 +47,10 @@ struct PlannerParams {
   double fly_speed_max = 1.2;      // v_base* 上限(m/s,移动击球方案 B′)
   int fly_rule = 0;                // 0=B′ 原规则;1=方案B v0 OCP 蒸馏规则
   double fly_sat = 0.55;           // 规则 1 的饱和系数(见 hit_planner.cpp 注)
+  int cross_bounce = 0;            // 0=只打反弹前(基线);1=允许反弹后候选(跨反弹
+                                   // 规划,§3.5 地面支落地后开启:预测器与真值侧
+                                   // 同为已知反弹模型,跨反弹残差=估计误差 0.064;
+                                   // 反弹时刻邻域 [t_b−guard, t_b] 仍排除)
 };
 
 class HitPlanner {

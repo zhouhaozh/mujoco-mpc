@@ -64,15 +64,19 @@ double HitPlanner::Score(const HitPlan& hp, const BaseState& base, double t_now)
 HitPlan HitPlanner::Plan(const BallPredictor& predictor, const BaseState& base,
                          double t_now, const HitIntent& intent, double min_lead_s) {
   HitPlan best; best.feasible = false; best.score = -1e9;
-  // 基线策略:只打反弹前(反弹模型未标定,误差 ~0.8m;对齐 trobot MLP 域边界)。
-  // 反弹时刻保护带:早期(起拍 ~0.1s)预测的反弹时刻误差 ±0.15s(vz 预热 σ0.7),
-  // 贴着 t_bounce 选锚会把 t_hit 锚进"真值已反弹"区——RefineAt 锚定不可移,
-  // 事后无法自救(随机族实测 plan_err 0.68/0.99,2026-10-07)
+  // 基线策略:只打反弹前;cross_bounce=1(2026-10-08,§3.5 地面支落地后开启)
+  // 允许反弹后候选(抽球:平击低 spawn 的甜区只在反弹后上升段)。反弹时刻
+  // 保护带不变:早期预测的反弹时刻误差 ±0.15s(vz 预热 σ0.7),贴着 t_bounce
+  // 选锚会把 t_hit 锚进"真值已/未反弹"错侧——RefineAt 锚定不可移,事后无法
+  // 自救(随机族实测 plan_err 0.68/0.99,2026-10-07)。反弹后紧邻段(z≈R)
+  // 低于高度窗天然被拒,无需额外 guard
   const double t_bounce = predictor.NextBounceTime();
-  const double t_end = (t_bounce > 0.0)
-      ? std::min(t_bounce - pp_.bounce_guard, t_now + 2.5) : t_now + 2.5;
+  double t_end = t_now + 2.5;
+  if (t_bounce > 0.0 && pp_.cross_bounce == 0)
+    t_end = std::min(t_bounce - pp_.bounce_guard, t_end);
   const double lead = (min_lead_s > 0.0) ? min_lead_s : pp_.prep_time + pp_.swing_time;
   for (double t = t_now + lead; t < t_end; t += 0.02) {
+    if (t_bounce > 0.0 && t > t_bounce - pp_.bounce_guard && t <= t_bounce) continue;
     double p[3], v_in[3];
     if (!predictor.PredictFull(t, p, v_in)) continue;
     if (p[2] < pp_.height_lo || p[2] > pp_.height_hi) continue;

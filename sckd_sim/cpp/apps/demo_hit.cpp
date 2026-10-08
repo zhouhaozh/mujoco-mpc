@@ -14,12 +14,14 @@
 
 #include "control/chassis_servo.h"
 #include "hal/sim_backend.h"
+#include "sim/analytic_contact.h"
 
 using namespace sckd;
 
 namespace {
 constexpr double kRho = 1.225, kCd = 0.55, kBallR = 0.033, kBallM = 0.057;
 constexpr double kDragK = 0.5 * kRho * kCd * 3.14159265 * kBallR * kBallR;  // F=kDragK|v|v
+double g_min_dist = 1e9;   // 拍-球最小距(诊断)
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -37,6 +39,9 @@ int main(int argc, char** argv) {
   mjModel* m = const_cast<mjModel*>(be.model());
   mjData* d = be.data_mut();
   const int site_id = mj_name2id(m, mjOBJ_SITE, "racket_center");
+  const int face_gid = mj_name2id(m, mjOBJ_GEOM, "racket_face");
+  const RacketImpulseParams ric_pp;   // 拍-球解析冲量(§3.5;模型已排除对)
+  const GroundImpulseParams gnd_pp;   // 地面解析冲量(§3.5 地面支)
   const int ball_bid = mj_name2id(m, mjOBJ_BODY, "ball");
   const int ball_qadr = m->jnt_qposadr[mj_name2id(m, mjOBJ_JOINT, "ball_free")];
   const int ball_vadr = m->jnt_dofadr[mj_name2id(m, mjOBJ_JOINT, "ball_free")];
@@ -51,13 +56,31 @@ int main(int argc, char** argv) {
   be.enable(-1, true);
 
   // ---- 球:自击球点反向积分生成来球(t* 时刻:位置=P_hit,来球速度) ----
+  // 反向欧拉一阶积分 3.2s 累积 ~10cm 位置误差(2026-10-08 定位:球到 t_hit
+  // 偏低 0.1m → 拍-球最小距 0.17 > 捕获半径 0.133,必 whiff)→ 反向给初值后
+  // 再前向仿真试射校正 spawn 3 轮,直到 (pos,vel)@t_hit 与意图一致
   double vin[3] = {-7.5, 0.0, -1.6};  // 来球速度(自 +x 方向来)
   double bp[3] = {hx, hy, hz}, bv[3] = {vin[0], vin[1], vin[2]};
-  for (double t = t_hit; t > 0.0; t -= 0.001) {  // 显式欧拉反向
+  for (double t = t_hit; t > 0.0; t -= 0.001) {  // 显式欧拉反向(初值猜测)
     const double v = std::sqrt(bv[0] * bv[0] + bv[1] * bv[1] + bv[2] * bv[2]);
     for (int i = 0; i < 3; ++i)
       bp[i] -= bv[i] * 0.001,
       bv[i] -= 0.001 * (-9.81 * (i == 2) - kDragK * v * bv[i] / kBallM);
+  }
+  for (int it = 0; it < 3; ++it) {   // shooting:前向仿真校正
+    double sp[3] = {bp[0], bp[1], bp[2]}, sv[3] = {bv[0], bv[1], bv[2]};
+    for (double t = 0.0; t < t_hit; t += 0.0005) {
+      const double v = std::sqrt(sv[0]*sv[0] + sv[1]*sv[1] + sv[2]*sv[2]);
+      for (int i = 0; i < 3; ++i) {
+        const double a = -9.81 * (i == 2) - kDragK * v * sv[i] / kBallM;
+        sp[i] += 0.0005 * sv[i];
+        sv[i] += 0.0005 * a;
+      }
+    }
+    const double ep[3] = {hx - sp[0], hy - sp[1], hz - sp[2]};
+    const double ev[3] = {vin[0] - sv[0], vin[1] - sv[1], vin[2] - sv[2]};
+    for (int i = 0; i < 3; ++i) { bp[i] += ep[i]; bv[i] += ev[i]; }
+    if (std::hypot(ep[0], ep[1], ep[2]) < 0.002) break;
   }
   d->qpos[ball_qadr + 0] = bp[0]; d->qpos[ball_qadr + 1] = bp[1]; d->qpos[ball_qadr + 2] = bp[2];
   d->qpos[ball_qadr + 3] = 1; d->qpos[ball_qadr + 4] = d->qpos[ball_qadr + 5] = d->qpos[ball_qadr + 6] = 0;
@@ -153,32 +176,40 @@ int main(int argc, char** argv) {
   int last_phase = -1;
   for (int t = 1; t <= kSteps; ++t) {
     const double ts = t * 0.001;
-    // ---- 底盘:位置伺服(预击球位姿) ----
+    // ---- 底盘:位置伺服(预击球位姿)+ 航向稳定 ----
+    // 2026-10-08:wz 恒 0 时平移瞬态使航向漂 ~−0.27 rad(舵轮瞬态无航向反馈),
+    // 拍位 y 偏 0.21m 必 whiff → 加 yaw 比例回正
     const BaseState bs = be.base_state();
     double ex = 0.0 - bs.x, ey = base_y - bs.y;
-    double vx = std::clamp(2.5 * ex, -1.2, 1.2), vy = std::clamp(2.5 * ey, -1.2, 1.2);
+    const double c = std::cos(bs.yaw), sn = std::sin(bs.yaw);
+    double wx = 2.5 * ex, wy = 2.5 * ey;
+    double vx = c * wx + sn * wy, vy = -sn * wx + c * wy;   // 世界→车体
+    vx = std::clamp(vx, -1.2, 1.2); vy = std::clamp(vy, -1.2, 1.2);
     if (ts > t_hit) { vx = 0; vy = 0; }
-    servo.set_twist(Twist{vx, vy, 0});
+    servo.set_twist(Twist{vx, vy, std::clamp(-2.0 * bs.yaw, -1.0, 1.0)});
     servo.update(ts);
     // ---- 臂相位 ----
+    // 2026-10-08:挥拍提前 50ms 完成(kMeet)+ 触球段驻留击球点。旧版(t_hit
+    // 恰好完成+随挥过冲 0.10)伺服滞后 ~30ms 使拍到点晚于球穿面,拍-球最小
+    // 距 0.146 > 捕获半径 0.133 必 whiff;驻留让拍面在球穿过平面期间保持就位
+    const double kMeet = t_hit - 0.18;
     int phase;
     double kp[5] = {120, 120, 120, 120, 60}, kd[5] = {8, 8, 8, 8, 1.5};
-    if (ts < t_hit - 0.35) {           // 就位+引拍
+    if (ts < kMeet - 0.35) {           // 就位+引拍
       phase = 0;
       for (int j = 0; j < 5; ++j) arm_q[j] = q_back[j], arm_dq[j] = 0;
-    } else if (ts < t_hit) {           // 挥拍(五次多项式,末端速度>0)
+    } else if (ts < kMeet) {           // 挥拍(五次多项式,末端速度>0)
       phase = 1;
-      const double s = (ts - (t_hit - 0.35)) / 0.35;
+      const double s = (ts - (kMeet - 0.35)) / 0.35;
       const double p = 10*s*s*s - 15*s*s*s*s + 6*s*s*s*s*s;
       const double dp = (30*s*s - 60*s*s*s + 30*s*s*s*s) / 0.35;
       for (int j = 0; j < 5; ++j)
         arm_q[j] = q_back[j] + (q_hit[j] - q_back[j]) * p,
         arm_dq[j] = (q_hit[j] - q_back[j]) * dp;
       for (int j = 0; j < 5; ++j) kp[j] = 200, kd[j] = (j == 4 ? 1.5 : 10);
-    } else if (ts < t_hit + 0.25) {    // 随挥
+    } else if (ts < t_hit + 0.25) {    // 触球段:驻留击球点(球穿面窗口 ~35ms)
       phase = 2;
-      for (int j = 0; j < 5; ++j)
-        arm_q[j] = q_hit[j] + 0.10 * (q_hit[j] - q_back[j]), arm_dq[j] = 0;
+      for (int j = 0; j < 5; ++j) arm_q[j] = q_hit[j], arm_dq[j] = 0;
     } else {                            // 回位
       phase = 3;
       for (int j = 0; j < 5; ++j) arm_q[j] *= 0.9995, arm_dq[j] = 0;
@@ -187,12 +218,43 @@ int main(int argc, char** argv) {
       std::printf("t=%.2f phase=%d\n", ts, phase);
       last_phase = phase;
     }
+    if (t == static_cast<int>(t_hit * 1000)) {   // t_hit 对拍:球位 vs 拍位
+      double xr[3] = {0,0,0};
+      mj_kinematics(m, d);
+      mju_rotVecQuat(xr, m->site_pos + site_id*3, d->xquat + m->site_bodyid[site_id]*4);
+      const double* sbp = d->xpos + m->site_bodyid[site_id]*3;
+      std::printf("t_hit: ball=(%.3f,%.3f,%.3f) racket=(%.3f,%.3f,%.3f)\n",
+                  d->qpos[ball_qadr], d->qpos[ball_qadr+1], d->qpos[ball_qadr+2],
+                  sbp[0]+xr[0], sbp[1]+xr[1], sbp[2]+xr[2]);
+    }
+    {
+      double xq[3] = {0,0,0};
+      mj_kinematics(m, d);
+      mju_rotVecQuat(xq, m->site_pos + site_id*3, d->xquat + m->site_bodyid[site_id]*4);
+      const double* sbp = d->xpos + m->site_bodyid[site_id]*3;
+      const double dd = std::hypot(d->qpos[ball_qadr]-sbp[0]-xq[0],
+                                   d->qpos[ball_qadr+1]-sbp[1]-xq[1],
+                                   d->qpos[ball_qadr+2]-sbp[2]-xq[2]);
+      if (dd < g_min_dist) g_min_dist = dd;
+    }
     ArmHybridCmd ac;
     double ff[5];
     if (be.arm_gravity(arm_q, ff))
       for (int j = 0; j < 5; ++j) ac.tau_ff[j] = ff[j];
     for (int j = 0; j < 5; ++j) ac.q[j] = arm_q[j], ac.dq[j] = arm_dq[j], ac.kp[j] = kp[j], ac.kd[j] = kd[j];
     be.set_arm_hybrid(ac);
+    // 解析冲量(§3.5:模型已排除拍-球/球-地求解器对,真值侧在此施加)
+    {
+      const RacketImpulseEvent ev =
+          ApplyRacketImpulse(m, d, face_gid, ball_qadr, ball_vadr, ric_pp);
+      if (ev.fired)
+        std::printf("[touch-a] t=%.3f v_close=%.2f → vn_out=%.2f off=(%.3f,%.3f) "
+                    "n=(%.2f,%.2f,%.2f) vout=(%.1f,%.1f,%.1f)\n",
+                    ts, ev.v_close, ev.vn_out, ev.off_l, ev.off_h,
+                    ev.n[0], ev.n[1], ev.n[2],
+                    d->qvel[ball_vadr], d->qvel[ball_vadr+1], d->qvel[ball_vadr+2]);
+    }
+    ApplyGroundImpulse(d, ball_qadr, ball_vadr, gnd_pp);
     be.run(1);
     // ---- 球气动(T1 阻力) ----
     {
@@ -221,7 +283,7 @@ int main(int argc, char** argv) {
   if (sh) fclose(sh);
   const BaseState bf = be.base_state();
   const double* bpos = d->qpos + ball_qadr;
-  std::printf("done: ball=(%.2f,%.2f,%.2f) base=(%.2f,%.2f)\n",
-              bpos[0], bpos[1], bpos[2], bf.x, bf.y);
+  std::printf("done: ball=(%.2f,%.2f,%.2f) base=(%.2f,%.2f) 拍-球最小距=%.3fm\n",
+              bpos[0], bpos[1], bpos[2], bf.x, bf.y, g_min_dist);
   return 0;
 }
