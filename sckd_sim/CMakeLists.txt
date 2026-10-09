@@ -10,6 +10,11 @@ endif()
 set(MUJOCO_DIR "/home/ubuntu/research/sim/deps/mujoco-3.14.0" CACHE PATH
     "MuJoCo release root containing include/ and lib/")
 
+# 旧仓库实机 NMPC 模块(legacy_nmpc):CasADi 3.7 运行库(nlpsol/ipopt/
+# mumps 全套;实机部署指向 badminton-mpc-6.0/deps/casadi_portable 即可)
+set(CASADI_DIR "/home/ubuntu/deps/casadi" CACHE PATH
+    "CasADi 3.7 root containing include/ and lib/")
+
 find_package(Threads REQUIRED)
 find_package(Eigen3 REQUIRED)
 
@@ -63,9 +68,25 @@ add_executable(test_wbmpc cpp/tests/test_wbmpc.cc)
 target_include_directories(test_wbmpc PRIVATE third_party/doctest)
 target_link_libraries(test_wbmpc PRIVATE sckd_core)
 
+# 旧仓库实机 NMPC 独立模块(2026-10-09 移植):静态库隔离 casadi 依赖,
+# 不上 sckd_core(m0/m1 系 app 不背运行库);需要者显式链接
+add_library(sckd_nmpc6 STATIC cpp/control/legacy_nmpc.cpp)
+target_include_directories(sckd_nmpc6 PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/cpp ${CASADI_DIR}/include)
+target_link_directories(sckd_nmpc6 PUBLIC ${CASADI_DIR}/lib)
+target_link_libraries(sckd_nmpc6 PUBLIC casadi)
+set_target_properties(sckd_nmpc6 PROPERTIES
+  BUILD_RPATH "${CASADI_DIR}/lib" INSTALL_RPATH "${CASADI_DIR}/lib")
+
+add_executable(test_legacy_nmpc cpp/tests/test_legacy_nmpc.cc)
+target_include_directories(test_legacy_nmpc PRIVATE third_party/doctest)
+target_link_libraries(test_legacy_nmpc PRIVATE sckd_nmpc6)
+
 enable_testing()
 add_test(NAME motor_model COMMAND test_motor_model)
 add_test(NAME swerve COMMAND test_swerve)
 add_test(NAME ball COMMAND test_ball)
 add_test(NAME wbo COMMAND test_wbo WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 add_test(NAME wbmpc COMMAND test_wbmpc WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+add_test(NAME legacy_nmpc COMMAND test_legacy_nmpc
+         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})

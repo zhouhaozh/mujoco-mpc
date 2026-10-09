@@ -401,6 +401,36 @@ ArmIk::SiteJacobian 补 mj_comPos(mj_jacSite 依赖 cdof)两处修复在案。
 
 wbmpc 保留 opt-in(argv[6]="wbmpc");研究口径 20Hz/40-100ms 解时窗,非实时。
 
+## 旧仓库 NMPC 独立模块化(2026-10-09,调通,待办 #35 首段)
+
+badminton-mpc-6.0 实机 NMPC 移植为独立模块,**同输入出可执行解,冷解 30ms/热解 3.7ms**。
+
+**架构(两层)**:
+- 生成码层 `sckd_sim/third_party/nmpc6/`:nlp.c/nlp.so(CasADi codegen,ldd 仅
+  libm/libc)+ gen_nlp.cc(生成器,从 HEAD set_my_nmpc_solver 逐式复刻)。
+  14 态/7 控(速度增量,梯形积分含刹车距离修正)/3 步;代价=终端唯一(法向
+  1000+位置 2500+速度+控制量);约束 87=[刹车位置|位置|底盘速|关节速|加速度
+  |自碰 z],ACC=[8,8,30,30,180,400,200]。
+- 驱动层 `cpp/control/legacy_nmpc.{h,cpp}`(1989 行→~460 行):守门链全保留
+  (回合重置/冻结窗/1ms 自碰复检/跳变 60°/50°/90°/角窗+10°/精度双档),拒绝
+  显式化进 LegacyNmpcStatus。剥离 boost/OpenCV/share-util/硬编码路径;ONNX
+  误差网→可注入回调 error_comp(默认恒零,真机重挂)。
+
+**考古与排障(留档)**:
+- 旧仓库根残留 nlp.so(Sep 8)为 26 参数/45 约束陈旧版,**不匹配 git 任何
+  提交**(数值探针反解:g 布局+ACC=[5,5,30,30,200,200,80]+p 消费矩阵);
+- 工程师确认源码即真源,nlp.so=gcc 编译 nlp.c 所得 → 按 HEAD(27 参数/87
+  约束,c0d98ae 网球参数版)用本机 CasADi 3.7 重生成,数值验证布局逐位一致;
+- 生成文件名不得含目录成分(CodeGenerator 以其为 C 入口名,斜杠非法);
+- 本版 casadi 头无 Dict(GenericType) operator() 重载,调用走 map<string,DM>。
+
+**验收**:ctest legacy_nmpc 3 用例 16 断言(实机日志参数回归 e=(0.000,0.035,
+0.161)/拍速 5.11;dt 收缩重解;不可达显式拒绝),全套 6/6 绿。CMake 隔离为
+静态库 sckd_nmpc6(CASADI_DIR cache 路径,实机指向 casadi_portable 即部署)。
+
+**下一步**:m2_intercept 接线与 wbmpc/B′ 同口径 A/B(关节约定映射:
+sim q1..5 ↔ 旧 θ1..5 及解析 FK 与 MuJoCo 模型几何一致性待核对)。
+
 ## MPC 上场结果(2026-10-07,诚实 A/B)
 - 接线完成:base_ref_gen.h(参考生成)+ m2_intercept argv[6]="mpc"(50Hz 重解,
   P 控兜底;统计解数/失败/最大单解);0 解失败,最大单解 10-17ms
