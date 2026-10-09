@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <cstring>
 #include <random>
+#include <thread>
 #include <vector>
 
 #include <mujoco/mujoco.h>
@@ -308,6 +309,10 @@ int main(int argc, char** argv) {
 
   int hits = 0, contacts = 0;
   int feasible_serves = 0;   // 随机族:规划器找到可行计划的发球数(可达域分母)
+  // GUI 同步(可选,M2_VIEW=1,2026-10-09):60Hz 状态写 /tmp/sckd_demo_state.bin,
+  // python/tools/demo_viewer.py 渲染(与 m2_demo 同协议零改动);附带实时节拍
+  // —— 批处理本比实时快,无节拍 viewer 看到的是 N 倍速快放
+  FILE* sh = getenv("M2_VIEW") ? fopen("/tmp/sckd_demo_state.bin", "wb") : nullptr;
   double plan_err_sum = 0; int plan_err_n = 0;
   // M3 移动击球指标:触球底盘速度 / 拍速底盘贡献占比 / 出球速度
   double base_spd_sum = 0; int base_spd_n = 0;
@@ -316,6 +321,7 @@ int main(int argc, char** argv) {
   int fly_ok = 0;   // 命中且触球底盘速度>0.5 m/s
   for (int trial = 0; trial < kTrials; ++trial) {
     be.reset(0);
+    const auto wall0 = std::chrono::steady_clock::now();   // M2_VIEW 实时节拍锚
     be.enable(-1, true);
     be.hold_arm(60.0, 1.5);
     servo = ChassisServo(be.chassis_config(), &be);
@@ -1100,6 +1106,23 @@ int main(int argc, char** argv) {
           const double ip = std::hypot(dvec[0], dvec[1], dvec[2]);
           min_dist_decomp[1] = std::sqrt(std::max(0.0, ip*ip - min_dist_decomp[0]*min_dist_decomp[0]));
           min_dist_decomp[2] = ip;
+        }
+      }
+      // GUI 同步(60Hz,M2_VIEW)+ 实时节拍(m2_demo 同协议:seq/nq/nv/qpos/qvel)
+      if (sh && t % 17 == 0) {
+        uint64_t vseq = static_cast<uint64_t>(trial) * 100000 + t;
+        int32_t nq = m->nq, nv = m->nv;
+        fseek(sh, 0, SEEK_SET);
+        fwrite(&vseq, 8, 1, sh); fwrite(&nq, 4, 1, sh); fwrite(&nv, 4, 1, sh);
+        fwrite(d->qpos, 8, m->nq, sh); fwrite(d->qvel, 8, m->nv, sh);
+        fflush(sh);
+      }
+      if (sh) {
+        while (true) {
+          const double wall = std::chrono::duration<double>(
+              std::chrono::steady_clock::now() - wall0).count();
+          if (wall >= ts - 0.0015) break;
+          std::this_thread::sleep_for(std::chrono::microseconds(200));
         }
       }
       // 终止:落地(越过规划击球时刻后)/超时
