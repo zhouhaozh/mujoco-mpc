@@ -16,6 +16,9 @@
 #include <thread>
 #include <vector>
 
+#include <signal.h>
+#include <unistd.h>
+
 #include <mujoco/mujoco.h>
 
 #include "control/arm_ik.h"
@@ -310,9 +313,31 @@ int main(int argc, char** argv) {
   int hits = 0, contacts = 0;
   int feasible_serves = 0;   // 随机族:规划器找到可行计划的发球数(可达域分母)
   // GUI 同步(可选,M2_VIEW=1,2026-10-09):60Hz 状态写 /tmp/sckd_demo_state.bin,
-  // python/tools/demo_viewer.py 渲染(与 m2_demo 同协议零改动);附带实时节拍
-  // —— 批处理本比实时快,无节拍 viewer 看到的是 N 倍速快放
-  FILE* sh = getenv("M2_VIEW") ? fopen("/tmp/sckd_demo_state.bin", "wb") : nullptr;
+  // python/tools/demo_viewer.py 渲染(与 m2_demo 同协议);附带实时节拍。
+  // 写者互斥(pid 锁):状态文件是"最后写者赢",双实例同写 = viewer 看到两套
+  // 指令交错打架(用户实测 2026-10-09);陈旧锁(进程已死)自动抢占;退出删
+  // 状态文件+锁(viewer 侧另有 mtime 新鲜度防护,双保险)
+  FILE* sh = nullptr;
+  if (getenv("M2_VIEW")) {
+    const char* kLock = "/tmp/sckd_demo_state.lock";
+    bool take = true;
+    if (FILE* lf = fopen(kLock, "r")) {
+      int pid = 0;
+      if (fscanf(lf, "%d", &pid) == 1 && pid > 0 && kill(pid, 0) == 0) {
+        std::printf("[M2_VIEW] 已有写者 pid=%d 在用状态文件,本实例视图禁用"
+                    "(双写者=两套指令交错;同时只开一个仿真实例)\n", pid);
+        take = false;
+      }
+      fclose(lf);
+    }
+    if (take) {
+      if (FILE* lf = fopen(kLock, "w")) {
+        std::fprintf(lf, "%d", (int)getpid());
+        fclose(lf);
+      }
+      sh = fopen("/tmp/sckd_demo_state.bin", "wb");
+    }
+  }
   double plan_err_sum = 0; int plan_err_n = 0;
   // M3 移动击球指标:触球底盘速度 / 拍速底盘贡献占比 / 出球速度
   double base_spd_sum = 0; int base_spd_n = 0;
@@ -1220,10 +1245,12 @@ int main(int argc, char** argv) {
     std::printf("随机发球族: 可达 %d/%d(%.0f%%) | 命中(可达域内) %d/%d = %.0f%%\n",
                 feasible_serves, kTrials, in_dom, hits, feasible_serves, fr);
     std::printf("%s (M3 门槛: 可达域内 ≥60%%)\n", fr >= 60.0 ? "[PASS]" : "[FAIL]");
+    if (sh) { fclose(sh); remove("/tmp/sckd_demo_state.bin"); remove("/tmp/sckd_demo_state.lock"); }
     mj_deleteData(d_ik);
     return fr >= 60.0 ? 0 : 1;
   }
   std::printf("%s (门槛 ≥80%%)\n", rate >= 80.0 ? "[PASS]" : "[FAIL]");
+  if (sh) { fclose(sh); remove("/tmp/sckd_demo_state.bin"); remove("/tmp/sckd_demo_state.lock"); }
   mj_deleteData(d_ik);
   return rate >= 80.0 ? 0 : 1;
 }

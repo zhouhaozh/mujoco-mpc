@@ -12,6 +12,9 @@
 #include <random>
 #include <thread>
 
+#include <signal.h>
+#include <unistd.h>
+
 #include <mujoco/mujoco.h>
 
 #include "control/arm_ik.h"
@@ -53,7 +56,25 @@ int main(int argc, char** argv) {
   ArmIk ik(const_cast<mjModel*>(m), d_ik);
   std::mt19937 rng(2026);
 
-  FILE* sh = fopen("/tmp/sckd_demo_state.bin", "wb");
+  // 写者互斥(pid 锁,与 m2_intercept M2_VIEW 同协议):状态文件"最后写者赢",
+  // 双实例同写 = viewer 看到两套指令交错(2026-10-09);陈旧锁自动抢占
+  FILE* sh = nullptr;
+  {
+    const char* kLock = "/tmp/sckd_demo_state.lock";
+    bool take = true;
+    if (FILE* lf = fopen(kLock, "r")) {
+      int pid = 0;
+      if (fscanf(lf, "%d", &pid) == 1 && pid > 0 && kill(pid, 0) == 0) {
+        std::printf("[demo] 已有写者 pid=%d 在用状态文件,本实例状态同步禁用\n", pid);
+        take = false;
+      }
+      fclose(lf);
+    }
+    if (take) {
+      if (FILE* lf = fopen(kLock, "w")) { std::fprintf(lf, "%d", (int)getpid()); fclose(lf); }
+      sh = fopen("/tmp/sckd_demo_state.bin", "wb");
+    }
+  }
   const bool kForever = (kTrials <= 0);   // 0 = 连续模式(viewer 长挂)
   std::printf("=== M2 闭环拦截 GUI 演示(%s挥拍=%s,实时节拍)===\n",
               kForever ? "连续模式,Ctrl+C 退出," : "有限次喂球,",
@@ -242,7 +263,7 @@ int main(int argc, char** argv) {
                 trial + 1, ball_hit ? "命中!" : "未中", min_ball_dist);
     std::this_thread::sleep_for(std::chrono::milliseconds(1200));
   }
-  if (sh) fclose(sh);
+  if (sh) { fclose(sh); remove("/tmp/sckd_demo_state.bin"); remove("/tmp/sckd_demo_state.lock"); }
   std::printf("\n=== 演示结束: %d/%d 命中 ===\n", hits, n_trials);
   mj_deleteData(d_ik);
   return 0;
