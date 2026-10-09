@@ -42,55 +42,64 @@ class BaseRefGen {
   // 速度)+ 过靶后线性减速 v_fly→0(t_dec 内)。单调性要求 w<3(dp=τ[(6−2w)+
   // τ(3w−6)],w<3 时两端点为正、线性中段为正;规划器按 w≤2.2 截 v_base*)。
   // 起步加速度 (6−2w)·D/Ta² ≠0(对比 smoothstep 的 0),无"慢起步"病。
+  // EvalAt(2026-10-09 增):任意绝对时刻的世界系位置/速度(wbmpc 底盘走廊
+  // 代价用;与 Build 同一剖面源,梯形支线 tau<0→(0,0)/tau≥1→(1,0) 与原
+  // clamp 语义一致)。
+  static void EvalAt(const Schedule& sc, double t_abs, double* wx, double* wy,
+                     double* vwx, double* vwy) {
+    const double dx = sc.tx - sc.ax, dy = sc.ty - sc.ay;
+    const double Ta = std::max(sc.t_arrive, 1e-3);
+    const bool fly = sc.v_fly > 0.01 && std::hypot(dx, dy) > 1e-3;
+    const double w = fly
+        ? std::clamp(sc.v_fly * Ta / std::max(std::hypot(dx, dy), 1e-9), 0.0, 2.5)
+        : 0.0;
+    const double dtn = std::max(sc.t_dec / Ta, 1e-3);
+    const double a = std::min(0.15 / Ta, 0.45), b = std::min(0.25 / Ta, 0.45);
+    const double vp = 1.0 / (1.0 - (a + b) / 2.0);
+    const double tau = (t_abs - sc.t0) / Ta;
+    double p, dp;
+    if (fly) {
+      if (tau <= 1.0) {
+        const double t2 = tau * tau, t3 = t2 * tau;
+        p = (3.0 * t2 - 2.0 * t3) + w * (t3 - t2);
+        dp = (6.0 * tau - 6.0 * t2) + w * (3.0 * t2 - 2.0 * tau);
+      } else {
+        // 过靶减速:s = (t−t_arrive)/t_dec ∈[0,1],越程 e = v_fly·s·t_dec·(1−s/2)
+        const double s = std::clamp((tau - 1.0) / dtn, 0.0, 1.0);
+        p = 1.0 + w * dtn * s * (1.0 - 0.5 * s);
+        dp = w * (1.0 - s);
+      }
+    } else {
+      const double tc = std::clamp(tau, 0.0, 1.0);
+      if (tc < a) { p = 0.5 * vp * tc * tc / a; dp = vp * tc / a; }
+      else if (tc <= 1.0 - b) { p = vp * (tc - 0.5 * a); dp = vp; }
+      else {
+        const double s = (1.0 - tc) / b;
+        p = 1.0 - 0.5 * vp * b * s * s;
+        dp = vp * s;
+      }
+    }
+    dp /= Ta;                                            // dτ/dt = 1/Ta
+    *wx = sc.ax + dx * p;
+    *wy = sc.ay + dy * p;
+    *vwx = dx * dp;
+    *vwy = dy * dp;
+  }
+
   static void Build(const Schedule& sc, double t_now, const double x0[6],
                     Ref& ref, double cs2[2 * ChassisMpc::kN]) {
     constexpr int N = ChassisMpc::kN, NX = ChassisMpc::kNx;
-    const double dx = sc.tx - sc.ax, dy = sc.ty - sc.ay;
-    const double D = std::hypot(dx, dy);
-    const double Ta = std::max(sc.t_arrive, 1e-3);
-    const bool fly = sc.v_fly > 0.01 && D > 1e-3;
-    const double w = fly ? std::clamp(sc.v_fly * Ta / D, 0.0, 2.5) : 0.0;
-    const double dtn = std::max(sc.t_dec / Ta, 1e-3); // 刹停时长(τ 单位)
-    // v_fly=0:归一化梯形位移剖面 p(τ),τ∈[0,1]:爬升 a=0.15/Ta、收敛 b=0.25/Ta
-    const double a = std::min(0.15 / Ta, 0.45), b = std::min(0.25 / Ta, 0.45);
-    // 面积归一:∫v dτ=1,v_peak = 1/(1-(a+b)/2)
-    const double vp = 1.0 / (1.0 - (a + b) / 2.0);
-    auto prof = [&](double tau, double* p, double* dp) {
-      if (fly) {
-        if (tau <= 1.0) {
-          const double t2 = tau * tau, t3 = t2 * tau;
-          *p = (3.0 * t2 - 2.0 * t3) + w * (t3 - t2);
-          *dp = (6.0 * tau - 6.0 * t2) + w * (3.0 * t2 - 2.0 * tau);
-        } else {
-          // 过靶减速:s = (t−t_arrive)/t_dec ∈[0,1],越程 e = v_fly·s·t_dec·(1−s/2)
-          const double s = std::clamp((tau - 1.0) / dtn, 0.0, 1.0);
-          *p = 1.0 + w * dtn * s * (1.0 - 0.5 * s);
-          *dp = w * (1.0 - s);
-        }
-        return;
-      }
-      tau = std::clamp(tau, 0.0, 1.0);
-      if (tau < a) { *p = 0.5 * vp * tau * tau / a; *dp = vp * tau / a; }
-      else if (tau <= 1.0 - b) { *p = vp * (tau - 0.5 * a); *dp = vp; }
-      else {
-        const double s = (1.0 - tau) / b;
-        *p = 1.0 - 0.5 * vp * b * s * s;
-        *dp = vp * s;
-      }
-    };
     for (int k = 0; k <= N; ++k) {
-      double p, dp;
-      prof((t_now + k * kDt - sc.t0) / Ta, &p, &dp);
-      dp /= Ta;                                          // dτ/dt = 1/Ta
+      double wx, wy, vwx, vwy;
+      EvalAt(sc, t_now + k * kDt, &wx, &wy, &vwx, &vwy);
       double* r = &ref[k * NX];
       double psi = 0.0;
       if (k == 0) psi = std::clamp(psi, x0[2] - 0.2, x0[2] + 0.2);
-      r[0] = sc.ax + dx * p;
-      r[1] = sc.ay + dy * p;
+      r[0] = wx;
+      r[1] = wy;
       r[2] = psi;
-      const double vwx = dx * dp, vwy = dy * dp;         // 世界系参考速度
       const double c = std::cos(psi), sn = std::sin(psi);
-      r[3] =  c * vwx + sn * vwy;
+      r[3] =  c * vwx + sn * vwy;                        // 世界系 → 车体系
       r[4] = -sn * vwx + c * vwy;
       r[5] = 0.0;
     }
