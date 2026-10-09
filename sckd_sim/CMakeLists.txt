@@ -26,7 +26,8 @@ add_library(sckd_core STATIC
   cpp/sim/ball_server.cpp
   cpp/estimation/ball_predictor.cpp
   cpp/planning/hit_planner.cpp  cpp/control/arm_ik.cpp
-  cpp/control/swing_generator.cpp cpp/control/arm_swing.cpp)
+  cpp/control/swing_generator.cpp cpp/control/arm_swing.cpp
+  cpp/control/wholebody_ocp.cpp)
 set_source_files_properties(cpp/control/gen/chassis_mpc.c PROPERTIES LANGUAGE CXX)
 target_include_directories(sckd_core PUBLIC third_party/osqp/include)
 target_link_libraries(sckd_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/osqp/libosqp.a)
@@ -54,7 +55,12 @@ add_executable(test_ball cpp/tests/test_ball.cc)
 target_include_directories(test_ball PRIVATE third_party/doctest)
 target_link_libraries(test_ball PRIVATE sckd_core)
 
+add_executable(test_wbo cpp/tests/test_wbo.cc)
+target_include_directories(test_wbo PRIVATE third_party/doctest)
+target_link_libraries(test_wbo PRIVATE sckd_core)
+
 enable_testing()
 add_test(NAME motor_model COMMAND test_motor_model)
 add_test(NAME swerve COMMAND test_swerve)
 add_test(NAME ball COMMAND test_ball)
+add_test(NAME wbo COMMAND test_wbo WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})

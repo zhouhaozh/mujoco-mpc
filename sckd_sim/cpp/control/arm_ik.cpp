@@ -76,11 +76,26 @@ void ArmIk::FaceNormal(const double q[5], double base_x, double base_y, double n
   mju_rotVecQuat(n_out, nl, d_->xquat + rb * 4);
 }
 
+void ArmIk::SitePos(const double q[5], double base_x, double base_y, double p_out[3]) {
+  for (int j = 0; j < 5; ++j) d_->qpos[qadr_[j]] = q[j];
+  d_->qpos[0] = base_x; d_->qpos[1] = base_y; d_->qpos[2] = 0.209;
+  d_->qpos[3] = 1; d_->qpos[4] = 0; d_->qpos[5] = 0; d_->qpos[6] = 0;  // yaw=0
+  mj_kinematics(m_, d_);
+  double x[3] = {0, 0, 0};
+  mju_rotVecQuat(x, m_->site_pos + site_id_ * 3,
+                 d_->xquat + m_->site_bodyid[site_id_] * 4);
+  const double* sp = d_->xpos + m_->site_bodyid[site_id_] * 3;
+  for (int i = 0; i < 3; ++i) p_out[i] = sp[i] + x[i];
+}
+
 void ArmIk::SiteJacobian(const double q[5], double base_x, double base_y, double J[15]) {
   for (int j = 0; j < 5; ++j) d_->qpos[qadr_[j]] = q[j];
   d_->qpos[0] = base_x; d_->qpos[1] = base_y; d_->qpos[2] = 0.209;
   d_->qpos[3] = 1; d_->qpos[4] = 0; d_->qpos[5] = 0; d_->qpos[6] = 0;  // yaw=0
   mj_kinematics(m_, d_);
+  mj_comPos(m_, d_);   // mj_jacSite 读 d->cdof(此前依赖调用方跑过 mj_forward
+                       // 留下的 cdof,scratch 数据未跑过 IK 时全零 —— 2026-10-08
+                       // wholebody_ocp 单测定位;qpos 相同则 cdof 恒等,值不变)
   std::vector<double> jacp(3 * m_->nv), jacr(3 * m_->nv);
   mj_jacSite(m_, d_, jacp.data(), jacr.data(), site_id_);
   for (int r = 0; r < 3; ++r)

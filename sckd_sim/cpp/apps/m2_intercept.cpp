@@ -22,6 +22,7 @@
 #include "control/chassis_mpc.h"
 #include "control/chassis_servo.h"
 #include "control/swing_generator.h"
+#include "control/wholebody_ocp.h"
 #include "estimation/ball_predictor.h"
 #include "hal/sim_backend.h"
 #include "planning/hit_planner.h"
@@ -59,6 +60,51 @@ static void FillBasePred(HitPlan& plan, SimBackend& be, double t_now,
   plan.base_pred_ok = true;
 }
 
+// ocpfly 拍内求解(2026-10-09):填实测状态(世界系;BaseState vx/vy 为车体系
+// 需旋转),成功则写交接契约(plan.base_pred=OCP 终端底盘、v_base*=OCP 终端
+// 速度)并返回 true。p_hit/v*(=v_racket) 取自当前 plan(RefineAt 精化随读)
+static bool RunOcp(WholebodyOcp& wbo, HitPlan& plan, SimBackend& be, double ts,
+                   WboResult* out) {
+  WboRequest req;
+  req.t_now = ts;
+  req.t_hit = plan.t_hit;
+  for (int i = 0; i < 3; ++i) {
+    req.p_hit[i] = plan.p_hit[i];
+    req.v_star[i] = plan.v_racket[i];
+  }
+  const BaseState b = be.base_state();
+  req.base0[0] = b.x;
+  req.base0[1] = b.y;
+  const double c = std::cos(b.yaw), sn = std::sin(b.yaw);
+  req.vbase0[0] = c * b.vx - sn * b.vy;
+  req.vbase0[1] = sn * b.vx + c * b.vy;
+  if (!wbo.Solve(req, out)) return false;
+  // 臂锚投影:OCP 可达集滑动的终端(远侧发球滑到离 p_hit >1m)不在臂工作
+  // 环带内 → 终值 IK 必败(init-fail 连败,gs 侧发 70→40 回归定位,2026-10-09)。
+  // 分工:调度终点 = OCP 原始终端(可达性感知参考);臂锚 = 投影到 p_hit 的
+  // 臂可达环带 [0.30,1.00]m(几何一致性优先,底盘到不了的位置误差由拍面
+  // 容差吸收 —— 与 B′/triage 的 base_target 锚同一性质,只是更近/更优)
+  {
+    constexpr double kRMin = 0.30, kRMax = 1.00;
+    double ax = out->term_base[0], ay = out->term_base[1];
+    const double ddx = ax - plan.p_hit[0], ddy = ay - plan.p_hit[1];
+    const double dp = std::hypot(ddx, ddy);
+    if (dp > kRMax) {
+      ax = plan.p_hit[0] + ddx * kRMax / dp;
+      ay = plan.p_hit[1] + ddy * kRMax / dp;
+    } else if (dp < kRMin && dp > 1e-6) {
+      ax = plan.p_hit[0] + ddx * kRMin / dp;
+      ay = plan.p_hit[1] + ddy * kRMin / dp;
+    }
+    plan.base_pred[0] = ax;
+    plan.base_pred[1] = ay;
+  }
+  plan.base_pred_ok = true;
+  plan.v_base_star[0] = out->term_vbase[0];
+  plan.v_base_star[1] = out->term_vbase[1];
+  return true;
+}
+
 int main(int argc, char** argv) {
   const std::string scene = argc > 1 ? argv[1] : "models/generated/x4_tennis_demo.mjcf";
   const int kTrials = argc > 2 ? atoi(argv[2]) : 10;
@@ -73,8 +119,15 @@ int main(int argc, char** argv) {
   // 触球时刻底盘以 v_base* 通过目标,拍速获底盘贡献,臂终值改差项——联合优化的
   // 协调分解。mpcfly 首测:速度到位(1.26 m/s)但 MPC 位置滞后 0.2-0.3m → 有效
   // 命中 2/10;pfly 用速度前馈消相位滞后)
+  // "ocpfly" = 方案 B v2 在线底盘 OCP(2026-10-09):WholebodyOcp 从实测状态
+  // 20Hz 重解,终端底盘位置(可达集内 anchor*)/速度(v*_xy 方向)替换 B′ 的
+  // back=0.8+投影启发式;底盘 P+ff 直接跟踪 OCP 轨迹(不经 BaseRefGen);
+  // ArmSwing 终值锚 base_pred=OCP 终端(替代 FillBasePred 外推)。三轮蒸馏
+  // (v_base 规则/信念对齐/back(z))闭环全败的共同根因 = 目标超出可达集,
+  // 本模式把可达性放进约束内(PROGRESS 待办 #1)
   const std::string base_mode = (argc > 6) ? argv[6] : "";
-  const bool fly = (base_mode == "mpcfly" || base_mode == "pfly");
+  const bool fly = (base_mode == "mpcfly" || base_mode == "pfly" || base_mode == "ocpfly");
+  const bool ocp_mode = (base_mode == "ocpfly");
   const bool use_mpc = (base_mode == "mpc" || base_mode == "mpcfly");
   // 发球族(argv[7],默认 "fixed"):fixed = M2 定点族(回归口径不变);
   // rand = 随机发球族(M3 验收):速度/仰角/方位/转速/落点全域随机;
@@ -124,6 +177,9 @@ int main(int argc, char** argv) {
   double mpc_cs2[2 * ChassisMpc::kN] = {0};
   int mpc_solves = 0, mpc_fails = 0;
   double mpc_ms_max = 0;
+  // ocpfly 诊断(跨 trial 累计)
+  int ocp_solves = 0, ocp_rejects = 0, ocp_fails = 0;
+  double ocp_ms_max = 0;
 
   int hits = 0, contacts = 0;
   int feasible_serves = 0;   // 随机族:规划器找到可行计划的发球数(可达域分母)
@@ -154,6 +210,12 @@ int main(int argc, char** argv) {
     int replans = 0;
     double t_plan0 = -1;    // 初规划时刻(延迟起挥基准)
     BaseRefGen::Schedule mpc_sched;   // MPC 参考:初规划起锚(绝对时间)
+    // ocpfly 每 trial 状态:OCP 协调器(热启动/守门态隔离)+ 上一接受解
+    WholebodyOcp wbo;
+    WboResult ocp_res;
+    bool ocp_have = false;      // 已有接受解(底盘可跟踪其参考)
+    int ocp_fails_streak = 0;   // 连续拒收/失败拍数
+    bool ocp_dead = false;      // 连败回退:本 trial 永久走 pfly(B′)路径
     double t_min_dist = -1;
     double t_ground = -1;   // 首次落地时刻(判"挥拍击球"还是"落地后撞拍")
     double t_flip = -1;     // 球速方向翻转时刻(跨反弹模式下判翻转是否在挥拍窗内)
@@ -266,11 +328,27 @@ int main(int argc, char** argv) {
           } else {
             mpc_sched.t_arrive = std::clamp(plan.t_hit - ts - 0.15, 0.30, 1.2);
           }
+          // ocpfly:首拍解(规划期一次性,冷解预算 80ms);成功即写交接契约,
+          // 之后 +0.25s 的延迟起挥 Init 直接读到 base_pred
+          if (ocp_mode && RunOcp(wbo, plan, be, ts, &ocp_res)) {
+            ocp_have = true;
+            // 底盘跟踪走 BaseRefGen 绝对时刻参考(OCP 参考每拍从当前位置重启
+            // 会"参考回退爬行",首测底盘 1s 内位移 <0.2m,2026-10-09 定位);
+            // OCP 供可达性感知终点:tx/ty/v_fly 每拍随重解更新(小跳变,起锚不变)
+            mpc_sched.tx = ocp_res.term_base[0];
+            mpc_sched.ty = ocp_res.term_base[1];
+            mpc_sched.v_fly = std::min(1.2, std::hypot(ocp_res.term_vbase[0],
+                                                       ocp_res.term_vbase[1]));
+            std::printf("  [ocp] t=%.2f 终端base=(%.2f,%.2f) v=(%.2f,%.2f) %.1fms\n",
+                        ts, ocp_res.term_base[0], ocp_res.term_base[1],
+                        ocp_res.term_vbase[0], ocp_res.term_vbase[1], ocp_res.ms);
+          }
           if (use_qp && kInitDelay > 0) {
             // 延迟起挥:此处不 Init,由下方触发块在 t_plan0+kInitDelay 起挥
             // (等待期臂保持就位构型,RefineAt 持续精化计划)
           } else if (use_qp) {
-            if (fly && ref_built) FillBasePred(plan, be, ts, mpc_ref[0], mpc_ref[1]);
+            if (fly && !ocp_mode && ref_built)
+              FillBasePred(plan, be, ts, mpc_ref[0], mpc_ref[1]);
             aswing.Init(plan, q_cur, dq_cur, ik, ts);
           }
           else swing.Init(plan, q_cur, ik);
@@ -286,7 +364,8 @@ int main(int argc, char** argv) {
       }
       // QP 延迟起挥触发
       if (use_qp && planned && kInitDelay > 0 && !aswing.active() && ts >= t_plan0 + kInitDelay) {
-        if (fly && ref_built) FillBasePred(plan, be, ts, mpc_ref[0], mpc_ref[1]);
+        if (fly && !ocp_mode && ref_built)
+          FillBasePred(plan, be, ts, mpc_ref[0], mpc_ref[1]);
         aswing.Init(plan, q_cur, dq_cur, ik, ts);
         if (!aswing.active() && ts - t_plan0 < kInitDelay + 0.60)   // 初解失败诊断(限窗打印)
           std::printf("  [init-fail] t=%.2f p=(%.2f,%.2f,%.2f) base_t=(%.2f,%.2f) t_hit=%.2f\n",
@@ -303,13 +382,31 @@ int main(int argc, char** argv) {
         ++replans;
         // 底盘参考终点:锁止后冻结(fly-through 末段 chasing 收敛中的目标会
         // 拉偏触球几何,随机族 plan_err 0.94/1.05 反例,2026-10-07);臂仍可微调
-        if (!(use_qp && aswing.locked())) {
+        // ocpfly:终点=OCP 终端(下方 RunOcp 后更新),非 ocp 模式随精化走 base_target
+        if (!(use_qp && aswing.locked()) && !ocp_mode) {
           mpc_sched.tx = plan.base_target[0];   // 终点随精化更新(起锚不变)
           mpc_sched.ty = plan.base_target[1];
         }
         if (use_qp) {
-          if (fly && ref_built)  // v2 triage:臂终值按预测实际底盘解
+          if (ocp_mode && !ocp_dead && !aswing.locked()) {
+            // ocpfly 20Hz 重解:锁止后冻结终端(§6.5);连败 ~0.5s 永久回退 pfly
+            if (RunOcp(wbo, plan, be, ts, &ocp_res)) {
+              ocp_have = true;
+              ocp_fails_streak = 0;
+              if (!(use_qp && aswing.locked())) {
+                mpc_sched.tx = ocp_res.term_base[0];
+                mpc_sched.ty = ocp_res.term_base[1];
+                mpc_sched.v_fly = std::min(1.2, std::hypot(ocp_res.term_vbase[0],
+                                                           ocp_res.term_vbase[1]));
+              }
+            } else if (++ocp_fails_streak > 25) {
+              ocp_dead = true;
+              plan.base_pred_ok = false;   // 锚退回规划 base_target(B′)
+            }
+          } else if (fly && !ocp_mode && ref_built) {
+            // v2 triage:臂终值按预测实际底盘解(P 控误差外推)
             FillBasePred(plan, be, ts, mpc_ref[0], mpc_ref[1]);
+          }
           if (aswing.active()) aswing.UpdatePlan(plan, ik, ts);
         }
         else if (swing.active()) swing.UpdatePlan(plan, ik);
@@ -371,7 +468,8 @@ int main(int argc, char** argv) {
       if (planned && plan.feasible) {
         const BaseState bs = be.base_state();
         bool mpc_applied = false;
-        if (fly && !use_mpc) {
+        if (fly && !use_mpc) {   // pfly 与 ocpfly 同路(BaseRefGen 绝对时刻
+                                 // 参考;ocpfly 的调度终点=OCP 终端,见上)
           // pfly:P + 速度前馈跟踪 BaseRefGen 参考(每拍)。前馈承担巡航速度,
           // P 项只纠残差 —— 无 MPC 的位置相位滞后;参考 k=0 即当前时刻值
           double x0p[6] = {bs.x, bs.y, bs.yaw, bs.vx, bs.vy, 0};
@@ -580,6 +678,11 @@ int main(int argc, char** argv) {
       if (d->qpos[ball_qadr+2] < 0.05 && (locked_saved ? ts > lock_t + 0.3 : ts > 1.0)) break;
       if (ts > 5.0) break;
     }
+    // ocpfly 诊断累计(跨 trial)
+    ocp_solves += wbo.solves;
+    ocp_rejects += wbo.rejects;
+    ocp_fails += wbo.fails;
+    ocp_ms_max = std::max(ocp_ms_max, wbo.ms_max);
     // 有效命中:拍接近 + 方向翻转。基线口径不变(落地前翻转,与 M2/M3 历史
     // 逐位可比);跨反弹模式另加挥拍窗因果(翻转须在锁止计划 ±0.35s 内,且
     // 抽球为反弹后翻转/截击为反弹前——排除"落地后滚进静止拍"的假命中)
@@ -613,6 +716,9 @@ int main(int argc, char** argv) {
     std::printf("底盘 MPC:%d 解 %d 失败(%.1f%%) 最大单解 %.2fms\n",
                 mpc_solves, mpc_fails, 100.0 * mpc_fails / std::max(mpc_solves, 1),
                 mpc_ms_max);
+  if (ocp_mode)
+    std::printf("在线OCP: %d 解 %d 拒收 %d 失败,最大单解 %.2fms(20Hz 拍,守门口径)\n",
+                ocp_solves, ocp_rejects, ocp_fails, ocp_ms_max);
   if (base_spd_n > 0)
     std::printf("M3 指标: t_hit 底盘速度均值 %.2f m%s | 命中且触球底盘速度>0.5: %d/%d"
                 " | 拍速底盘贡献 %.0f%% | 出球速度 %.1f m/s\n",
