@@ -1002,7 +1002,24 @@ int main(int argc, char** argv) {
           ac.q[j]=sc.q[j]; ac.dq[j]=sc.dq[j]; ac.kp[j]=sc.kp[j]; ac.kd[j]=sc.kd[j];
         }
       } else {
-        for (int j = 0; j < 5; ++j) ac.q[j] = q_cur[j];
+        // 待机位姿(实机 sckd-robot home,J2 抬臂 35°;用户定向 2026-10-09:
+        // 待机大臂应稍微举起,hold_arm 零目标=水平是错的)。挥拍层模式
+        // (pfly/B′)首规划后 0.25s 五次过渡到就位构型(m2_demo 同款,直接以
+        // 抬臂待机作 IK 种子会解支漂移掉到 1-2/10,2026-10-06 实测);优化器
+        // 接管型(nmpc6/wbmpc)**不做人工过渡**——过渡期 5-6 rad/s 移动起点
+        // 会让 NMPC 重解连续拒收(实测 65%→10%),静持待机位由 OCP 自己规划
+        // 待机→击球全程(与实机从 home 起解一致)
+        static constexpr double kStandby[5] = {-0.0244, 0.6109, -0.3927, -1.5359, 0.0};
+        static constexpr double kReady[5] = {0, -1.0, 0.5, 0, 0.8};
+        const bool swing_mode = !n6_mode && !wb_mode;
+        if (t_plan0 >= 0.0 && swing_mode) {
+          const double s = std::clamp((ts - t_plan0) / 0.25, 0.0, 1.0);
+          const double p = 10*s*s*s - 15*s*s*s*s + 6*s*s*s*s*s;
+          for (int j = 0; j < 5; ++j)
+            ac.q[j] = kStandby[j] + (kReady[j] - kStandby[j]) * p;
+        } else {
+          for (int j = 0; j < 5; ++j) ac.q[j] = kStandby[j];
+        }
       }
       double ff[5];
       if (be.arm_gravity(ac.q, ff)) for (int j=0;j<5;++j) ac.tau_ff[j]=ff[j];
@@ -1087,7 +1104,10 @@ int main(int argc, char** argv) {
       if (!ball_hit && vx > 0 && vx0 < 0) {   // 一次性(观察窗内不再重复计)
         ball_hit = true;
         t_flip = ts;
-        if (post_contact < 0) post_contact = 30;   // 翻转拍≠冲量完毕,再走 30ms
+        // 翻转拍≠冲量完毕,再走 30ms 取稳态出射;GUI 下拉长到 0.8s 让球飞
+        // 一段(用户实测"没看到击球就跳下一个"—— 批处理口径不受影响,
+        // 命中判定在 t_flip 已定,观察窗只影响 [calib] 取数与结束时刻)
+        if (post_contact < 0) post_contact = sh ? 830 : 30;
         // M3 拍速分解:拍速 = 底盘贡献 + 臂贡献;出球速度 vs 意图(8 m/s)
         {
           double rv[6];
@@ -1197,6 +1217,8 @@ int main(int argc, char** argv) {
       ++hits;
     }
     if (min_ball_dist < 0.15) ++contacts;
+    // GUI trial 间驻留:末帧停 0.7s 再进下一发(批处理无感)
+    if (sh) std::this_thread::sleep_for(std::chrono::milliseconds(700));
     char pe_str[16];
     if (plan_err >= 0) std::snprintf(pe_str, sizeof(pe_str), "%.3f", plan_err);
     else std::snprintf(pe_str, sizeof(pe_str), "n/a");
