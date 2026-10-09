@@ -20,46 +20,40 @@
 
 #include <casadi/casadi.hpp>
 
+#include "sim_fk.h"
+
 using casadi::SX;
 using casadi::Slice;
 
 int main() {
   const int n_states = 14, n_controls = 7, m_predict_step = 3;
-  const double racket_len = 0.85;
 
-  // ---- 解析 FK(旧 GetEndPos 逐式) ----
+  // ---- sim(x4_tennis)精确 FK(2026-10-09 替换旧灵足 X1 解析式:旧式拍长
+  // d5=0.85 为羽毛球拍,本机腕滚半径 0.584)。位置/法向出自 sim_fk.h;
+  // 速度 = jacobian(p,q)·ω + plat·(vx,vy,0) —— 符号精确导数,消掉旧手写
+  // J 丢 ω2/ω5 项的近似;plat 开关下 vx,vy 都计入(旧版漏 vy,留档修正)
   auto GetEndPos = [&](SX thetas, SX add_base_vx) {
-    SX d1 = 0.685, a2 = 0.705, d4 = -0.1705, d5 = -racket_len;
-    SX c1 = cos(thetas(2, 0)), s1 = sin(thetas(2, 0));
-    SX c2 = cos(thetas(3, 0)), s2 = sin(thetas(3, 0));
-    SX c23 = cos(thetas(3, 0) + thetas(4, 0)), s23 = sin(thetas(3, 0) + thetas(4, 0));
-    SX c4 = cos(thetas(5, 0)), s4 = sin(thetas(5, 0));
-    SX c5 = cos(thetas(6, 0)), s5 = sin(thetas(6, 0));
-    SX omega1 = thetas(9, 0), omega3 = thetas(11, 0), omega4 = thetas(12, 0);
-    SX nx = c1*c23*c4*c5 + s1*s4*c5 - c1*s23*s5;
-    SX ny = s1*c23*c4*c5 - c1*s4*c5 - s1*s23*s5;
-    SX nz = s23*c4*c5 + c23*s5;
-    SX ox = -c1*c23*c4*s5 - s1*s4*s5 - c1*s23*c5;
-    SX oy = -s1*c23*c4*s5 + c1*s4*s5 - s1*s23*c5;
-    SX oz = -s23*c4*s5 + c23*c5;
-    SX ax = -c1*c23*s4 + s1*c4;
-    SX ay = -s1*c23*s4 - c1*c4;
-    SX az = -s23*s4;
-    SX px = -d5*c1*c23*s4 + d5*s1*c4 + d4*c1*s23 + a2*c1*c2;
-    SX py = -d5*s1*c23*s4 - d5*c1*c4 + d4*s1*s23 + a2*s1*c2;
-    SX pz = -d5*s23*s4 - d4*c23 + a2*s2 + d1;
-    SX vx = (d5*s1*c23*s4 + d5*c1*c4 - d4*s1*s23 - a2*s1*c2)*omega1
-          + (d5*c1*s23*s4 + d4*c1*c23)*omega3
-          + (-d5*c1*c23*c4 - d5*s1*s4)*omega4 + add_base_vx*thetas(7, 0);
-    SX vy = (-d5*s1*c23*s4 + d5*s1*c4 + d4*c1*s23 + a2*c1*c2)*omega1
-          + (d5*s1*s23*s4 + d4*s1*c23)*omega3
-          + (-d5*s1*c23*c4 + d5*c1*s4)*omega4;
-    SX vz = (-d5*c23*s4 + d4*s23)*omega3 + (-d5*s23*c4)*omega4;
-    SX M = SX::sym("endPosMat", 4, 4);
-    M(0,0)=nx; M(0,1)=ox; M(0,2)=ax; M(0,3)=px+thetas(0,0);
-    M(1,0)=ny; M(1,1)=oy; M(1,2)=ay; M(1,3)=py+thetas(1,0);
-    M(2,0)=nz; M(2,1)=oz; M(2,2)=az; M(2,3)=pz;
-    M(3,0)=vx; M(3,1)=vy; M(3,2)=vz; M(3,3)=1;
+    SX qv[5] = {thetas(2, 0), thetas(3, 0), thetas(4, 0), thetas(5, 0),
+                thetas(6, 0)};
+    SX base[2] = {thetas(0, 0), thetas(1, 0)};
+    SX p[3], n[3];
+    sckd_nmpc6::SimArmPos(base, qv, p);
+    sckd_nmpc6::SimArmNormal(qv, n);
+    SX pvec = SX::vertcat({p[0], p[1], p[2]});
+    SX qvec = SX::vertcat({qv[0], qv[1], qv[2], qv[3], qv[4]});
+    SX wvec = SX::vertcat({thetas(9, 0), thetas(10, 0), thetas(11, 0),
+                           thetas(12, 0), thetas(13, 0)});
+    SX J = SX::jacobian(pvec, qvec);                  // 3×5 精确
+    SX v3[3] = {SX(0), SX(0), SX(0)};
+    for (int r = 0; r < 3; ++r)
+      for (int j = 0; j < 5; ++j) v3[r] += J(r, j) * wvec(j);
+    SX M = SX::zeros(4, 4);
+    M(0, 0) = n[0]; M(1, 0) = n[1]; M(2, 0) = n[2];
+    M(0, 3) = p[0]; M(1, 3) = p[1]; M(2, 3) = p[2];
+    M(3, 0) = v3[0] + add_base_vx * thetas(7, 0);
+    M(3, 1) = v3[1] + add_base_vx * thetas(8, 0);
+    M(3, 2) = v3[2];
+    M(3, 3) = 1;
     return M;
   };
 

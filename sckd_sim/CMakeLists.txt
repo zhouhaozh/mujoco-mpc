@@ -72,7 +72,8 @@ target_link_libraries(test_wbmpc PRIVATE sckd_core)
 # 不上 sckd_core(m0/m1 系 app 不背运行库);需要者显式链接
 add_library(sckd_nmpc6 STATIC cpp/control/legacy_nmpc.cpp)
 target_include_directories(sckd_nmpc6 PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/cpp ${CASADI_DIR}/include)
+  ${CMAKE_CURRENT_SOURCE_DIR}/cpp ${CMAKE_CURRENT_SOURCE_DIR}/third_party/nmpc6
+  ${CASADI_DIR}/include)
 target_link_directories(sckd_nmpc6 PUBLIC ${CASADI_DIR}/lib)
 target_link_libraries(sckd_nmpc6 PUBLIC casadi)
 set_target_properties(sckd_nmpc6 PROPERTIES

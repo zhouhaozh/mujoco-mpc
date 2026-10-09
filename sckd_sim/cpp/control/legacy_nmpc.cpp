@@ -17,6 +17,8 @@
 
 #include <casadi/casadi.hpp>
 
+#include "sim_fk.h"   // sim(x4_tennis) 精确 FK(与生成码 gen_nlp.cc 同源)
+
 namespace sckd {
 namespace {
 
@@ -54,36 +56,36 @@ double WrapYaw90(double deg) {
   return w - 90.0;
 }
 
-// 解析 FK(原 GetEndPos2 逐式照搬;灵足 X1:d1=0.685, a2=0.705, d4=−0.1705,
-// d5=−racket_len)。out=[px,py,pz,pitch°,vx,vy,vz];add_base_vx=true 时 vx
-// 计入底盘 vx。速度雅可比按原样省略 ω2/ω5 项(与生成码一致,误差网口径)。
-void EndPos(const double th[14], double racket_len, bool add_base_vx,
-            double out[7]) {
-  const double d1 = 0.685, a2 = 0.705, d4 = -0.1705, d5 = -racket_len;
-  const double c1 = std::cos(th[2]), s1 = std::sin(th[2]);
-  const double c2 = std::cos(th[3]), s2 = std::sin(th[3]);
-  const double c23 = std::cos(th[3] + th[4]), s23 = std::sin(th[3] + th[4]);
-  const double c4 = std::cos(th[5]), s4 = std::sin(th[5]);
-  const double c5 = std::cos(th[6]), s5 = std::sin(th[6]);
-  const double w1 = th[9], w3 = th[11], w4 = th[12];
-  const double nz = s23 * c4 * c5 + c23 * s5;
-  out[0] = -d5 * c1 * c23 * s4 + d5 * s1 * c4 + d4 * c1 * s23 +
-           a2 * c1 * c2 + th[0];
-  out[1] = -d5 * s1 * c23 * s4 - d5 * c1 * c4 + d4 * s1 * s23 +
-           a2 * s1 * c2 + th[1];
-  out[2] = -d5 * s23 * s4 - d4 * c23 + a2 * s2 + d1;
-  out[3] = std::fabs(std::asin(std::max(-1.0, std::min(1.0, nz))) * 180.0 /
-                     M_PI);
-  out[4] = (d5 * s1 * c23 * s4 + d5 * c1 * c4 - d4 * s1 * s23 -
-            a2 * s1 * c2) * w1 +
-           (d5 * c1 * s23 * s4 + d4 * c1 * c23) * w3 +
-           (-d5 * c1 * c23 * c4 - d5 * s1 * s4) * w4 +
-           (add_base_vx ? th[7] : 0.0);
-  out[5] = (-d5 * s1 * c23 * s4 + d5 * s1 * c4 + d4 * c1 * s23 +
-            a2 * c1 * c2) * w1 +
-           (d5 * s1 * s23 * s4 + d4 * s1 * c23) * w3 +
-           (-d5 * s1 * c23 * c4 + d5 * c1 * s4) * w4;
-  out[6] = (-d5 * c23 * s4 + d4 * s23) * w3 + (-d5 * s23 * c4) * w4;
+// sim(x4_tennis)精确末端评价(2026-10-09 替换旧灵足 X1 解析式,见 sim_fk.h
+// 头注)。out=[px,py,pz,pitch°,vx,vy,vz];速度 = 数值 J(中心差分)·ω +
+// add_base_vx·(底盘 vx,vy)—— 与生成码(符号 jacobian)同口径(旧手写
+// J 丢 ω2/ω5 项已消;旧版 plat 开关漏 vy,此处与生成码一致补上)
+void EndPos(const double th[14], bool add_base_vx, double out[7]) {
+  const double base[2] = {th[0], th[1]};
+  const double q[5] = {th[2], th[3], th[4], th[5], th[6]};
+  double p[3], n[3];
+  sckd_nmpc6::SimArmPos(base, q, p);
+  sckd_nmpc6::SimArmNormal(q, n);
+  double J[3][5];
+  for (int j = 0; j < 5; ++j) {
+    double qp[5], qm[5];
+    for (int i = 0; i < 5; ++i) { qp[i] = q[i]; qm[i] = q[i]; }
+    qp[j] += 1e-6; qm[j] -= 1e-6;
+    double pp[3], pm[3];
+    sckd_nmpc6::SimArmPos(base, qp, pp);
+    sckd_nmpc6::SimArmPos(base, qm, pm);
+    for (int i = 0; i < 3; ++i) J[i][j] = (pp[i] - pm[i]) / 2e-6;
+  }
+  const double w[5] = {th[9], th[10], th[11], th[12], th[13]};
+  out[0] = p[0]; out[1] = p[1]; out[2] = p[2];
+  out[3] = std::fabs(std::asin(std::max(-1.0, std::min(1.0, n[2]))) *
+                     180.0 / M_PI);
+  for (int i = 0; i < 3; ++i) {
+    double s = 0;
+    for (int j = 0; j < 5; ++j) s += J[i][j] * w[j];
+    out[4 + i] = s;
+  }
+  if (add_base_vx) { out[4] += th[7]; out[5] += th[8]; }
 }
 
 }  // namespace
@@ -399,7 +401,7 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
         double th1ms[kNs] = {0};
         for (int c = 0; c < 7; ++c) { th1ms[c] = pos[c]; th1ms[7 + c] = vel[c]; }
         double ep[7];
-        EndPos(th1ms, im.racket_len, use_plat_vx, ep);
+        EndPos(th1ms, use_plat_vx, ep);
         if (ep[2] < 0.35) { is_hit = true; break; }
       }
     }
@@ -424,7 +426,7 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
 
   // ---- 末端评价 + 误差补偿推理(下一拍生效;剩余≤50ms 锁存) ----
   double ep[7];
-  EndPos(cs, im.racket_len, use_plat_vx, ep);
+  EndPos(cs, use_plat_vx, ep);
   for (int i = 0; i < 7; ++i) out->end_pos[i] = ep[i];
   {
     const double dt_ms = (req.dt[0] + req.dt[1] + req.dt[2]) * 1000.0;
