@@ -301,13 +301,10 @@ int main(int argc, char** argv) {
   // nmpc6 诊断(跨 trial 累计)
   int n6_solves_t = 0, n6_rejects_t = 0, n6_fallbacks_t = 0;
   double n6_ms_max_t = 0, n6_ms_sum_t = 0;
-  // nmpc6 跨 trial 目标偏置(误差网职能的 sim 在线版):旧机挥扫线系统性
-  // 偏短偏左(OCP 末段以位置换速度,end_x 逐拍后退 0.1-0.2),真机靠 ONNX
-  // 误差网出 comp(driver 内钳位 x∈[−0.02,+0.16] 不对称正界即为此病而设)
-  // —— 本机无网,用上 trial 拍@t_hit−锁定点 有符号误差 IIR 学习,经请求
-  // 目标注入(等价旧机上游+误差网,而非改 driver)。δ 几何相关:按锁定
-  // 高度分双槽(z<0.9 低球槽 / ≥0.9 正常槽;fixed 族两子族交替会污染单槽)
-  double comp6[2][3] = {{0, 0, 0}, {0, 0, 0}};
+  // 注:不加误差补偿模型(用户定向 2026-10-09:sim 跑 NMPC 本体真实行为,
+  // 补偿归真机误差网/实机标定)。已实验量化:在线 comp 学习可把 fixed 从
+  // 20% 拉到 60-80%(系统性短左 0.15-0.3 与旧 driver comp[0] 钳位
+  // [−0.02,+0.16] 不对称正界互证),结果留档 PROGRESS,机制按定向移除
 
   int hits = 0, contacts = 0;
   int feasible_serves = 0;   // 随机族:规划器找到可行计划的发球数(可达域分母)
@@ -569,15 +566,8 @@ int main(int argc, char** argv) {
               rq.state[8] = sn * bsn.vx + c * bsn.vy;
             }
             for (int j = 0; j < 5; ++j) rq.state[9 + j] = dq_cur[j];
-            // comp 末段渐入(T<0.6 线性到全量):全量从首解注入会把早期目标
-            // 推出可行域 → 连败回退 B′(回退 trial 的命中实为 B′ 所打,首版
-            // 20 发回退 10 个的根因,2026-10-09 定位);早期瞄真球保首解可
-            // 行,末段(挥拍形状成形期)才吃偏置
-            const double comp_w =
-                std::clamp((0.60 - T6) / 0.30, 0.0, 1.0);
             for (int i = 0; i < 3; ++i)
-              rq.target[i] = (tgt_locked ? lock_p[i] : plan.p_hit[i]) +
-                             comp_w * comp6[plan.p_hit[2] < 0.9 ? 0 : 1][i];
+              rq.target[i] = tgt_locked ? lock_p[i] : plan.p_hit[i];
             // 底盘锚:规划器可达环带位置(= 旧机上游走位策略的 sim 同源物;
             // 不加则 NMPC 自由落位停 1.3m 外臂全伸展凑目标,末段全拒收)
             rq.base_anchor_ok = true;
@@ -783,19 +773,6 @@ int main(int argc, char** argv) {
                     d->qpos[ball_qadr], d->qpos[ball_qadr+1], d->qpos[ball_qadr+2], plan_err,
                     sb[0]+rx[0], sb[1]+rx[1], sb[2]+rx[2],
                     std::hypot(sb[0]+rx[0]-lock_p[0], sb[1]+rx[1]-lock_p[1], sb[2]+rx[2]-lock_p[2]));
-        // nmpc6 跨 trial 目标偏置更新:拍系统欠冲 δ(拍−球<0)→ 目标需反向
-        // 补 comp=−δ(越过球瞄,首版符号抄反 comp+=e 越补越短发散至 −0.68,
-        // 2026-10-09 定位);积分控制 comp += −0.5·e(e=racket−lock_p)
-        if (n6_mode && n6_have && !n6_dead) {
-          const double e6[3] = {sb[0]+rx[0]-lock_p[0], sb[1]+rx[1]-lock_p[1],
-                                sb[2]+rx[2]-lock_p[2]};
-          double* c6 = comp6[lock_p[2] < 0.9 ? 0 : 1];
-          for (int i = 0; i < 3; ++i)
-            c6[i] = std::clamp(c6[i] - 0.5 * e6[i], -0.50, 0.50);
-          std::printf("  [n6c] 拍误差=(%+.3f,%+.3f,%+.3f) → comp[%s]=(%+.3f,%+.3f,%+.3f)\n",
-                      e6[0], e6[1], e6[2], lock_p[2] < 0.9 ? "低" : "常",
-                      c6[0], c6[1], c6[2]);
-        }
         IkResult chk = ik.Solve(lock_p, lock_base[0], lock_base[1], 0.0, q_cur);
         double qm[5], dq_max = 0;
         for (int j = 0; j < 5; ++j) {
