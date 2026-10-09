@@ -47,6 +47,8 @@ foreach(app m0_determinism m0_step_rate m0_static_contact m0_arm_step_response
   add_executable(${app} cpp/apps/${app}.cpp)
   target_link_libraries(${app} PRIVATE sckd_core)
 endforeach()
+# m2_intercept:argv[6]="nmpc6" 模式(旧仓库实机 NMPC A/B 接线,2026-10-09)
+target_link_libraries(m2_intercept PRIVATE sckd_nmpc6)
 
 add_executable(test_motor_model cpp/tests/test_motor_model.cpp)
 target_include_directories(test_motor_model PRIVATE third_party/doctest)

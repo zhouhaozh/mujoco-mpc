@@ -267,10 +267,18 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
   std::vector<double> lbg, ubg;
   lbg.reserve(87); ubg.reserve(87);
   const double D2R = M_PI / 180.0;
+  // 底盘 x/y 界:默认全场;锚开启时收紧到锚 ±r(与全场交集)——见请求注
+  double bx_lo = -1.0, bx_hi = 5.7, by_lo = -2.0, by_hi = 2.0;
+  if (req.base_anchor_ok && req.base_anchor_r > 0.0) {
+    bx_lo = std::max(bx_lo, req.base_anchor[0] - req.base_anchor_r);
+    bx_hi = std::min(bx_hi, req.base_anchor[0] + req.base_anchor_r);
+    by_lo = std::max(by_lo, req.base_anchor[1] - req.base_anchor_r);
+    by_hi = std::min(by_hi, req.base_anchor[1] + req.base_anchor_r);
+  }
   auto push_state_bounds = [&]() {          // 位置块 ×2(刹车行 + 步末行)
     for (int k = 0; k < kNp; ++k) {
-      lbg.push_back(-1.0);  ubg.push_back(5.7);      // x∈[−1,5.7](半场)
-      lbg.push_back(-2.0);  ubg.push_back(2.0);      // y(左边界弃右手挥拍)
+      lbg.push_back(bx_lo);  ubg.push_back(bx_hi);   // x(默认全场;锚窗)
+      lbg.push_back(by_lo);  ubg.push_back(by_hi);   // y(左边界弃右手挥拍)
       lbg.push_back(im.m1_a1 * D2R); ubg.push_back(im.m1_a2 * D2R);
       lbg.push_back(im.m2_a1 * D2R); ubg.push_back(im.m2_a2 * D2R);
       lbg.push_back(im.m3_a1 * D2R); ubg.push_back(im.m3_a2 * D2R);
@@ -516,6 +524,42 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
   out->term_state[1] += (tgt[1] - ep[1]);
   for (int i = 0; i < kNp * kNu; ++i)
     out->controls[i] = res_control_all[i];
+  // ---- 1ms 执行轨迹(Plans 式;robot_motion.cc MpcThread 逐式):从实测状态
+  //      起,速度按 a_max 斜坡趋近逐步累积目标速度,位置欧拉积分,跨步连续。
+  //      上限 3s 防御(调用方剩余时间实际 ≤~1.5s) ----
+  {
+    const int total_ms = std::min(
+        3000, (int)((req.dt[0] + req.dt[1] + req.dt[2]) * 1000.0));
+    out->plan_ms = total_ms;
+    out->plan_pos.assign(7 * (total_ms + 1), 0.0);
+    out->plan_vel.assign(7 * (total_ms + 1), 0.0);
+    double vcmd[3][7];                       // 步 j 目标速度(累积增量)
+    for (int c = 0; c < kNu; ++c) {
+      vcmd[0][c] = cs_in[7 + c] + res_control_all[c * kNp + 0];
+      vcmd[1][c] = vcmd[0][c] + res_control_all[c * kNp + 1];
+      vcmd[2][c] = vcmd[1][c] + res_control_all[c * kNp + 2];
+    }
+    const int b1 = (int)(req.dt[0] * 1000.0);
+    const int b2 = (int)((req.dt[0] + req.dt[1]) * 1000.0);
+    double pos[7], vel[7];
+    for (int c = 0; c < kNu; ++c) {
+      pos[c] = cs_in[c];
+      vel[c] = cs_in[7 + c];
+      out->plan_pos[c * (total_ms + 1)] = pos[c];
+      out->plan_vel[c * (total_ms + 1)] = vel[c];
+    }
+    for (int i = 1; i <= total_ms; ++i) {
+      const int j = (i <= b1) ? 0 : (i <= b2 ? 1 : 2);
+      for (int c = 0; c < kNu; ++c) {
+        const double dv = (1.0 / kAccInv[c]) * 0.001;
+        if (vel[c] < vcmd[j][c]) vel[c] = std::min(vel[c] + dv, vcmd[j][c]);
+        else                     vel[c] = std::max(vel[c] - dv, vcmd[j][c]);
+        pos[c] += vel[c] * 0.001;
+        out->plan_pos[c * (total_ms + 1) + i] = pos[c];
+        out->plan_vel[c * (total_ms + 1) + i] = vel[c];
+      }
+    }
+  }
   std::memcpy(im.guess, res_control_all.data(), sizeof(double) * kNp * kNu);
   out->status = strict ? LegacyNmpcStatus::kOk : LegacyNmpcStatus::kLoose;
   out->solver_ok = solver_ok;

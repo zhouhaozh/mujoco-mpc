@@ -31,6 +31,7 @@
 // 网吸收,sim 下是模型误差的一部分,保留原样(与生成码一致,不可单方改)。
 #include <functional>
 #include <string>
+#include <vector>
 
 namespace sckd {
 
@@ -51,6 +52,14 @@ struct LegacyNmpcRequest {
   double hit_yaw_deg = 0.0;    // 出球方位(°)
   double hit_pitch_deg = 20.0; // 出球仰角(°,决定拍面法向目标)
   double hit_speed_z = 2.0;    // 拍末端 vz 目标(m/s)
+  // 底盘锚邻域(可选,2026-10-09 m2 接线引入):开启后状态约束里的底盘 x/y
+  // 行从全场 [−1,5.7]×[−2,2] 收紧到锚 ±r(交集)。旧机无此约束 —— 其可达性
+  // 由上游走位策略保证;sim 侧同源物 = 规划器 base_target(IK 可达环带)。
+  // 不加时 NMPC 自由落位出现过"底盘停 1.3m 外臂全伸展凑目标",末段目标
+  // 精化外移 → 全拒收 → 冻结旧计划,全伸展下关节小误差拍端放大 0.36m miss
+  bool base_anchor_ok = false;
+  double base_anchor[2] = {0, 0};
+  double base_anchor_r = 0.40;
 };
 
 enum class LegacyNmpcStatus {
@@ -72,6 +81,14 @@ struct LegacyNmpcResult {
   double end_pos[7] = {0};     // 终态末端:[px,py,pz,pitch°,vx,vy,vz]
   double pred_vxy_at_hit[2] = {0};  // 首解捕获的触球底盘速度(后续重解不更新)
   double solve_ms = 0;
+  // 1ms 执行轨迹(Plans 式,robot_motion.cc MpcThread 同口径 —— 旧下位机实际
+  // 消费的就是它):从求解时刻实测状态起,速度按 a_max 限幅斜坡趋近逐步累积
+  // 目标速度 v_cmd[j]=v0+Σ_{k≤j}u_k,位置欧拉积分,跨步连续。网格 i=0..plan_ms,
+  // 布局 [c*(plan_ms+1)+i],c=0..6 = [x,y,θ1..θ5]。旧机按剩余时间索引;sim
+  // 侧按绝对时刻(求解时刻 + i ms)采样。
+  int plan_ms = 0;
+  std::vector<double> plan_pos;   // 7*(plan_ms+1)
+  std::vector<double> plan_vel;
 };
 
 class LegacyNmpc {

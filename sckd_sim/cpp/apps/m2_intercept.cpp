@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <cstring>
 #include <random>
+#include <vector>
 
 #include <mujoco/mujoco.h>
 
@@ -21,6 +22,7 @@
 #include "control/base_ref_gen.h"
 #include "control/chassis_mpc.h"
 #include "control/chassis_servo.h"
+#include "control/legacy_nmpc.h"
 #include "control/swing_generator.h"
 #include "control/wholebody_ocp.h"
 #include "control/wholebody_mpc.h"
@@ -231,8 +233,15 @@ int main(int argc, char** argv) {
   // 锚几何与挥拍轨迹出自同一优化,无可蒸馏自由度全部在解内。连败回退 B′
   const std::string base_mode = (argc > 6) ? argv[6] : "";
   const bool wb_mode = (base_mode == "wbmpc");
+  // "nmpc6" = 旧仓库实机 NMPC(2026-10-09 接线):LegacyNmpc(14 态 OCP,
+  // 速度增量动力学+守门链)50Hz 从实测状态重解,底盘/臂都直接采样其 1ms
+  // 执行轨迹(Plans 式,绝对时刻;旧下位机消费口径);末端目标=p_hit、法向
+  // 目标=plan.n_face、拍速目标=|plan.v_racket|(均随 RefineAt 精化)。
+  // 末段(<100ms)仅接受 严格+成功+<10ms 新解(原 MpcThread 语义);连败
+  // 回退 B′(wbmpc 同法)
+  const bool n6_mode = (base_mode == "nmpc6");
   const bool fly = (base_mode == "mpcfly" || base_mode == "pfly" ||
-                    base_mode == "ocpfly" || wb_mode);
+                    base_mode == "ocpfly" || wb_mode || n6_mode);
   const bool ocp_mode = (base_mode == "ocpfly");
   const bool use_mpc = (base_mode == "mpc" || base_mode == "mpcfly");
   // 发球族(argv[7],默认 "fixed"):fixed = M2 定点族(回归口径不变);
@@ -289,6 +298,16 @@ int main(int argc, char** argv) {
   // wbmpc 诊断(跨 trial 累计)
   int wb_solves = 0, wb_rejects = 0, wb_fails = 0, wb_fallbacks = 0;
   double wb_ms_max = 0;
+  // nmpc6 诊断(跨 trial 累计)
+  int n6_solves_t = 0, n6_rejects_t = 0, n6_fallbacks_t = 0;
+  double n6_ms_max_t = 0, n6_ms_sum_t = 0;
+  // nmpc6 跨 trial 目标偏置(误差网职能的 sim 在线版):旧机挥扫线系统性
+  // 偏短偏左(OCP 末段以位置换速度,end_x 逐拍后退 0.1-0.2),真机靠 ONNX
+  // 误差网出 comp(driver 内钳位 x∈[−0.02,+0.16] 不对称正界即为此病而设)
+  // —— 本机无网,用上 trial 拍@t_hit−锁定点 有符号误差 IIR 学习,经请求
+  // 目标注入(等价旧机上游+误差网,而非改 driver)。δ 几何相关:按锁定
+  // 高度分双槽(z<0.9 低球槽 / ≥0.9 正常槽;fixed 族两子族交替会污染单槽)
+  double comp6[2][3] = {{0, 0, 0}, {0, 0, 0}};
 
   int hits = 0, contacts = 0;
   int feasible_serves = 0;   // 随机族:规划器找到可行计划的发球数(可达域分母)
@@ -333,6 +352,15 @@ int main(int argc, char** argv) {
     int wb_fails_streak = 0;    // 从未有解的连续失败拍数
     bool wb_dead = false;       // 连败回退:本 trial 永久走 B′(pfly+挥拍层)
     double wb_tau = 0.0;        // τ̂ 闭环滞后补偿(EMA,采样时钟前移量)
+    // nmpc6 每 trial 状态:旧机 NMPC 实例(回合态隔离;首解全零 guess 自触发
+    // 新回合)+ 最后接受的 1ms 执行轨迹(Plans 式拷贝,绝对时刻采样)
+    LegacyNmpc n6;
+    std::vector<double> n6_pos, n6_vel;
+    int n6_ms = 0;
+    double n6_t0 = -1;
+    bool n6_have = false, n6_dead = false;
+    int n6_fails_streak = 0;
+    double n6_tau = 0.0;        // τ̂ 臂伺服带宽差补偿(EMA,采样时钟前移量)
     double t_min_dist = -1;
     double t_ground = -1;   // 首次落地时刻(判"挥拍击球"还是"落地后撞拍")
     double t_flip = -1;     // 球速方向翻转时刻(跨反弹模式下判翻转是否在挥拍窗内)
@@ -474,12 +502,13 @@ int main(int argc, char** argv) {
           } else if (use_qp && kInitDelay > 0) {
             // 延迟起挥:此处不 Init,由下方触发块在 t_plan0+kInitDelay 起挥
             // (等待期臂保持就位构型,RefineAt 持续精化计划)
-          } else if (use_qp) {
+          } else if (use_qp && !n6_mode) {
             if (fly && !ocp_mode && ref_built)
               FillBasePred(plan, be, ts, mpc_ref[0], mpc_ref[1]);
             aswing.Init(plan, q_cur, dq_cur, ik, ts);
           }
-          else swing.Init(plan, q_cur, ik);
+          else if (!n6_mode) swing.Init(plan, q_cur, ik);
+          // nmpc6:挥拍层不 Init(臂由 NMPC 轨迹接管;回退时才 Init)
           std::printf("  [plan] t=%.2f hit=(%.2f,%.2f,%.2f) t_hit=%.2f margin=%.2f base=(%.2f,%.2f)\n",
                       ts, plan.p_hit[0], plan.p_hit[1], plan.p_hit[2],
                       plan.t_hit, plan.time_margin, plan.base_target[0], plan.base_target[1]);
@@ -491,7 +520,7 @@ int main(int argc, char** argv) {
         }
       }
       // QP 延迟起挥触发(wbmpc 不适用:臂由 OCP 解直接接管)
-      if (use_qp && !wb_mode && planned && kInitDelay > 0 && !aswing.active() && ts >= t_plan0 + kInitDelay) {
+      if (use_qp && !wb_mode && !n6_mode && planned && kInitDelay > 0 && !aswing.active() && ts >= t_plan0 + kInitDelay) {
         if (fly && !ocp_mode && ref_built)
           FillBasePred(plan, be, ts, mpc_ref[0], mpc_ref[1]);
         aswing.Init(plan, q_cur, dq_cur, ik, ts);
@@ -504,15 +533,136 @@ int main(int argc, char** argv) {
       // (评分比较会拒绝精化:高度偏好偏爱陈旧高 z 计划 —— 见 hit_planner 注)
       // QP 路径锁止后仍调用(UpdatePlan 内部按 §6.5 限微调幅度,大改自拒);
       // 五次基线保持锁止即冻结。aswing 未激活时 locked() 恒真,须判活
-      if (planned && (use_qp ? (aswing.active() || wb_mode)
-                             : (!swing.locked() || wb_mode)) && t % 20 == 0) {
+      if (planned && (use_qp ? (aswing.active() || wb_mode || n6_mode)
+                             : (!swing.locked() || wb_mode || n6_mode)) &&
+          t % 20 == 0) {
         const BaseState bs2 = be.base_state();
         planner.RefineAt(predictor, bs2, &plan, ts);
         ++replans;
         // 底盘参考终点:锁止后冻结(fly-through 末段 chasing 收敛中的目标会
         // 拉偏触球几何,随机族 plan_err 0.94/1.05 反例,2026-10-07);臂仍可微调
         // ocpfly:终点=OCP 终端(下方 RunOcp 后更新),非 ocp 模式随精化走 base_target
-        if (wb_mode && !wb_dead) {
+        if (n6_mode && !n6_dead) {
+          // nmpc6 50Hz 重解(旧机 MpcThread 同口径:状态=实测,dt=剩余/3,
+          // 目标=p_hit/法向=plan.n_face/拍速=|plan.v_racket|)。末段 <100ms
+          // 仅接受 严格+成功+<10ms 新解,否则保持旧轨迹(原语义);从未有解
+          // 连败 >15 拍(0.75s)→ 本 trial 永久回退 B′
+          // 目标锁止:lock 后(t_hit−0.15,与 B′/wbmpc 同窗)目标/时刻用快照,
+          // 不再吃 RefineAt 精化 —— 末段 p_hit 随下坠球快速漂移,NMPC 终端在
+          // 速度/角窗约束下追不上(末段 e 0.005→0.225 解退化 loose/拒收,计划
+          // 老化拍滞后 0.3,2026-10-09 定位)。旧机 hit_pos 来自慢策略层,
+          // 天然准静态,等价
+          const bool tgt_locked = locked_saved;
+          const double T6 = (tgt_locked ? lock_t : plan.t_hit) - ts;
+          if (T6 > 0.012) {   // 旧机低球一直解到 dt=0;末段停解太早(0.05)
+                              // → 冻结 Plans 陈旧,球已坠过拍面(首测 A 组 miss)
+                              // (100Hz 重解试验负结果:RefineAt 抖动+计划置换
+                              //  断续,执行底盘/臂低通跟不上 → 20%,回 50Hz)
+            LegacyNmpcRequest rq;
+            const BaseState bsn = be.base_state();
+            rq.state[0] = bsn.x;
+            rq.state[1] = bsn.y;
+            for (int j = 0; j < 5; ++j) rq.state[2 + j] = q_cur[j];
+            {  // 底盘速度:BaseState.vx/vy 为车体系 → 世界系
+              const double c = std::cos(bsn.yaw), sn = std::sin(bsn.yaw);
+              rq.state[7] = c * bsn.vx - sn * bsn.vy;
+              rq.state[8] = sn * bsn.vx + c * bsn.vy;
+            }
+            for (int j = 0; j < 5; ++j) rq.state[9 + j] = dq_cur[j];
+            // comp 末段渐入(T<0.6 线性到全量):全量从首解注入会把早期目标
+            // 推出可行域 → 连败回退 B′(回退 trial 的命中实为 B′ 所打,首版
+            // 20 发回退 10 个的根因,2026-10-09 定位);早期瞄真球保首解可
+            // 行,末段(挥拍形状成形期)才吃偏置
+            const double comp_w =
+                std::clamp((0.60 - T6) / 0.30, 0.0, 1.0);
+            for (int i = 0; i < 3; ++i)
+              rq.target[i] = (tgt_locked ? lock_p[i] : plan.p_hit[i]) +
+                             comp_w * comp6[plan.p_hit[2] < 0.9 ? 0 : 1][i];
+            // 底盘锚:规划器可达环带位置(= 旧机上游走位策略的 sim 同源物;
+            // 不加则 NMPC 自由落位停 1.3m 外臂全伸展凑目标,末段全拒收)
+            rq.base_anchor_ok = true;
+            rq.base_anchor[0] = plan.base_target[0];
+            rq.base_anchor[1] = plan.base_target[1];
+            rq.base_anchor_r = 0.40;
+            rq.dt[0] = rq.dt[1] = rq.dt[2] = T6 / 3.0;
+            rq.hit_spd = std::hypot(plan.v_racket[0], plan.v_racket[1],
+                                    plan.v_racket[2]);
+            {   // 末段速度-位置权衡标定(2026-10-09):OCP 速度项权重 8 在末
+                // 段压过位置 2500·e²,挥扫线让位拍速 → 系统性短左;0.8=本机
+                // 实测最优(1.0/0.9/0.8/0.65 → 60/60/80/60),旧机全速是直驱
+                // 腕+羽毛球几何,sim 臂网球拍降两成。N6_SPD 可覆写扫参
+              static const double kSpdFac =
+                  getenv("N6_SPD") ? atof(getenv("N6_SPD")) : 0.8;
+              rq.hit_spd *= kSpdFac;
+            }
+            rq.hit_pitch_deg =
+                std::asin(std::clamp(plan.n_face[2], -1.0, 1.0)) * 180.0 / M_PI;
+            rq.hit_yaw_deg =
+                std::atan2(plan.n_face[1], plan.n_face[0]) * 180.0 / M_PI;
+            rq.hit_speed_z = plan.v_racket[2];
+            LegacyNmpcResult r6;
+            if (getenv("N6_TRACE") && n6_have && n6_ms > 0) {
+              // 末段跟踪 trace:实测 vs 当前计划@ts(定位执行亏欠滚雪球的层)
+              const int W = n6_ms + 1;
+              const int idx = std::clamp(
+                  (int)std::lround((ts - n6_t0) * 1000.0), 0, n6_ms);
+              double dbx = n6_pos[idx] - rq.state[0],
+                     dby = n6_pos[W + idx] - rq.state[1], dqm = 0;
+              for (int j = 0; j < 5; ++j)
+                dqm = std::max(dqm, std::fabs(
+                    n6_pos[(2 + j) * W + idx] - rq.state[2 + j]));
+              std::printf("  [n6T] t=%.3f T=%.3f base=(%.3f,%.3f) dq=%.3f\n",
+                          ts, T6, dbx, dby, dqm);
+            }
+            if (n6.Solve(rq, &r6)) {
+              if (getenv("N6_TRACE"))
+                std::printf("  [n6+] t=%.3f %s e=(%.3f,%.3f,%.3f) end=(%.2f,%.2f,%.2f) "
+                            "q°=(%.0f,%.0f,%.0f,%.0f,%.0f)\n",
+                            ts, r6.status == LegacyNmpcStatus::kOk ? "ok" : "lo",
+                            std::fabs(r6.end_pos[0] - rq.target[0]),
+                            std::fabs(r6.end_pos[1] - rq.target[1]),
+                            std::fabs(r6.end_pos[2] - rq.target[2]),
+                            r6.end_pos[0], r6.end_pos[1], r6.end_pos[2],
+                            r6.term_state[2] * 57.3, r6.term_state[3] * 57.3,
+                            r6.term_state[4] * 57.3, r6.term_state[5] * 57.3,
+                            r6.term_state[6] * 57.3);
+              const bool near_ok =
+                  (T6 >= 0.100) || (r6.status == LegacyNmpcStatus::kOk &&
+                                    r6.solver_ok && r6.solve_ms < 10.0);
+              if (near_ok) {
+                if (!n6_have)
+                  std::printf("  [n6] t=%.2f 首解 end=(%.2f,%.2f,%.2f) v=(%.2f,%.2f,%.2f) %.1fms\n",
+                              ts, r6.end_pos[0], r6.end_pos[1], r6.end_pos[2],
+                              r6.end_pos[4], r6.end_pos[5], r6.end_pos[6],
+                              r6.solve_ms);
+                n6_pos = r6.plan_pos;
+                n6_vel = r6.plan_vel;
+                n6_ms = r6.plan_ms;
+                n6_t0 = ts;
+                n6_have = true;
+                n6_fails_streak = 0;
+              }
+            } else if (!n6_have && ++n6_fails_streak > 15) {
+              // 回退仅在"从未有解"(0.75s 内一个接受解都没有):一旦有解,
+              // 末段拒收=保持旧 Plans 继续执行(旧机 MpcThread 语义,无回退);
+              // 首版把末段严格门拒收计入连败 → 100Hz 下 150ms 假性回退,6/10
+              // trial 被拖回 B′(2026-10-09 定位)
+              n6_dead = true;
+              ++n6_fallbacks_t;
+              const BaseState bsf = be.base_state();
+              mpc_sched.t0 = ts;                     // pfly 参考此刻重新起锚(防爬行)
+              mpc_sched.ax = bsf.x; mpc_sched.ay = bsf.y;
+              mpc_sched.tx = plan.base_target[0];
+              mpc_sched.ty = plan.base_target[1];
+              mpc_sched.t_arrive = std::clamp(plan.t_hit - ts, 0.35, 1.5);
+              mpc_sched.v_fly = std::hypot(plan.v_base_star[0], plan.v_base_star[1]);
+              if (use_qp) aswing.Init(plan, q_cur, dq_cur, ik, ts);
+              else swing.Init(plan, q_cur, ik);
+              std::printf("  [n6-fallback] t=%.2f 连败 %d 拍 → B′(pfly+挥拍层)\n",
+                          ts, n6_fails_streak);
+            }
+          }
+        } else if (wb_mode && !wb_dead) {
           // 走廊终点随精化更新(起锚位置/时刻不变——BaseRefGen 绝对时刻语义)
           mpc_sched.tx = plan.base_target[0];
           mpc_sched.ty = plan.base_target[1];
@@ -594,15 +744,18 @@ int main(int argc, char** argv) {
       // 诊断②:锁止时刻快照;到 t_hit 与真值对比(wbmpc 锁止=末段冻结窗
       // 0.15 且已有接受计划,与 aswing.locked() 同窗)
       const bool wb_lock =
-          (wb_mode && !wb_dead && wb_have && plan.t_hit - ts < 0.15);
+          (wb_mode && !wb_dead && wb_have && plan.t_hit - ts < 0.15) ||
+          (n6_mode && !n6_dead && n6_have && plan.t_hit - ts < 0.15);
       if (planned && !locked_saved &&
           (wb_lock || (use_qp ? (aswing.active() && aswing.locked())
                               : (swing.active() && swing.locked())))) {
         locked_saved = true;
         for (int i = 0; i < 3; ++i) lock_p[i] = plan.p_hit[i];
         lock_t = plan.t_hit;
-        lock_base[0] = wb_lock ? wb_plan.term_base[0] : plan.base_target[0];
-        lock_base[1] = wb_lock ? wb_plan.term_base[1] : plan.base_target[1];
+        lock_base[0] = (wb_mode && wb_lock) ? wb_plan.term_base[0]
+                                           : plan.base_target[0];
+        lock_base[1] = (wb_mode && wb_lock) ? wb_plan.term_base[1]
+                                           : plan.base_target[1];
         std::printf("  [lock] t=%.3f t_hit=%.3f p=(%.2f,%.2f,%.2f) replans=%d base_err=%.2f\n",
                     ts, lock_t, lock_p[0], lock_p[1], lock_p[2], replans,
                     std::hypot(be.base_state().x-plan.base_target[0],
@@ -630,6 +783,19 @@ int main(int argc, char** argv) {
                     d->qpos[ball_qadr], d->qpos[ball_qadr+1], d->qpos[ball_qadr+2], plan_err,
                     sb[0]+rx[0], sb[1]+rx[1], sb[2]+rx[2],
                     std::hypot(sb[0]+rx[0]-lock_p[0], sb[1]+rx[1]-lock_p[1], sb[2]+rx[2]-lock_p[2]));
+        // nmpc6 跨 trial 目标偏置更新:拍系统欠冲 δ(拍−球<0)→ 目标需反向
+        // 补 comp=−δ(越过球瞄,首版符号抄反 comp+=e 越补越短发散至 −0.68,
+        // 2026-10-09 定位);积分控制 comp += −0.5·e(e=racket−lock_p)
+        if (n6_mode && n6_have && !n6_dead) {
+          const double e6[3] = {sb[0]+rx[0]-lock_p[0], sb[1]+rx[1]-lock_p[1],
+                                sb[2]+rx[2]-lock_p[2]};
+          double* c6 = comp6[lock_p[2] < 0.9 ? 0 : 1];
+          for (int i = 0; i < 3; ++i)
+            c6[i] = std::clamp(c6[i] - 0.5 * e6[i], -0.50, 0.50);
+          std::printf("  [n6c] 拍误差=(%+.3f,%+.3f,%+.3f) → comp[%s]=(%+.3f,%+.3f,%+.3f)\n",
+                      e6[0], e6[1], e6[2], lock_p[2] < 0.9 ? "低" : "常",
+                      c6[0], c6[1], c6[2]);
+        }
         IkResult chk = ik.Solve(lock_p, lock_base[0], lock_base[1], 0.0, q_cur);
         double qm[5], dq_max = 0;
         for (int j = 0; j < 5; ++j) {
@@ -646,6 +812,24 @@ int main(int argc, char** argv) {
           base_spd_sum += base_speed_hit; ++base_spd_n;
           std::printf("  [eval] 触球底盘速度=%.2f m/s%s\n", base_speed_hit,
                       base_speed_hit > 0.5 ? "(>0.5 达标)" : "");
+        }
+        // nmpc6 误差分解:t_hit 时最后计划的底盘/臂 vs 实测(定位哪层吃掉时序)
+        if (n6_mode && n6_have && !n6_dead && n6_ms > 0) {
+          const int W = n6_ms + 1;
+          const int idx = std::clamp(
+              (int)std::lround((lock_t - n6_t0) * 1000.0), 0, n6_ms);
+          const BaseState bse = be.base_state();
+          double dq_lag = 0, pdq_max = 0, mdq_max = 0;
+          for (int j = 0; j < 5; ++j) {
+            dq_lag = std::max(dq_lag, std::fabs(
+                n6_pos[(2 + j) * W + idx] - q_cur[j]));
+            pdq_max = std::max(pdq_max, std::fabs(n6_vel[(2 + j) * W + idx]));
+            mdq_max = std::max(mdq_max, std::fabs(dq_cur[j]));
+          }
+          std::printf("  [eval·n6] 底盘误差=(%.3f,%.3f) 臂maxΔq=%.3f rad "
+                      "dq: plan=%.1f meas=%.1f rad/s\n",
+                      n6_pos[idx] - bse.x, n6_pos[W + idx] - bse.y,
+                      dq_lag, pdq_max, mdq_max);
         }
       }
       // wbmpc 执行采样(绝对时刻;一次采样底盘/臂两用)。τ̂ 闭环滞后补偿
@@ -670,12 +854,63 @@ int main(int argc, char** argv) {
         wb_tau = 0.7 * wb_tau + 0.3 * tau_hat;
         SampleWm(wb_plan, ts + wb_tau, wb_q, wb_dq, wb_ddq, wb_base, wb_vbase);
       }
+      // nmpc6 执行采样:底盘=Plans 速度直下(真机语义;ChassisServo 内部
+      // 8 m/s² 斜坡=旧机底盘同款,且每拍新 Plans 从实测状态起锚 → 速度
+      // 跟踪近无差,无需 P 位置环)。臂=位置+速度参考 hybrid(Plans 同时
+      // 携带两者,协议同构;纯速度模式 kp=0 在 sim 电机模型通路上未标定,
+      // 实测失稳 dq 冲 24 rad/s,负结果留档)。τ̂ 补偿 sim 伺服与真机驱动
+      // 器的带宽差(wbmpc 同法,机器本身驱动器快不需要)
+      double n6_q[5] = {0}, n6_dq[5] = {0};
+      double n6_vbase[2] = {0};
+      const bool n6_exec = (n6_mode && n6_have && !n6_dead);
+      if (n6_exec) {
+        const int W = n6_ms + 1;
+        auto sample6 = [&](double t_abs, double q_out[5], double dq_out[5]) {
+          const double tau = t_abs - n6_t0;
+          const double over = tau - n6_ms * 0.001;
+          const int idx = std::clamp((int)std::lround(tau * 1000.0), 0, n6_ms);
+          for (int j = 0; j < 5; ++j) {
+            q_out[j] = n6_pos[(2 + j) * W + idx];
+            dq_out[j] = n6_vel[(2 + j) * W + idx];
+          }
+          if (over > 0) {   // 终端后恒速随挥 ≤0.15s 再停(SampleWm 同法)
+            const double ext = std::min(over, 0.15);
+            for (int j = 0; j < 5; ++j) q_out[j] += dq_out[j] * ext;
+            if (over > 0.15)
+              for (int j = 0; j < 5; ++j) dq_out[j] = 0.0;
+          }
+        };
+        double qn6[5], dqn6[5];
+        sample6(ts, qn6, dqn6);
+        double num = 0, den = 0;
+        for (int j = 0; j < 5; ++j) {
+          num += (q_cur[j] - qn6[j]) * dqn6[j];
+          den += dqn6[j] * dqn6[j];
+        }
+        const double tau_hat6 = (den > 1e-6)
+            ? std::clamp(-num / den, 0.0, 0.10) : n6_tau;
+        n6_tau = 0.7 * n6_tau + 0.3 * tau_hat6;
+        sample6(ts + n6_tau, n6_q, n6_dq);
+        {   // 底盘速度:ts 时刻(无 τ̂ —— 伺服斜坡与 Plans 斜坡同 8 m/s²)
+          const double tau6 = ts - n6_t0;
+          const int idx = std::clamp((int)std::lround(tau6 * 1000.0), 0, n6_ms);
+          n6_vbase[0] = n6_vel[idx];
+          n6_vbase[1] = n6_vel[W + idx];
+          if (tau6 - n6_ms * 0.001 > 0.15)
+            n6_vbase[0] = n6_vbase[1] = 0.0;
+        }
+      }
       // 底盘就位:MPC(50Hz 重解,到位目标 = 锁止前 0.15s 到达;非解算拍保持上一拍
       // twist)或 P 控(argv[6]="mpc" 切换;P 控解算失败时兜底)
       if (planned && plan.feasible) {
         const BaseState bs = be.base_state();
         bool mpc_applied = false;
-        if (wb_exec) {
+        if (n6_exec) {
+          // nmpc6:Plans 速度直下(真机语义,无 P 位置环 —— 见上执行采样注)
+          const double c = std::cos(bs.yaw), sn = std::sin(bs.yaw);
+          servo.set_twist(Twist{c * n6_vbase[0] + sn * n6_vbase[1],
+                                -sn * n6_vbase[0] + c * n6_vbase[1], 0});
+        } else if (wb_exec) {
           // wbmpc:P+ff 跟踪优化底盘段(pfly 同增益同口径,参考=WmPlan 轨迹)
           const double c = std::cos(bs.yaw), sn = std::sin(bs.yaw);
           const double cx = wb_vbase[0] + 2.5 * (wb_base[0] - bs.x);
@@ -748,6 +983,12 @@ int main(int argc, char** argv) {
           ac.kp[j] = (j == 0) ? 250 : 120;   // ArmSwing 播放段增益同源
           ac.kd[j] = (j == 0) ? 3.0 : (j == 4 ? 1.5 : 8.0);   // (arm_swing.cpp)
         }
+      } else if (n6_exec) {
+        for (int j = 0; j < 5; ++j) {
+          ac.q[j] = n6_q[j]; ac.dq[j] = n6_dq[j];
+          ac.kp[j] = (j == 0) ? 250 : 120;   // wbmpc 执行段增益同源(已标定)
+          ac.kd[j] = (j == 0) ? 3.0 : (j == 4 ? 1.5 : 8.0);
+        }
       } else if (use_qp ? aswing.Update(ts, q_cur, sc) : (swing.active() && swing.Update(ts, sc))) {
         for (int j = 0; j < 5; ++j) {
           ac.q[j]=sc.q[j]; ac.dq[j]=sc.dq[j]; ac.kp[j]=sc.kp[j]; ac.kd[j]=sc.kd[j];
@@ -760,7 +1001,8 @@ int main(int argc, char** argv) {
       // 惯性前馈:τ_ff += Î·q̈(对角估计;挥拍段跟踪误差 I·a/kp 的直接抵消)
       static constexpr double kArmInertia[5] = {1.2, 2.0, 0.8, 0.3, 0.05};
       for (int j = 0; j < 5; ++j)
-        ac.tau_ff[j] += kArmInertia[j] * (wb_exec ? wb_ddq[j] : sc.ddp[j]);
+        ac.tau_ff[j] += kArmInertia[j] *
+                        (wb_exec ? wb_ddq[j] : (n6_exec ? 0.0 : sc.ddp[j]));
       be.set_arm_hybrid(ac);
       // 拍-球解析冲量(§3.5 已知碰撞模型;求解器接触对已排除,真值侧在此施
       // 加)。命中事件接管 [calib] 标定捕获
@@ -914,6 +1156,11 @@ int main(int argc, char** argv) {
     wb_rejects += wb.rejects;
     wb_fails += wb.fails;
     wb_ms_max = std::max(wb_ms_max, wb.ms_max);
+    // nmpc6 诊断累计(跨 trial)
+    n6_solves_t += n6.solves;
+    n6_rejects_t += n6.rejects;
+    n6_ms_max_t = std::max(n6_ms_max_t, n6.ms_max);
+    n6_ms_sum_t += n6.ms_sum;
     // 有效命中:拍接近 + 方向翻转。基线口径不变(落地前翻转,与 M2/M3 历史
     // 逐位可比);跨反弹模式另加挥拍窗因果(翻转须在锁止计划 ±0.35s 内,且
     // 抽球为反弹后翻转/截击为反弹前——排除"落地后滚进静止拍"的假命中)
@@ -953,6 +1200,11 @@ int main(int argc, char** argv) {
   if (wb_mode)
     std::printf("全身MPC: %d 解 %d 拒收 %d 失败,最大单解 %.2fms(20Hz 拍,研究口径) 回退 %d trial\n",
                 wb_solves, wb_rejects, wb_fails, wb_ms_max, wb_fallbacks);
+  if (n6_mode)
+    std::printf("旧机NMPC: %d 解 %d 拒收 平均 %.2fms 最大单解 %.2fms(50Hz 重解,守门口径) 回退 %d trial\n",
+                n6_solves_t, n6_rejects_t,
+                n6_solves_t ? n6_ms_sum_t / n6_solves_t : 0.0,
+                n6_ms_max_t, n6_fallbacks_t);
   if (base_spd_n > 0)
     std::printf("M3 指标: t_hit 底盘速度均值 %.2f m%s | 命中且触球底盘速度>0.5: %d/%d"
                 " | 拍速底盘贡献 %.0f%% | 出球速度 %.1f m/s\n",
