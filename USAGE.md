@@ -64,6 +64,11 @@ cd /home/ubuntu/sckd/sim/sckd_sim && DISPLAY=:1 python python/tools/demo_viewer.
 M2_VIEW=1 ./build/m2_intercept models/generated/x4_tennis_demo.mjcf 3 qp 0.25 2026 nmpc6
 M2_VIEW=1 ./build/m2_intercept models/generated/x4_tennis_demo.mjcf 3 qp 0.25 2026 wbmpc
 M2_VIEW=1 ./build/m2_intercept models/generated/x4_tennis_demo.mjcf 3 qp 0.25 2026 pfly
+# 随机族 / 抽球族同样可可视化 —— 三族 GUI 接线同一主循环,已验证。
+# 注意 gs 族必须带 xb(跨反弹规划),漏了 = 可达 0/10,机器人全程待机不挥拍
+# (易误读为"GUI 没接线";2026-10-10 实测两族状态文件与统计均正常)
+M2_VIEW=1 ./build/m2_intercept models/generated/x4_tennis_demo.mjcf 3 qp 0.25 2026 nmpc6 rand
+M2_VIEW=1 ./build/m2_intercept models/generated/x4_tennis_demo.mjcf 3 qp 0.25 2026 nmpc6 gs xb
 ```
 
 协议:m2_intercept/m2_demo 60Hz 写 `/tmp/sckd_demo_state.bin`
