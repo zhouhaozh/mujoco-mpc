@@ -71,6 +71,14 @@ M2_VIEW=1 ./build/m2_intercept models/generated/x4_tennis_demo.mjcf 3 qp 0.25 20
 M2_VIEW=1 ./build/m2_intercept models/generated/x4_tennis_demo.mjcf 3 qp 0.25 2026 nmpc6 gs xb
 ```
 
+**录制视频**:viewer 加 `REC` 环境变量,离屏渲染逐帧经系统 ffmpeg 直编 H.264
+(640×480@60,固定全场机位;待机段不产帧;关 viewer 或 Ctrl+C 时落盘):
+
+```bash
+REC=1 DISPLAY=:1 python python/tools/demo_viewer.py            # → /tmp/sckd_demo.mp4
+REC=/home/ubuntu/demo.mp4 DISPLAY=:1 python python/tools/demo_viewer.py
+```
+
 协议:m2_intercept/m2_demo 60Hz 写 `/tmp/sckd_demo_state.bin`
 ([seq:u64][nq:i32][nv:i32][qpos][qvel]),viewer 只读渲染,两个 app 共用。
 
