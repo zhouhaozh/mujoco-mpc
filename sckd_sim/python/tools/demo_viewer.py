@@ -12,14 +12,16 @@ STATE = "/tmp/sckd_demo_state.bin"
 def main():
     m = mujoco.MjModel.from_xml_path(MODEL)
     d = mujoco.MjData(m)
-    # 待机显示位 = 实机 sckd-robot home(robot_8w4s.ini home_deg=-1.4,35,
-    # -22.5,-88,0°,§23.1 三锚标定)映射到 sim 关节系:J2/J3/J4 符号翻转
-    # (实机模型系正=抬臂,sim 系负=抬臂;原 m2_demo 直抄未映射 → J2 下垂+
-    # 拍甩右侧,2026-10-10 实机照片三视交叉定位:抬臂/小臂竖直/拍举高,
-    # 拍心(+0.52,−0.58,+1.27))。状态机:启动=待机;有写者=实时;写者退出=
-    # 回待机
-    STANDBY = {"Joint1": 0.0244, "Joint2": -0.6109, "Joint3": 0.3927,
-               "Joint4": 1.5359, "Joint5": 0.0}
+    # 待机显示位(2026-10-10 定稿):sim 零位构型=大臂水平/小臂竖直/拍水平
+    # 后折,与实机 sckd-robot 待机(电机系 0,−35,−20,−90,0 + joint_sign/
+    # offset)几何同构。J2=−35° 抬大臂;J3=−35°(净转角 0,小臂保持模型
+    # 自带近竖直);J4=0(拍水平回折)。FK 验证:大臂仰 43.6°/小臂 78.8°/
+    # 拍仰角 0.0°,拍心(−0.06,0,1.26)。前两版教训:①直抄实机模型系值
+    # (J2 正=下垂+拍甩右)②纯符号翻转(J3/J4 不对)——根因=电机零位≠
+    # 模型零位(ini joint_offset)+两模型连杆构型不同,不可代数映射,按
+    # 用户三几何规约直接解
+    STANDBY = {"Joint1": 0.0, "Joint2": -0.6109, "Joint3": -0.6109,
+               "Joint4": 0.0, "Joint5": 0.0}
 
     def show_standby():
         mujoco.mj_resetData(m, d)

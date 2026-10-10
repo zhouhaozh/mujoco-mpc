@@ -1009,10 +1009,12 @@ int main(int argc, char** argv) {
         // 接管型(nmpc6/wbmpc)**不做人工过渡**——过渡期 5-6 rad/s 移动起点
         // 会让 NMPC 重解连续拒收(实测 65%→10%),静持待机位由 OCP 自己规划
         // 待机→击球全程(与实机从 home 起解一致)
-        // kStandby = 实机 home_deg(-1.4,35,-22.5,-88,0°,robot_8w4s.ini §23.1)
-        // 映射 sim 关节系(J2/J3/J4 符号翻转;原直抄实机系值会 J2 下垂+拍甩右,
-        // 2026-10-10 实机照片三视交叉定位修正,拍心(+0.52,−0.58,+1.27))
-        static constexpr double kStandby[5] = {0.0244, -0.6109, 0.3927, 1.5359, 0.0};
+        // kStandby(2026-10-10 定稿,与 viewer/m2_demo 同源):sim 零位构型=
+        // 大臂水平/小臂竖直/拍水平后折,实机待机不可代数映射(电机零位≠模型
+        // 零位,ini joint_offset;两模型连杆构型不同),按用户三几何规约直解:
+        // J2=−35° 抬大臂,J3=−35°(净转角 0 小臂近竖直),J4=0 拍水平回折;
+        // FK 验证 大臂仰43.6°/小臂78.8°/拍仰0°,拍心(−0.06,0,1.26)
+        static constexpr double kStandby[5] = {0.0, -0.6109, -0.6109, 0.0, 0.0};
         static constexpr double kReady[5] = {0, -1.0, 0.5, 0, 0.8};
         const bool swing_mode = !n6_mode && !wb_mode;
         if (t_plan0 >= 0.0 && swing_mode) {
