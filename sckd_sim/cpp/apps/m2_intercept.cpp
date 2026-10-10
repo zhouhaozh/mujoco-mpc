@@ -1218,7 +1218,11 @@ int main(int argc, char** argv) {
       const bool swing_cause = locked_saved && t_flip > 0 && std::fabs(t_flip - lock_t) < 0.35;
       if (ball_hit && min_ball_dist < 0.30 && swing_cause &&
           (t_ground < 0 || t_flip > t_ground)) ++hits;
-    } else if (ball_hit && min_ball_dist < 0.30 && t_ground < 0) {
+    } else if (ball_hit && min_ball_dist < 0.30 &&
+               (t_ground < 0 || t_flip < t_ground)) {
+      // 有效=方向翻转先于首次落地。原判 t_ground<0 把"观察窗内没落地"错当
+      // "击球在落地前":M2_VIEW 观察窗 830ms 内命中球飞完落地会写 t_ground
+      // → 真有效击球被全数误拒(用户实测 3/3 显示 FAIL,2026-10-10 定位)
       ++hits;
     }
     if (min_ball_dist < 0.15) ++contacts;
