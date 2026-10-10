@@ -97,7 +97,10 @@ int main(int argc, char** argv) {
     // 首次规划后 0.25s 五次平滑过渡 待机→就位(后引开始前完成),
     // 既保待机视觉正确,又保已验证的挥拍几何(直接以抬臂待机作 IK 种子会使
     // 解支漂移、命中降到 1-2/10 —— 2026-10-06 实测)
-    static constexpr double kStandby[5] = {-0.0244, 0.6109, -0.3927, -1.5359, 0.0};
+    // 2026-10-10 修正:原值为实机模型系直抄,未映射 sim 关节系(J2 正=下垂)。
+    // 映射(J2/J3/J4 符号翻转)后:抬臂 35°+小臂竖直+拍举高 1.27 偏上侧,
+    // 与实机照片(正侧面/俯视)及用户反馈一致;就位构型 kReady 不变
+    static constexpr double kStandby[5] = {0.0244, -0.6109, 0.3927, 1.5359, 0.0};
     static constexpr double kReady[5] = {0, -1.0, 0.5, 0, 0.8};
     double q_cur[5] = {kStandby[0], kStandby[1], kStandby[2], kStandby[3], kStandby[4]};
     double t_ready0 = -1;

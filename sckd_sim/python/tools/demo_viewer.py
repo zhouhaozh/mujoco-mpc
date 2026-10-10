@@ -12,13 +12,14 @@ STATE = "/tmp/sckd_demo_state.bin"
 def main():
     m = mujoco.MjModel.from_xml_path(MODEL)
     d = mujoco.MjData(m)
-    # 待机显示位 = 实机 sckd-robot home(J2 抬臂 35°,与 m2_intercept/m2_demo
-    # kStandby 同源)+ 整车复位(转向轮全 0、球移出视野)。
-    # 状态机(2026-10-09):启动=待机;有新鲜写者=实时跟随;写者退出/无写者
-    # =自动回待机 —— 旧逻辑冻结在末帧(随挥姿态+跑动中打偏的转向轮),
-    # "很多关节没在待机位"即此(用户实测)
-    STANDBY = {"Joint1": -0.0244, "Joint2": 0.6109, "Joint3": -0.3927,
-               "Joint4": -1.5359, "Joint5": 0.0}
+    # 待机显示位 = 实机 sckd-robot home(robot_8w4s.ini home_deg=-1.4,35,
+    # -22.5,-88,0°,§23.1 三锚标定)映射到 sim 关节系:J2/J3/J4 符号翻转
+    # (实机模型系正=抬臂,sim 系负=抬臂;原 m2_demo 直抄未映射 → J2 下垂+
+    # 拍甩右侧,2026-10-10 实机照片三视交叉定位:抬臂/小臂竖直/拍举高,
+    # 拍心(+0.52,−0.58,+1.27))。状态机:启动=待机;有写者=实时;写者退出=
+    # 回待机
+    STANDBY = {"Joint1": 0.0244, "Joint2": -0.6109, "Joint3": 0.3927,
+               "Joint4": 1.5359, "Joint5": 0.0}
 
     def show_standby():
         mujoco.mj_resetData(m, d)
