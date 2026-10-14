@@ -64,7 +64,7 @@ class HitPlanner {
   HitPlanner(const PlannerParams& pp, const BallAeroParams& aero);
   // min_lead_s:候选击球时刻相对 t_now 的最小提前量;-1(默认)取 prep+swing
   // (首次规划,底盘需就位时间);重规划传挥拍服务窗(约 0.55s,底盘已在途)
-  HitPlan Plan(const BallPredictor& predictor, const BaseState& base,
+  HitPlan Plan(const BallPredictionInterface& predictor, const BaseState& base,
                double t_now, const HitIntent& intent, double min_lead_s = -1.0);
   // 供重规划与在位计划在同一 t_now 下公平比分
   double ScoreOf(const HitPlan& hp, const BaseState& base, double t_now) const {
@@ -73,7 +73,7 @@ class HitPlanner {
   // 重规划精化:t_hit 锚定不动,仅用最新预测更新 p_hit/base_target/margin。
   // (用评分比较新旧计划会系统性拒绝精化——高度偏好偏爱陈旧的高 z 计划,
   //  2026-10-06 定位;新鲜信息无条件更优,不需要比分)
-  void RefineAt(const BallPredictor& predictor, const BaseState& base,
+  void RefineAt(const BallPredictionInterface& predictor, const BaseState& base,
                 HitPlan* hp, double t_now);
  private:
   void ReboundInverse(const double v_in[3], const double v_out[3],

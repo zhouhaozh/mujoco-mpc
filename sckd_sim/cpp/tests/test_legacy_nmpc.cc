@@ -125,3 +125,21 @@ TEST_CASE("legacy_nmpc: 不可达目标 → 守门显式拒绝(不产出可执�
     CHECK(std::fabs(r.end_pos[0] - req.target[0]) < 0.20);
   }
 }
+
+TEST_CASE("simulation negative J2 standby uses MJCF frame bounds") {
+  // Verify a negative-J2 starting pose can produce an accepted solution
+  // while terminal J2/J3 stay inside the loaded simulator joint ranges.
+  LegacyNmpcRequest req=MakeReq();
+  req.state[3]=-0.35;
+  req.dt[0]=req.dt[1]=req.dt[2]=0.32;
+  LegacyNmpcConfig cfg; cfg.sim_joint23_limits=true;
+  LegacyNmpc adapted(cfg);
+  LegacyNmpcResult sim;
+  const bool ok=adapted.Solve(req,&sim);
+  REQUIRE(sim.solver_ok);
+  REQUIRE(ok);
+  CHECK(sim.term_state[3]>=cfg.joint23_lo[0]);
+  CHECK(sim.term_state[3]<=cfg.joint23_hi[0]);
+  CHECK(sim.term_state[4]>=cfg.joint23_lo[1]);
+  CHECK(sim.term_state[4]<=cfg.joint23_hi[1]);
+}

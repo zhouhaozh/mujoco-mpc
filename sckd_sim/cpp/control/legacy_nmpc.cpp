@@ -93,6 +93,8 @@ void EndPos(const double th[14], bool add_base_vx, double out[7]) {
 struct LegacyNmpc::Impl {
   casadi::Function solver;
   double racket_len = 0.85;
+  bool sim_joint23_limits = false;
+  double joint23_lo[2], joint23_hi[2];
 
   // ---- 回合/拍间状态(原类成员+文件级全局) ----
   double guess[kNp * kNu] = {0};   // 初值,块序 [dvx×3, dvy×3, …, dω5×3]
@@ -136,6 +138,9 @@ struct LegacyNmpc::Impl {
 LegacyNmpc::LegacyNmpc(const LegacyNmpcConfig& cfg) {
   impl_ = new Impl;
   impl_->racket_len = cfg.racket_len;
+  impl_->sim_joint23_limits = cfg.sim_joint23_limits;
+  std::copy(cfg.joint23_lo, cfg.joint23_lo+2, impl_->joint23_lo);
+  std::copy(cfg.joint23_hi, cfg.joint23_hi+2, impl_->joint23_hi);
   casadi::Dict opts;
   opts["ipopt.linear_solver"] = cfg.linear_solver;
   opts["ipopt.max_iter"] = cfg.max_iter;
@@ -229,6 +234,12 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
     im.acc_thr = 0.05;
   }
 
+  // 当前仿真零位与旧实机不同：MJCF 的 J2/J3 角窗替换旧实机角窗。
+  // 不改 MJCF，不放松速度、加速度、精度或碰撞门。
+  if (im.sim_joint23_limits) {
+    im.m2_a1=im.joint23_lo[0]*180/M_PI; im.m2_a2=im.joint23_hi[0]*180/M_PI;
+    im.m3_a1=im.joint23_lo[1]*180/M_PI; im.m3_a2=im.joint23_hi[1]*180/M_PI;
+  }
   // ---- 决策变量界(块序;±[4,4,5,3,40,50,10]) ----
   std::vector<double> lbx, ubx;
   lbx.reserve(kNp * kNu); ubx.reserve(kNp * kNu);
@@ -342,6 +353,9 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
     casadi::Dict stats = im.solver.stats();
     const std::string st = static_cast<std::string>(stats.at("return_status"));
     solver_ok = (st == "Solve_Succeeded" || st == "Solved_To_Acceptable_Level");
+    if (getenv("NMPC6_DEBUG")) {
+      std::fprintf(stderr, "[nmpc6] status=%s target=(%.3f,%.3f,%.3f) T=%.3f q=(%.3f,%.3f,%.3f,%.3f,%.3f)\n", st.c_str(), tgt[0],tgt[1],tgt[2],req.dt[0]*3,cs_in[2],cs_in[3],cs_in[4],cs_in[5],cs_in[6]);
+    }
   } catch (const std::exception& e) {
     out->status = LegacyNmpcStatus::kSolverFail;
     out->solve_ms = std::chrono::duration<double>(

@@ -40,6 +40,8 @@ struct LegacyNmpcConfig {
                                                     // 进程工作目录解析)
   double racket_len = 0.85;                         // d5=−racket_len(X1 机型)
   std::string linear_solver = "mumps";              // mumps / ma57(需 libcoinhsl)
+  bool sim_joint23_limits = false;  // 仿真关节坐标直接来自加载的 MJCF
+  double joint23_lo[2] = {-3.14, -3.14}, joint23_hi[2] = {0.5, 0.5};
   int max_iter = 270;                               // IPOPT 上限(原值)
 };
 

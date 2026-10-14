@@ -2,6 +2,7 @@
 // 球轨迹预测器(§6.1/§3.6):物理 EKF(T1:重力+阻力,可选残余加速度)+ 反弹事件分段;
 // 附逐轴 CA 滤波(trobot 现役路线)作 A/B 基线——用数据说话,不被其绑架。
 #include "core/types.h"
+#include "estimation/ball_prediction_interface.h"
 #include "sim/ball_aero.h"
 
 namespace sckd {
@@ -17,7 +18,7 @@ struct BounceParams {
 };
 
 // ---------- 物理 EKF(主线):状态 [p(3), v(3)] ----------
-class BallPredictor {
+class BallPredictor : public BallPredictionInterface {
  public:
   // warmup_span_s:首次观测后等待该时距再差分定初速(300Hz 下约 18 帧,
   // σ_v≈√2·σ/span≈0.7 m/s),避免 v=0/P_v=100 的慢收敛拖垮 200ms 级前视

@@ -7,7 +7,7 @@ namespace sckd {
 HitPlanner::HitPlanner(const PlannerParams& pp, const BallAeroParams& aero)
     : pp_(pp), aero_(aero) {}
 
-void HitPlanner::RefineAt(const BallPredictor& predictor, const BaseState& base,
+void HitPlanner::RefineAt(const BallPredictionInterface& predictor, const BaseState& base,
                           HitPlan* hp, double t_now) {
   if (!hp || !hp->feasible) return;
   double p[3], v_in[3];
@@ -61,7 +61,7 @@ double HitPlanner::Score(const HitPlan& hp, const BaseState& base, double t_now)
   return s;
 }
 
-HitPlan HitPlanner::Plan(const BallPredictor& predictor, const BaseState& base,
+HitPlan HitPlanner::Plan(const BallPredictionInterface& predictor, const BaseState& base,
                          double t_now, const HitIntent& intent, double min_lead_s) {
   HitPlan best; best.feasible = false; best.score = -1e9;
   // 基线策略:只打反弹前;cross_bounce=1(2026-10-08,§3.5 地面支落地后开启)

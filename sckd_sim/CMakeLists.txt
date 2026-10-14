@@ -93,3 +93,7 @@ add_test(NAME wbo COMMAND test_wbo WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 add_test(NAME wbmpc COMMAND test_wbmpc WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 add_test(NAME legacy_nmpc COMMAND test_legacy_nmpc
          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+# Read-only external predictor contract probe; no motor/simulator commands.
+add_executable(m2_prediction_probe cpp/apps/m2_prediction_probe.cpp)
+target_link_libraries(m2_prediction_probe PRIVATE sckd_core)

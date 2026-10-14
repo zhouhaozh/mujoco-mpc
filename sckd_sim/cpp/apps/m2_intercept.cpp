@@ -1,3 +1,5 @@
+#include "estimation/socket_ball_predictor.h"
+#include <memory>
 // M2 验收:定点喂球拦截闭环(集成验收,≥80% 命中)。
 // 链路:发球 → 观测(300Hz/σ=30mm) → 预测器(EKF,差分预热) → 命中点规划
 //       → 底盘就位(P 控) → IK → 挥拍(绝对时序) → 触球 → 统计
@@ -303,6 +305,7 @@ int main(int argc, char** argv) {
   int wb_solves = 0, wb_rejects = 0, wb_fails = 0, wb_fallbacks = 0;
   double wb_ms_max = 0;
   // nmpc6 诊断(跨 trial 累计)
+  int n6_attempts = 0; double n6_attempt_ms = 0, n6_attempt_max_ms = 0;
   int n6_solves_t = 0, n6_rejects_t = 0, n6_fallbacks_t = 0;
   double n6_ms_max_t = 0, n6_ms_sum_t = 0;
   // 注:不加误差补偿模型(用户定向 2026-10-09:sim 跑 NMPC 本体真实行为,
@@ -350,7 +353,17 @@ int main(int argc, char** argv) {
     be.enable(-1, true);
     be.hold_arm(60.0, 1.5);
     servo = ChassisServo(be.chassis_config(), &be);
-    BallPredictor predictor(aero, 0.030, bp);
+    BallPredictor legacy_predictor(aero, 0.030, bp);
+    std::unique_ptr<SocketBallPredictor> remote_predictor;
+    const char* predictor_socket = std::getenv("BALL_PREDICTOR_SOCKET");
+    if (predictor_socket && *predictor_socket)
+      remote_predictor = std::make_unique<SocketBallPredictor>(predictor_socket);
+    BallPredictionInterface& predictor = remote_predictor
+      ? static_cast<BallPredictionInterface&>(*remote_predictor)
+      : static_cast<BallPredictionInterface&>(legacy_predictor);
+    const bool deduplicate_obs = remote_predictor || std::getenv("BALL_DEDUP");
+    double last_obs_t = -1e30;
+    std::printf("[predictor] %s dedup=%d\n", remote_predictor ? "external" : "legacy", deduplicate_obs);
     HitPlanner planner(pp, aero);
     SwingGenerator swing;
     ArmSwing aswing;
@@ -382,7 +395,17 @@ int main(int argc, char** argv) {
     double wb_tau = 0.0;        // τ̂ 闭环滞后补偿(EMA,采样时钟前移量)
     // nmpc6 每 trial 状态:旧机 NMPC 实例(回合态隔离;首解全零 guess 自触发
     // 新回合)+ 最后接受的 1ms 执行轨迹(Plans 式拷贝,绝对时刻采样)
-    LegacyNmpc n6;
+    LegacyNmpcConfig n6_config;
+    if (!std::getenv("NMPC6_LEGACY_LIMITS")) {
+      n6_config.sim_joint23_limits = true;
+      for (int k=0;k<2;++k) {
+        const int jid=mj_name2id(m,mjOBJ_JOINT,k==0?"Joint2":"Joint3");
+        if(jid<0 || !m->jnt_limited[jid]) throw std::runtime_error("missing MJCF arm limits");
+        n6_config.joint23_lo[k]=m->jnt_range[2*jid];
+        n6_config.joint23_hi[k]=m->jnt_range[2*jid+1];
+      }
+    }
+    LegacyNmpc n6(n6_config);
     std::vector<double> n6_pos, n6_vel;
     int n6_ms = 0;
     double n6_t0 = -1;
@@ -472,7 +495,9 @@ int main(int argc, char** argv) {
       }
       // 观测 → 预测;当前臂构型取实测
       BallObs obs;
-      if (be.get_ball_obs(&obs)) predictor.Update(obs);
+      if (be.get_ball_obs(&obs) && (!deduplicate_obs || obs.t > last_obs_t)) {
+        predictor.Update(obs); last_obs_t = obs.t;
+      }
       for (int j = 0; j < 5; ++j) {
         const JointReport jr = be.joint_measured(AxisArm(j));
         q_cur[j] = jr.q; dq_cur[j] = jr.dq;
@@ -635,7 +660,10 @@ int main(int argc, char** argv) {
               std::printf("  [n6T] t=%.3f T=%.3f base=(%.3f,%.3f) dq=%.3f\n",
                           ts, T6, dbx, dby, dqm);
             }
-            if (n6.Solve(rq, &r6)) {
+            const bool n6_accepted = n6.Solve(rq, &r6);
+            ++n6_attempts; n6_attempt_ms += r6.solve_ms;
+            n6_attempt_max_ms = std::max(n6_attempt_max_ms, r6.solve_ms);
+            if (n6_accepted) {
               if (getenv("N6_TRACE"))
                 std::printf("  [n6+] t=%.3f %s e=(%.3f,%.3f,%.3f) end=(%.2f,%.2f,%.2f) "
                             "q°=(%.0f,%.0f,%.0f,%.0f,%.0f)\n",
@@ -1261,6 +1289,7 @@ int main(int argc, char** argv) {
                 n6_solves_t, n6_rejects_t,
                 n6_solves_t ? n6_ms_sum_t / n6_solves_t : 0.0,
                 n6_ms_max_t, n6_fallbacks_t);
+  if (n6_mode) std::printf("NMPC attempts=%d mean_ms=%.3f max_ms=%.3f\n", n6_attempts, n6_attempt_ms/std::max(1,n6_attempts), n6_attempt_max_ms);
   if (base_spd_n > 0)
     std::printf("M3 指标: t_hit 底盘速度均值 %.2f m%s | 命中且触球底盘速度>0.5: %d/%d"
                 " | 拍速底盘贡献 %.0f%% | 出球速度 %.1f m/s\n",
