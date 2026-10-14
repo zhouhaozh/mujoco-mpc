@@ -19,3 +19,5 @@
 实测参考回放：`M2_MEASURED_REPLAY=<t_s,x_m,y_m,z_m CSV>` 启用原生采集帧输入；`TakeReceived`只取t≤当前时刻的帧，显示插值独立；参考球关闭物理冲量/碰撞，因此不统计击球命中率。`tools/record_measured_prediction_samples.py` 在Ubuntu `192.168.169.246`生成固定历史测试集105视频，各方法35条，目录 `sckd_sim/video/measured_test_20261014/`。坐标采用统一有效触地高度对齐，真实外参未标定；不追加噪声/15ms延迟，权重不变。7组CTest及20,190帧因果时钟核对、105视频解码/哈希通过。
 
 实测test录像拦截评估：`tools/evaluate_measured_interception.py` 对已记录的35条/方法状态，按当前球拍盒和球半径、最终计划±0.35s、接近速度≤−0.3m/s补算几何拦截，pfly/nmpc6/wbmpc为15/35、13/35、18/35；1ms/0.5ms状态插值细化分类一致。MPC含pfly回退，不计物理出球命中；原机器人记录10ms，插值误差和外参限制仍在。结果见 `sckd_sim/video/measured_test_20261014/interception_05ms.json`。
+
+1080p接触结束版本：`tools/render_measured_hd.py` 对已有实测test105源记录重渲染，首次球/拍面几何相交结束（无计划时窗/接近速度附加门槛），主画面随当前球和机器人收紧，近景改为机器人后方，1920×1080/60fps/CRF17。Ubuntu `sckd_sim/video/measured_test_20261014_hd/` 各方法35条，105视频与结束末帧独立验收通过；未更改求解、模型或源录制。
