@@ -1,3 +1,4 @@
+#include "core/stage_profile.h"
 #include "estimation/socket_ball_predictor.h"
 #include <memory>
 // M2 验收:定点喂球拦截闭环(集成验收,≥80% 命中)。
@@ -122,6 +123,7 @@ static bool RunWbmpc(WholebodyMpc& wb, const HitPlan& plan, SimBackend& be,
                      ArmIk& ik, double ts, const double q_cur[5],
                      const double dq_cur[5], bool have_prev,
                      const BaseRefGen::Schedule& sched, WmPlan* out) {
+  StageProfile::Scope profile("wbmpc_with_ik");
   // 内点接触(镜像 ArmSwing s_hit=0.72):接触流形挂内节点 k_c,其后 0.25s
   // = OCP 自己成形的随挥(不是恒速外推);接触时刻提前 30ms 让峰速落在触球
   // 带内——终端接触版实测触球抓到爬坡段拍速(1.5-2.5 vs 需求 3.3 m/s,
@@ -175,7 +177,7 @@ static bool RunWbmpc(WholebodyMpc& wb, const HitPlan& plan, SimBackend& be,
   req.k_contact = std::clamp(
       (int)std::lround((t_c - ts) / (req.t_hit - ts) * WholebodyMpc::kN),
       1, WholebodyMpc::kN - 3);
-  return wb.Solve(req, out);
+  return StageProfile::Measure("wbmpc_solver", [&]{return wb.Solve(req, out);});
 }
 
 // WmPlan 绝对时刻采样(节点间线性插值)。t 超出终端节点后按终端速度恒速
@@ -213,6 +215,7 @@ static void SampleWm(const WmPlan& p, double t, double q[5], double dq[5],
 }
 
 int main(int argc, char** argv) {
+  StageProfile::Get();
   const std::string scene = argc > 1 ? argv[1] : "models/generated/x4_tennis_demo.mjcf";
   const int kTrials = argc > 2 ? atoi(argv[2]) : 10;
   // 挥拍层选择:quintic(五次多项式基线)/ qp(轨迹 QP,§6.4 臂优化)
@@ -480,6 +483,7 @@ int main(int argc, char** argv) {
     intent.v_out_elev_deg = 15.0;
 
     for (int t = 1; t <= 6000; ++t) {  // 6s max
+      StageProfile::Scope loop_profile("complete_tick");
       const double ts = t * 0.001;
       // 球气动(真值侧;无旋简化,与预测器 T1 模型一致)
       // 单位:xfrc_applied 为力(N)→ 系数 0.5ρCdA(勿除质量,见 m2_predictor 注)
@@ -496,7 +500,7 @@ int main(int argc, char** argv) {
       // 观测 → 预测;当前臂构型取实测
       BallObs obs;
       if (be.get_ball_obs(&obs) && (!deduplicate_obs || obs.t > last_obs_t)) {
-        predictor.Update(obs); last_obs_t = obs.t;
+        StageProfile::Measure("observation_update", [&]{predictor.Update(obs);}); last_obs_t = obs.t;
       }
       for (int j = 0; j < 5; ++j) {
         const JointReport jr = be.joint_measured(AxisArm(j));
@@ -506,7 +510,7 @@ int main(int argc, char** argv) {
       // 初次规划:预测器就绪即规划(越早裕度越大)
       if (!planned && predictor.initialized()) {
         const BaseState bs = be.base_state();
-        plan = planner.Plan(predictor, bs, ts, intent);
+        plan = StageProfile::Measure("initial_planning", [&]{return planner.Plan(predictor, bs, ts, intent);});
         if (plan.feasible) {
           planned = true;
           t_plan0 = ts;
@@ -558,7 +562,7 @@ int main(int argc, char** argv) {
           } else if (use_qp && !n6_mode) {
             if (fly && !ocp_mode && ref_built)
               FillBasePred(plan, be, ts, mpc_ref[0], mpc_ref[1]);
-            aswing.Init(plan, q_cur, dq_cur, ik, ts);
+            StageProfile::Measure("arm_qp_init", [&]{aswing.Init(plan, q_cur, dq_cur, ik, ts);});
           }
           else if (!n6_mode) swing.Init(plan, q_cur, ik);
           // nmpc6:挥拍层不 Init(臂由 NMPC 轨迹接管;回退时才 Init)
@@ -576,7 +580,7 @@ int main(int argc, char** argv) {
       if (use_qp && !wb_mode && !n6_mode && planned && kInitDelay > 0 && !aswing.active() && ts >= t_plan0 + kInitDelay) {
         if (fly && !ocp_mode && ref_built)
           FillBasePred(plan, be, ts, mpc_ref[0], mpc_ref[1]);
-        aswing.Init(plan, q_cur, dq_cur, ik, ts);
+        StageProfile::Measure("arm_qp_init", [&]{aswing.Init(plan, q_cur, dq_cur, ik, ts);});
         if (!aswing.active() && ts - t_plan0 < kInitDelay + 0.60)   // 初解失败诊断(限窗打印)
           std::printf("  [init-fail] t=%.2f p=(%.2f,%.2f,%.2f) base_t=(%.2f,%.2f) t_hit=%.2f\n",
                       ts, plan.p_hit[0], plan.p_hit[1], plan.p_hit[2],
@@ -590,7 +594,7 @@ int main(int argc, char** argv) {
                              : (!swing.locked() || wb_mode || n6_mode)) &&
           t % 20 == 0) {
         const BaseState bs2 = be.base_state();
-        planner.RefineAt(predictor, bs2, &plan, ts);
+        StageProfile::Measure("target_refinement", [&]{planner.RefineAt(predictor, bs2, &plan, ts);});
         ++replans;
         // 底盘参考终点:锁止后冻结(fly-through 末段 chasing 收敛中的目标会
         // 拉偏触球几何,随机族 plan_err 0.94/1.05 反例,2026-10-07);臂仍可微调
@@ -660,7 +664,7 @@ int main(int argc, char** argv) {
               std::printf("  [n6T] t=%.3f T=%.3f base=(%.3f,%.3f) dq=%.3f\n",
                           ts, T6, dbx, dby, dqm);
             }
-            const bool n6_accepted = n6.Solve(rq, &r6);
+            const bool n6_accepted = StageProfile::Measure("nmpc6_solver", [&]{return n6.Solve(rq, &r6);});
             ++n6_attempts; n6_attempt_ms += r6.solve_ms;
             n6_attempt_max_ms = std::max(n6_attempt_max_ms, r6.solve_ms);
             if (n6_accepted) {
@@ -705,7 +709,7 @@ int main(int argc, char** argv) {
               mpc_sched.ty = plan.base_target[1];
               mpc_sched.t_arrive = std::clamp(plan.t_hit - ts, 0.35, 1.5);
               mpc_sched.v_fly = std::hypot(plan.v_base_star[0], plan.v_base_star[1]);
-              if (use_qp) aswing.Init(plan, q_cur, dq_cur, ik, ts);
+              if (use_qp) StageProfile::Measure("arm_qp_init", [&]{aswing.Init(plan, q_cur, dq_cur, ik, ts);});
               else swing.Init(plan, q_cur, ik);
               std::printf("  [n6-fallback] t=%.2f 连败 %d 拍 → B′(pfly+挥拍层)\n",
                           ts, n6_fails_streak);
@@ -755,7 +759,7 @@ int main(int argc, char** argv) {
               mpc_sched.ty = plan.base_target[1];
               mpc_sched.t_arrive = std::clamp(plan.t_hit - ts, 0.35, 1.5);
               mpc_sched.v_fly = std::hypot(plan.v_base_star[0], plan.v_base_star[1]);
-              if (use_qp) aswing.Init(plan, q_cur, dq_cur, ik, ts);
+              if (use_qp) StageProfile::Measure("arm_qp_init", [&]{aswing.Init(plan, q_cur, dq_cur, ik, ts);});
               else swing.Init(plan, q_cur, ik);
               std::printf("  [wb-fallback] t=%.2f 连败 %d 拍 → B′(pfly+挥拍层)\n",
                           ts, wb_fails_streak);
@@ -785,7 +789,7 @@ int main(int argc, char** argv) {
             // v2 triage:臂终值按预测实际底盘解(P 控误差外推)
             FillBasePred(plan, be, ts, mpc_ref[0], mpc_ref[1]);
           }
-          if (aswing.active()) aswing.UpdatePlan(plan, ik, ts);
+          if (aswing.active()) StageProfile::Measure("arm_qp_replan", [&]{aswing.UpdatePlan(plan, ik, ts);});
         }
         else if (swing.active()) swing.UpdatePlan(plan, ik);
         else swing.Init(plan, q_cur, ik);
@@ -1008,7 +1012,7 @@ int main(int argc, char** argv) {
                                 std::clamp(2.5*ey, -1.5, 1.5), 0});
         }
       }
-      servo.update(ts);
+      StageProfile::Measure("chassis_servo", [&]{servo.update(ts);});
       // 臂:wbmpc 直接跟踪 OCP 解(挥拍层旁路)/ 挥拍(绝对时序)/ 保持实测构型
       ArmHybridCmd ac;
       for (int j = 0; j < 5; ++j) { ac.kp[j]=60; ac.kd[j]=(j==4?1.5:6.0); }
@@ -1025,7 +1029,7 @@ int main(int argc, char** argv) {
           ac.kp[j] = (j == 0) ? 250 : 120;   // wbmpc 执行段增益同源(已标定)
           ac.kd[j] = (j == 0) ? 3.0 : (j == 4 ? 1.5 : 8.0);
         }
-      } else if (use_qp ? aswing.Update(ts, q_cur, sc) : (swing.active() && swing.Update(ts, sc))) {
+      } else if (use_qp ? StageProfile::Measure("arm_sample", [&]{return aswing.Update(ts, q_cur, sc);}) : (swing.active() && swing.Update(ts, sc))) {
         for (int j = 0; j < 5; ++j) {
           ac.q[j]=sc.q[j]; ac.dq[j]=sc.dq[j]; ac.kp[j]=sc.kp[j]; ac.kd[j]=sc.kd[j];
         }
@@ -1055,13 +1059,15 @@ int main(int argc, char** argv) {
         }
       }
       double ff[5];
-      if (be.arm_gravity(ac.q, ff)) for (int j=0;j<5;++j) ac.tau_ff[j]=ff[j];
+      if (StageProfile::Measure("arm_gravity", [&]{return be.arm_gravity(ac.q, ff);})) for (int j=0;j<5;++j) ac.tau_ff[j]=ff[j];
       // 惯性前馈:τ_ff += Î·q̈(对角估计;挥拍段跟踪误差 I·a/kp 的直接抵消)
       static constexpr double kArmInertia[5] = {1.2, 2.0, 0.8, 0.3, 0.05};
       for (int j = 0; j < 5; ++j)
         ac.tau_ff[j] += kArmInertia[j] *
                         (wb_exec ? wb_ddq[j] : (n6_exec ? 0.0 : sc.ddp[j]));
-      be.set_arm_hybrid(ac);
+      StageProfile::Measure("actuator_write", [&]{be.set_arm_hybrid(ac);});
+      if(wb_exec) StageProfile::Get().Count("wbmpc_execution_ticks");
+      if(n6_exec) StageProfile::Get().Count("nmpc6_execution_ticks");
       // 拍-球解析冲量(§3.5 已知碰撞模型;求解器接触对已排除,真值侧在此施
       // 加)。命中事件接管 [calib] 标定捕获
       {
@@ -1094,7 +1100,7 @@ int main(int argc, char** argv) {
             ApplyGroundImpulse(d, ball_qadr, ball_vadr, gnd_pp);
         if (gev.fired && !gev.resting && t_ground < 0) t_ground = ts;
       }
-      be.run(1);
+      StageProfile::Measure("physics_and_motor_step", [&]{be.run(1);});
 
       // 接触检测:球速方向改变(-x → +x)
       const double vx = d->qvel[ball_vadr];

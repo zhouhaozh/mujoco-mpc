@@ -9,3 +9,5 @@
 真实数据的所选配方为 GP＋自适应/Huber＋恢复保护＋MLP，首次触地后停更 100 ms，最长预测 1.5 s，残差最长 0.7 s。合成球上的命中率未全面胜过原 EKF；预测展开平均 33.56 ms，当前仅研究仿真，不是硬实时或实机验收。
 
 复现实验：`tools/evaluate_predictor_control.py --team . --prediction ../mpc_sim --out ../mpc_sim/artifacts/tennis_controller/<新的结果目录>`。默认 3 种预测配置×2 控制器×3 发球族×3 种子×10 球，保持未命中、不可规划和回退记录。每次使用新的结果目录，避免混合耗时日志。
+
+本轮已加入 wbmpc；数据来源与频率报告为主线 `docs/tennis_wbmpc_and_frequency.md`。评估脚本默认覆盖三控制器，`--modes` 可指定；`--profile` 写出分阶段耗时，单进程测频使用 `--workers 1`。MPC 失败/拒收和 pfly 回退保留计数。

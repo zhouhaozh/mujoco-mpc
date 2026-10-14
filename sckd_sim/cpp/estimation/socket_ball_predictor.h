@@ -1,4 +1,5 @@
 #pragma once
+#include "core/stage_profile.h"
 #include "estimation/ball_prediction_interface.h"
 #include <nlohmann/json.hpp>
 #include <sys/socket.h>
@@ -19,6 +20,8 @@ class SocketBallPredictor final : public BallPredictionInterface {
  mutable bool dirty_=true; mutable double bounce_=-1;
  mutable std::vector<Point> grid_;
  Json Call(Json request) const {
+  const auto op=request.value("op",std::string());
+  StageProfile::Scope profile(op=="forecast"?"ipc_forecast":op=="update"?"ipc_update":"ipc_reset");
   request["schema"]="BALL_FORECAST/1";
   std::string text=request.dump()+"\n";size_t offset=0;
   while(offset<text.size()) { auto n=send(fd_,text.data()+offset,text.size()-offset,MSG_NOSIGNAL);if(n<=0)throw std::runtime_error("predictor IPC send failed");offset+=n; }
