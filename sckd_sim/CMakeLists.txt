@@ -97,3 +97,8 @@ add_test(NAME legacy_nmpc COMMAND test_legacy_nmpc
 # Read-only external predictor contract probe; no motor/simulator commands.
 add_executable(m2_prediction_probe cpp/apps/m2_prediction_probe.cpp)
 target_link_libraries(m2_prediction_probe PRIVATE sckd_core)
+
+# 原生实测采样时钟和显示参考必须分离，检查未来前缀不影响已收到帧。
+add_executable(measured_replay_check cpp/apps/measured_replay_check.cpp)
+target_include_directories(measured_replay_check PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cpp)
+add_test(NAME measured_replay COMMAND measured_replay_check ${CMAKE_CURRENT_BINARY_DIR}/measured-check)

@@ -120,9 +120,12 @@ def render(team,out,mode,speed,rows_data=None,output_path=None,label="对侧发�
    grid=(row['forecast'] or {}).get('grid',[]);seq=(row['forecast'] or {}).get('seq',0)
    age=f"{(row['t']-grid[0][0])*1000:.0f} ms" if grid else '预热中'
    dr.text((24,53),f"仿真时间 {row['t']:.2f}s   |   {speed:g}× 慢放   |   预测版本 {seq}   |   预测锚点龄期 {age}",font=fonts[1],fill='#dbe4f0')
-   dr.text((24,86),'青色：已发生的真值轨迹     橙色：当前缓存预测     粉色：规划击球点',font=fonts[1],fill='#e3eaf4')
+   legend='青色：已发生的实测参考' if row.get('measurement_replay',False) else '青色：已发生的真值轨迹'
+   dr.text((24,86),legend+'     橙色：当前缓存预测     粉色：规划击球点',font=fonts[1],fill='#e3eaf4')
+   measured_view=row.get('measurement_replay',False)
    status='已判定命中，隐藏旧来球预测' if row['hit'] else ('已回退 pfly' if row['fallback'] else '闭环运行')
    if i>=count-60 and not final_hit:status='本次未命中（如实保留）'
+   if measured_view:status='实测参考回放：不判定物理击球命中'
    dr.text((24,684),f'{status}   |   离线按仿真时间回放，不代表墙钟实时运行速度',font=fonts[2],fill='white')
    dr.text((764,394),'机器人近景',font=fonts[2],fill='white')
    if previews and i in (0,count//2,count-1):frame.save(output.with_name(output.stem+f'_preview_{i}.png'))
@@ -133,8 +136,8 @@ def render(team,out,mode,speed,rows_data=None,output_path=None,label="对侧发�
  temp_output.replace(output)
  seqs=sorted({(r['forecast'] or {}).get('seq',0) for r in rows}-{0})
  crossings=[r for a,r in zip(rows,rows[1:]) if a['ball'][0]>=11.885>r['ball'][0]]
- result={'mode':mode,'frames':count,'fps':fps,'playback_speed':speed,'simulation_seconds':float(ts[-1]),'prediction_versions':len(seqs),'initial_position':rows[0]['ball'],'net_crossing_height':crossings[0]['ball'][2] if crossings else None,'hit':any(r['hit'] for r in rows),'fallback':any(r['fallback'] for r in rows),'video':str(output)}
- result.update(sample=label,ground_contacts=rows[-1].get('ground_contacts'),cut_at_second_contact=True)
+ result={'mode':mode,'frames':count,'fps':fps,'playback_speed':speed,'simulation_seconds':float(ts[-1]),'prediction_versions':len(seqs),'initial_position':rows[0]['ball'],'net_crossing_height':crossings[0]['ball'][2] if crossings else None,'hit':None if rows[0].get('measurement_replay') else any(r['hit'] for r in rows),'fallback':any(r['fallback'] for r in rows),'video':str(output)}
+ result.update(measurement_replay=bool(rows[0].get('measurement_replay')),sample=label,ground_contacts=rows[-1].get('ground_contacts'),cut_at_second_contact=True)
  output.with_suffix('.json').write_text(json.dumps(result,indent=2)+'\n')
  return result
 

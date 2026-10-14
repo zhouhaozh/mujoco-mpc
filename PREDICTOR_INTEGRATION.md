@@ -15,3 +15,5 @@
 对侧发球录像：新增 `tools/record_prediction_demo.py`，`opposite` 发球配置从 `(16,-0.5,2)` 越网。预测曲线只读取当前控制器缓存，不增加预测调用；每10ms记录真实状态，离线 MuJoCo 渲染0.25×慢放。Ubuntu 视频位于 `sckd_sim/video/prediction_opposite_20261014_v2/`，本组3方法均未命中，如实保留。详细说明见统一仓库 `demo/mujoco_motor_lab/docs/tennis_prediction_video.md`。
 
 全样本录像：`tools/record_all_prediction_samples.py` 批量重跑新预测器270球，加3段对侧演示，共273视频；已完整解码验收。Ubuntu `sckd_sim/video/all_prediction_samples_20261014/{pfly,nmpc6,wbmpc}/` 各91个。主镜头按球路取景，机器人近景放大，第二次触地后不显示。`index.csv`、同名JSON、根目录manifest保存对应样本与实际结果。历史测试无逐帧状态，因此本次是同配置重跑，不替代历史命中率。
+
+实测参考回放：`M2_MEASURED_REPLAY=<t_s,x_m,y_m,z_m CSV>` 启用原生采集帧输入；`TakeReceived`只取t≤当前时刻的帧，显示插值独立；参考球关闭物理冲量/碰撞，因此不统计击球命中率。`tools/record_measured_prediction_samples.py` 在Ubuntu `192.168.169.246`生成固定历史测试集105视频，各方法35条，目录 `sckd_sim/video/measured_test_20261014/`。坐标采用统一有效触地高度对齐，真实外参未标定；不追加噪声/15ms延迟，权重不变。7组CTest及20,190帧因果时钟核对、105视频解码/哈希通过。

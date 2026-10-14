@@ -1,5 +1,6 @@
 #include "core/stage_profile.h"
 #include "estimation/socket_ball_predictor.h"
+#include "estimation/measured_ball_replay.h"
 #include <memory>
 // M2 验收:定点喂球拦截闭环(集成验收,≥80% 命中)。
 // 链路:发球 → 观测(300Hz/σ=30mm) → 预测器(EKF,差分预热) → 命中点规划
@@ -218,6 +219,9 @@ int main(int argc, char** argv) {
   StageProfile::Get();
   const std::string scene = argc > 1 ? argv[1] : "models/generated/x4_tennis_demo.mjcf";
   const int kTrials = argc > 2 ? atoi(argv[2]) : 10;
+  const char* replay_path=std::getenv("M2_MEASURED_REPLAY");
+  const bool measured_replay=replay_path && *replay_path;
+  if(measured_replay && kTrials!=1)throw std::runtime_error("measured replay requires exactly one trial");
   // 挥拍层选择:quintic(五次多项式基线)/ qp(轨迹 QP,§6.4 臂优化)
   const bool use_qp = (argc > 3 && std::strcmp(argv[3], "qp") == 0);
   // QP 起挥延迟(秒,argv[4],默认 0.25):初规划后等待该时长再 Init。
@@ -276,6 +280,11 @@ int main(int argc, char** argv) {
   const int ball_vadr = m->jnt_dofadr[mj_name2id(m, mjOBJ_JOINT, "ball_free")];
   const int ball_bid = mj_name2id(m, mjOBJ_BODY, "ball");
   const int ball_gid = mj_name2id(m, mjOBJ_GEOM, "ball_geom");
+  if(measured_replay) {
+    // 外源轨迹不应对机器人施加伪造碰撞冲量。
+    auto* visual_model=const_cast<mjModel*>(m);
+    visual_model->geom_contype[ball_gid]=0;visual_model->geom_conaffinity[ball_gid]=0;
+  }
   const int face_gid = mj_name2id(m, mjOBJ_GEOM, "racket_face");
   const RacketImpulseParams ric_pp;   // 拍-球解析冲量(§3.5;k=0.5 待实机替换)
   const GroundImpulseParams gnd_pp;   // 地面解析冲量(§3.5 地面支;模型已排除对)
@@ -362,6 +371,8 @@ int main(int argc, char** argv) {
     be.enable(-1, true);
     be.hold_arm(60.0, 1.5);
     servo = ChassisServo(be.chassis_config(), &be);
+    std::unique_ptr<MeasuredBallReplay> measured;
+    if(measured_replay)measured=std::make_unique<MeasuredBallReplay>(replay_path);
     BallPredictor legacy_predictor(aero, 0.030, bp);
     std::unique_ptr<SocketBallPredictor> remote_predictor;
     const char* predictor_socket = std::getenv("BALL_PREDICTOR_SOCKET");
@@ -489,10 +500,16 @@ int main(int argc, char** argv) {
     for (int i = 0; i < 7; ++i) d->qpos[ball_qadr+i] = q[i];
     for (int i = 0; i < 3; ++i) { d->qvel[ball_vadr+i] = v[i]; d->qvel[ball_vadr+3+i] = w[i]; }
     mj_forward(m, d);
+    auto set_measured_reference=[&](double stamp) {
+      double p[3],speed[3];measured->Reference(stamp,p,speed);
+      for(int j=0;j<3;++j){d->qpos[ball_qadr+j]=p[j];d->qvel[ball_vadr+j]=speed[j];d->qvel[ball_vadr+3+j]=0;}
+      mj_forward(m,d);
+    };
+    if(measured)set_measured_reference(0);
     const double vx0 = v[0];
     auto record_video = [&](double time_s) {
       if (!video_trace) return;
-      nlohmann::json row={{"trial",trial},{"t",time_s},{"mode",base_mode},
+      nlohmann::json row={{"trial",trial},{"t",time_s},{"mode",base_mode},{"measurement_replay",measured_replay},{"received_observations",measured ? measured->received() : 0},
         {"qpos",std::vector<double>(d->qpos,d->qpos+m->nq)},
         {"qvel",std::vector<double>(d->qvel,d->qvel+m->nv)},
         {"ball",{d->qpos[ball_qadr],d->qpos[ball_qadr+1],d->qpos[ball_qadr+2]}},
@@ -512,7 +529,7 @@ int main(int argc, char** argv) {
       const double ts = t * 0.001;
       // 球气动(真值侧;无旋简化,与预测器 T1 模型一致)
       // 单位:xfrc_applied 为力(N)→ 系数 0.5ρCdA(勿除质量,见 m2_predictor 注)
-      {
+      if(!measured) {
         const double* bv = d->qvel + ball_vadr;
         const double vm = std::sqrt(bv[0]*bv[0]+bv[1]*bv[1]+bv[2]*bv[2]);
         const double area = M_PI * aero.radius * aero.radius;
@@ -524,7 +541,11 @@ int main(int argc, char** argv) {
       }
       // 观测 → 预测;当前臂构型取实测
       BallObs obs;
-      if (be.get_ball_obs(&obs) && (!deduplicate_obs || obs.t > last_obs_t)) {
+      if(measured) {
+        while(measured->TakeReceived(ts,&obs)) {
+          StageProfile::Measure("observation_update", [&]{predictor.Update(obs);});last_obs_t=obs.t;
+        }
+      } else if (be.get_ball_obs(&obs) && (!deduplicate_obs || obs.t > last_obs_t)) {
         StageProfile::Measure("observation_update", [&]{predictor.Update(obs);}); last_obs_t = obs.t;
       }
       for (int j = 0; j < 5; ++j) {
@@ -1095,7 +1116,7 @@ int main(int argc, char** argv) {
       if(n6_exec) StageProfile::Get().Count("nmpc6_execution_ticks");
       // 拍-球解析冲量(§3.5 已知碰撞模型;求解器接触对已排除,真值侧在此施
       // 加)。命中事件接管 [calib] 标定捕获
-      {
+      if(!measured) {
         const RacketImpulseEvent ev =
             ApplyRacketImpulse(m, d, face_gid, ball_qadr, ball_vadr, ric_pp);
         if (ev.fired) {
@@ -1120,7 +1141,7 @@ int main(int argc, char** argv) {
       // 地面解析冲量(§3.5 地面支;模型已排除 ball↔floor 求解器对,不调则
       // 球穿地)。事件置 t_ground:保持"落地后撞拍无效"判据语义(解析冲量
       // 下球不会持续处于 z<R 且 vz<0,旧观测式永不触发)
-      {
+      if(!measured) {
         const GroundImpulseEvent gev =
             ApplyGroundImpulse(d, ball_qadr, ball_vadr, gnd_pp);
         if (gev.fired && !gev.resting) {
@@ -1129,6 +1150,7 @@ int main(int argc, char** argv) {
         }
       }
       StageProfile::Measure("physics_and_motor_step", [&]{be.run(1);});
+      if(measured)set_measured_reference(ts);
 
       // 接触检测:球速方向改变(-x → +x)
       const double vx = d->qvel[ball_vadr];
@@ -1168,7 +1190,7 @@ int main(int argc, char** argv) {
       }
       if (t_ground < 0 && d->qpos[ball_qadr+2] < 0.033 && d->qvel[ball_vadr+2] < 0)
         t_ground = ts;
-      if (!ball_hit && vx > 0 && vx0 < 0) {   // 一次性(观察窗内不再重复计)
+      if (!measured && !ball_hit && vx > 0 && vx0 < 0) {   // 一次性(观察窗内不再重复计)
         ball_hit = true;
         t_flip = ts;
         // 翻转拍≠冲量完毕,再走 30ms 取稳态出射;GUI 下拉长到 0.8s 让球飞
@@ -1220,7 +1242,7 @@ int main(int argc, char** argv) {
           min_dist_decomp[2] = ip;
         }
       }
-      if (t % 10 == 0 || video_ground_contacts >= 2 || (post_contact == 1) ||
+      if (t % 10 == 0 || (measured && ts>=measured->end()) || video_ground_contacts >= 2 || (post_contact == 1) ||
           (d->qpos[ball_qadr+2] < 0.05 && (locked_saved ? ts > lock_t + 0.3 : ts > 1.0)))
         record_video(ts);
       // GUI 同步(60Hz,M2_VIEW)+ 实时节拍(m2_demo 同协议:seq/nq/nv/qpos/qvel)
@@ -1258,7 +1280,8 @@ int main(int argc, char** argv) {
                       d->qvel[ball_vadr+3], d->qvel[ball_vadr+4], d->qvel[ball_vadr+5]);
         break;
       }
-      if (d->qpos[ball_qadr+2] < 0.05 && (locked_saved ? ts > lock_t + 0.3 : ts > 1.0)) break;
+      if(measured) {if(ts>=measured->end())break;}
+      else if (d->qpos[ball_qadr+2] < 0.05 && (locked_saved ? ts > lock_t + 0.3 : ts > 1.0)) break;
       if (ts > 5.0) break;
     }
     // ocpfly 诊断累计(跨 trial)
@@ -1347,6 +1370,7 @@ int main(int argc, char** argv) {
     return fr >= 60.0 ? 0 : 1;
   }
   std::printf("%s (门槛 ≥80%%)\n", rate >= 80.0 ? "[PASS]" : "[FAIL]");
+  if(measured_replay)std::printf("[MEASURED REPLAY] 外源实测参考；无真实击球/出球判定，不能使用上述命中率作为验收。\n");
   if (sh) { fclose(sh); remove("/tmp/sckd_demo_state.bin"); remove("/tmp/sckd_demo_state.lock"); }
   mj_deleteData(d_ik);
   return rate >= 80.0 ? 0 : 1;
