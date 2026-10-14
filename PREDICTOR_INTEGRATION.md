@@ -17,3 +17,5 @@
 全样本录像：`tools/record_all_prediction_samples.py` 批量重跑新预测器270球，加3段对侧演示，共273视频；已完整解码验收。Ubuntu `sckd_sim/video/all_prediction_samples_20261014/{pfly,nmpc6,wbmpc}/` 各91个。主镜头按球路取景，机器人近景放大，第二次触地后不显示。`index.csv`、同名JSON、根目录manifest保存对应样本与实际结果。历史测试无逐帧状态，因此本次是同配置重跑，不替代历史命中率。
 
 实测参考回放：`M2_MEASURED_REPLAY=<t_s,x_m,y_m,z_m CSV>` 启用原生采集帧输入；`TakeReceived`只取t≤当前时刻的帧，显示插值独立；参考球关闭物理冲量/碰撞，因此不统计击球命中率。`tools/record_measured_prediction_samples.py` 在Ubuntu `192.168.169.246`生成固定历史测试集105视频，各方法35条，目录 `sckd_sim/video/measured_test_20261014/`。坐标采用统一有效触地高度对齐，真实外参未标定；不追加噪声/15ms延迟，权重不变。7组CTest及20,190帧因果时钟核对、105视频解码/哈希通过。
+
+实测test录像拦截评估：`tools/evaluate_measured_interception.py` 对已记录的35条/方法状态，按当前球拍盒和球半径、最终计划±0.35s、接近速度≤−0.3m/s补算几何拦截，pfly/nmpc6/wbmpc为15/35、13/35、18/35；1ms/0.5ms状态插值细化分类一致。MPC含pfly回退，不计物理出球命中；原机器人记录10ms，插值误差和外参限制仍在。结果见 `sckd_sim/video/measured_test_20261014/interception_05ms.json`。
