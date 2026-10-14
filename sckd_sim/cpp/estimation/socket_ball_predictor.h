@@ -17,6 +17,7 @@ class SocketBallPredictor final : public BallPredictionInterface {
  struct Point { double t; std::array<double,3> p,v; bool bounced; };
  int fd_=-1; mutable std::string buffer_; unsigned seq_=0;
  bool init_=false; double last_=-1e30; double x_[6]={};
+ mutable unsigned forecast_seq_=0;
  mutable bool dirty_=true; mutable double bounce_=-1;
  mutable std::vector<Point> grid_;
  Json Call(Json request) const {
@@ -40,7 +41,7 @@ class SocketBallPredictor final : public BallPredictionInterface {
    for(int j=0;j<3;++j)if(!std::isfinite(p.p[j])||!std::isfinite(p.v[j]))throw std::runtime_error("nonfinite forecast");
    grid_.push_back(p);
   }
-  dirty_=false;
+  forecast_seq_=seq_;dirty_=false;
  }
  public:
  explicit SocketBallPredictor(const char* path) {
@@ -59,6 +60,12 @@ class SocketBallPredictor final : public BallPredictionInterface {
   auto r=Call({{"op","update"},{"seq",++seq_},{"t_s",o.t},{"xyz",{o.p[0],o.p[1],o.p[2]}}});
   init_=r.at("initialized");last_=o.t;dirty_=true;
   if(init_)for(int i=0;i<6;++i)x_[i]=r.at("state").at(i);
+ }
+ // 仅导出控制器已经请求的缓存，不触发额外预测或读取未来真值。
+ Json CachedVisualization() const {
+  Json points=Json::array();
+  for(const auto& p:grid_)points.push_back({p.t,p.p[0],p.p[1],p.p[2]});
+  return {{"seq",forecast_seq_},{"grid",points}};
  }
  bool initialized() const override {return init_;}
  double t_last() const override {return last_;}

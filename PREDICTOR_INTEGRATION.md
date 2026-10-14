@@ -11,3 +11,5 @@
 复现实验：`tools/evaluate_predictor_control.py --team . --prediction ../mpc_sim --out ../mpc_sim/artifacts/tennis_controller/<新的结果目录>`。默认 3 种预测配置×2 控制器×3 发球族×3 种子×10 球，保持未命中、不可规划和回退记录。每次使用新的结果目录，避免混合耗时日志。
 
 本轮已加入 wbmpc；数据来源与频率报告为主线 `docs/tennis_wbmpc_and_frequency.md`。评估脚本默认覆盖三控制器，`--modes` 可指定；`--profile` 写出分阶段耗时，单进程测频使用 `--workers 1`。MPC 失败/拒收和 pfly 回退保留计数。
+
+对侧发球录像：新增 `tools/record_prediction_demo.py`，`opposite` 发球配置从 `(16,-0.5,2)` 越网。预测曲线只读取当前控制器缓存，不增加预测调用；每10ms记录真实状态，离线 MuJoCo 渲染0.25×慢放。Ubuntu 视频位于 `sckd_sim/video/prediction_opposite_20261014_v2/`，本组3方法均未命中，如实保留。详细说明见统一仓库 `demo/mujoco_motor_lab/docs/tennis_prediction_video.md`。

@@ -344,6 +344,12 @@ int main(int argc, char** argv) {
       sh = fopen("/tmp/sckd_demo_state.bin", "wb");
     }
   }
+  // 可选离线录像证据；读取真实状态用于画面，预测只读取已有缓存。
+  std::unique_ptr<FILE, decltype(&fclose)> video_trace(nullptr, &fclose);
+  if (const char* path = std::getenv("M2_VIDEO_TRACE")) {
+    video_trace.reset(fopen(path, "wx"));
+    if (!video_trace) throw std::runtime_error("cannot create new video trace");
+  }
   double plan_err_sum = 0; int plan_err_n = 0;
   // M3 移动击球指标:触球底盘速度 / 拍速底盘贡献占比 / 出球速度
   double base_spd_sum = 0; int base_spd_n = 0;
@@ -470,6 +476,12 @@ int main(int argc, char** argv) {
       sp.spin_rpm = 800;
       sp.spawn[0] = 4.8; sp.spawn[1] = -0.5; sp.spawn[2] = 3.0;
     }
+    // 单独演示族，保留原 fixed/rand/gs 基线。球网 x=11.885 m。
+    if (argc > 7 && std::strcmp(argv[7], "opposite") == 0) {
+      sp.spawn[0]=16.0; sp.spawn[1]=-0.5; sp.spawn[2]=2.0;
+      sp.speed=14.0; sp.elevation_deg=8.0; sp.azimuth_deg=180.0; sp.spin_rpm=0.0;
+      std::printf("[serve opposite] spawn=(16,-0.5,2) speed=14 elev=8 net_x=11.885\n");
+    }
     BallServer server(sp);
     double q[7], v[3], w[3];
     server.Spawn(q, v, w);
@@ -477,6 +489,18 @@ int main(int argc, char** argv) {
     for (int i = 0; i < 3; ++i) { d->qvel[ball_vadr+i] = v[i]; d->qvel[ball_vadr+3+i] = w[i]; }
     mj_forward(m, d);
     const double vx0 = v[0];
+    auto record_video = [&](double time_s) {
+      if (!video_trace) return;
+      nlohmann::json row={{"trial",trial},{"t",time_s},{"mode",base_mode},
+        {"qpos",std::vector<double>(d->qpos,d->qpos+m->nq)},
+        {"qvel",std::vector<double>(d->qvel,d->qvel+m->nv)},
+        {"ball",{d->qpos[ball_qadr],d->qpos[ball_qadr+1],d->qpos[ball_qadr+2]}},
+        {"hit",ball_hit},{"fallback",(wb_mode&&wb_dead)||(n6_mode&&n6_dead)},
+        {"target",plan.feasible ? nlohmann::json{plan.p_hit[0],plan.p_hit[1],plan.p_hit[2]} : nlohmann::json(nullptr)}};
+      row["forecast"]=remote_predictor ? remote_predictor->CachedVisualization() : nlohmann::json(nullptr);
+      std::fprintf(video_trace.get(), "%s\n",row.dump().c_str());
+    };
+    record_video(0.0);
 
     HitIntent intent;  // 全程同一意图(旧版重规划误用默认意图,已修)
     intent.v_out_speed = 8.0;
@@ -1192,6 +1216,7 @@ int main(int argc, char** argv) {
           min_dist_decomp[2] = ip;
         }
       }
+      if (t % 10 == 0) record_video(ts);
       // GUI 同步(60Hz,M2_VIEW)+ 实时节拍(m2_demo 同协议:seq/nq/nv/qpos/qvel)
       if (sh && t % 17 == 0) {
         uint64_t vseq = static_cast<uint64_t>(trial) * 100000 + t;
