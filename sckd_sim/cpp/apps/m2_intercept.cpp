@@ -422,6 +422,7 @@ int main(int argc, char** argv) {
     int n6_fails_streak = 0;
     double n6_tau = 0.0;        // τ̂ 臂伺服带宽差补偿(EMA,采样时钟前移量)
     double t_min_dist = -1;
+    int video_ground_contacts = 0;
     double t_ground = -1;   // 首次落地时刻(判"挥拍击球"还是"落地后撞拍")
     double t_flip = -1;     // 球速方向翻转时刻(跨反弹模式下判翻转是否在挥拍窗内)
     double t_bounce_plan = -1;  // 初规划时预测的反弹时刻(与 t_ground 对照诊断)
@@ -495,7 +496,7 @@ int main(int argc, char** argv) {
         {"qpos",std::vector<double>(d->qpos,d->qpos+m->nq)},
         {"qvel",std::vector<double>(d->qvel,d->qvel+m->nv)},
         {"ball",{d->qpos[ball_qadr],d->qpos[ball_qadr+1],d->qpos[ball_qadr+2]}},
-        {"hit",ball_hit},{"fallback",(wb_mode&&wb_dead)||(n6_mode&&n6_dead)},
+        {"ground_contacts",video_ground_contacts},{"hit",ball_hit},{"fallback",(wb_mode&&wb_dead)||(n6_mode&&n6_dead)},
         {"target",plan.feasible ? nlohmann::json{plan.p_hit[0],plan.p_hit[1],plan.p_hit[2]} : nlohmann::json(nullptr)}};
       row["forecast"]=remote_predictor ? remote_predictor->CachedVisualization() : nlohmann::json(nullptr);
       std::fprintf(video_trace.get(), "%s\n",row.dump().c_str());
@@ -1122,7 +1123,10 @@ int main(int argc, char** argv) {
       {
         const GroundImpulseEvent gev =
             ApplyGroundImpulse(d, ball_qadr, ball_vadr, gnd_pp);
-        if (gev.fired && !gev.resting && t_ground < 0) t_ground = ts;
+        if (gev.fired && !gev.resting) {
+          ++video_ground_contacts;
+          if (t_ground < 0) t_ground = ts;
+        }
       }
       StageProfile::Measure("physics_and_motor_step", [&]{be.run(1);});
 
@@ -1216,7 +1220,9 @@ int main(int argc, char** argv) {
           min_dist_decomp[2] = ip;
         }
       }
-      if (t % 10 == 0) record_video(ts);
+      if (t % 10 == 0 || video_ground_contacts >= 2 || (post_contact == 1) ||
+          (d->qpos[ball_qadr+2] < 0.05 && (locked_saved ? ts > lock_t + 0.3 : ts > 1.0)))
+        record_video(ts);
       // GUI 同步(60Hz,M2_VIEW)+ 实时节拍(m2_demo 同协议:seq/nq/nv/qpos/qvel)
       if (sh && t % 17 == 0) {
         uint64_t vseq = static_cast<uint64_t>(trial) * 100000 + t;

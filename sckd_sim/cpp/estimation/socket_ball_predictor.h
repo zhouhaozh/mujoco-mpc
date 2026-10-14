@@ -64,7 +64,7 @@ class SocketBallPredictor final : public BallPredictionInterface {
  // 仅导出控制器已经请求的缓存，不触发额外预测或读取未来真值。
  Json CachedVisualization() const {
   Json points=Json::array();
-  for(const auto& p:grid_)points.push_back({p.t,p.p[0],p.p[1],p.p[2]});
+  for(const auto& p:grid_)points.push_back({p.t,p.p[0],p.p[1],p.p[2],p.v[2],p.bounced});
   return {{"seq",forecast_seq_},{"grid",points}};
  }
  bool initialized() const override {return init_;}

@@ -13,3 +13,5 @@
 本轮已加入 wbmpc；数据来源与频率报告为主线 `docs/tennis_wbmpc_and_frequency.md`。评估脚本默认覆盖三控制器，`--modes` 可指定；`--profile` 写出分阶段耗时，单进程测频使用 `--workers 1`。MPC 失败/拒收和 pfly 回退保留计数。
 
 对侧发球录像：新增 `tools/record_prediction_demo.py`，`opposite` 发球配置从 `(16,-0.5,2)` 越网。预测曲线只读取当前控制器缓存，不增加预测调用；每10ms记录真实状态，离线 MuJoCo 渲染0.25×慢放。Ubuntu 视频位于 `sckd_sim/video/prediction_opposite_20261014_v2/`，本组3方法均未命中，如实保留。详细说明见统一仓库 `demo/mujoco_motor_lab/docs/tennis_prediction_video.md`。
+
+全样本录像：`tools/record_all_prediction_samples.py` 批量重跑新预测器270球，加3段对侧演示，共273视频；已完整解码验收。Ubuntu `sckd_sim/video/all_prediction_samples_20261014/{pfly,nmpc6,wbmpc}/` 各91个。主镜头按球路取景，机器人近景放大，第二次触地后不显示。`index.csv`、同名JSON、根目录manifest保存对应样本与实际结果。历史测试无逐帧状态，因此本次是同配置重跑，不替代历史命中率。
