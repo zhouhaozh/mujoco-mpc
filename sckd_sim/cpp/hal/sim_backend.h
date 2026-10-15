@@ -45,6 +45,11 @@ class SimBackend : public RobotInterface {
   void arm_effort(double raw[5], double applied[5], double cap[5]) const {
     for(int j=0;j<5;++j){raw[j]=motor_->last_raw_tau(AxisArm(j));applied[j]=motor_->last_tau_cmd(AxisArm(j));cap[j]=motor_->last_tau_cap(AxisArm(j));}
   }
+  MotorCmd motor_issued(int axis) const {return motor_->issued_command(axis);}
+  MotorCmd motor_effective(int axis) const {return motor_->effective_command(axis);}
+  double motor_raw(int axis) const {return motor_->last_raw_tau(axis);}
+  double motor_cap(int axis) const {return motor_->last_tau_cap(axis);}
+  bool arm_inverse(const double q[5],const double dq[5],const double ddq[5],double tau[5]);
   const MotorSystemConfig& motor_config() const { return cfg_; }
   const ChassisConfig& chassis_config() const { return chcfg_; }
   const mjModel* model() const { return m_; }

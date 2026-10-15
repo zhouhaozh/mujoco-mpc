@@ -91,6 +91,8 @@ void EndPos(const double th[14], bool add_base_vx, double out[7]) {
 }  // namespace
 
 struct LegacyNmpc::Impl {
+  LegacyNmpcConfig cfg;
+  casadi::Function actuator_rollout;
   casadi::Function solver;
   double racket_len = 0.85;
   bool sim_joint23_limits = false;
@@ -137,6 +139,7 @@ struct LegacyNmpc::Impl {
 
 LegacyNmpc::LegacyNmpc(const LegacyNmpcConfig& cfg) {
   impl_ = new Impl;
+  impl_->cfg=cfg;
   impl_->racket_len = cfg.racket_len;
   impl_->sim_joint23_limits = cfg.sim_joint23_limits;
   std::copy(cfg.joint23_lo, cfg.joint23_lo+2, impl_->joint23_lo);
@@ -165,6 +168,7 @@ LegacyNmpc::LegacyNmpc(const LegacyNmpcConfig& cfg) {
   // nlpsol 从 .so 动态加载生成码(等价原 set_my_nmpc_solver_dll 的
   // casadi::nlpsol("nlpsol","ipopt","nlp.so",opts))
   impl_->solver = casadi::nlpsol("nmpc6", "ipopt", cfg.nlp_so, opts);
+  if(cfg.actuator_prediction)impl_->actuator_rollout=casadi::external("actuator_rollout","third_party/nmpc6/actuator_rollout.so");
 }
 
 LegacyNmpc::~LegacyNmpc() { delete impl_; }
@@ -183,6 +187,12 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
   const auto t0 = std::chrono::steady_clock::now();
   *out = LegacyNmpcResult{};
 
+  if(im.cfg.enforce_feasibility) {
+    bool valid=true;for(double x:req.state)valid=valid&&std::isfinite(x);
+    for(double x:req.target)valid=valid&&std::isfinite(x);
+    for(double h:req.dt)valid=valid&&std::isfinite(h)&&h>0;
+    if(!valid){out->status=LegacyNmpcStatus::kInputInvalid;++rejects;return false;}
+  }
   // 状态本地拷贝(回合重置时对 ω4 清零会改它,后续全部用这份 —— 原语义)
   double cs_in[kNs];
   std::memcpy(cs_in, req.state, sizeof(double) * kNs);
@@ -286,10 +296,17 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
     by_lo = std::max(by_lo, req.base_anchor[1] - req.base_anchor_r);
     by_hi = std::min(by_hi, req.base_anchor[1] + req.base_anchor_r);
   }
-  auto push_state_bounds = [&]() {          // 位置块 ×2(刹车行 + 步末行)
+  auto push_state_bounds = [&](bool endpoint) {          // 位置块 ×2(刹车行 + 步末行)
     for (int k = 0; k < kNp; ++k) {
-      lbg.push_back(bx_lo);  ubg.push_back(bx_hi);   // x(默认全场;锚窗)
-      lbg.push_back(by_lo);  ubg.push_back(by_hi);   // y(左边界弃右手挥拍)
+      const bool terminal_anchor=!im.cfg.enforce_feasibility || (endpoint&&k==kNp-1);
+      lbg.push_back(terminal_anchor?bx_lo:-1.0); ubg.push_back(terminal_anchor?bx_hi:5.7);   // x(默认全场;锚窗)
+      lbg.push_back(terminal_anchor?by_lo:-2.0); ubg.push_back(terminal_anchor?by_hi:2.0);   // y(左边界弃右手挥拍)
+      if(im.cfg.enforce_feasibility&&endpoint&&k<kNp-1&&req.corridor_ok){
+        lbg[lbg.size()-2]=std::max(-1.0,req.corridor_xy[k][0]-req.corridor_radius);
+        ubg[ubg.size()-2]=std::min(5.7,req.corridor_xy[k][0]+req.corridor_radius);
+        lbg.back()=std::max(-2.0,req.corridor_xy[k][1]-req.corridor_radius);
+        ubg.back()=std::min(2.0,req.corridor_xy[k][1]+req.corridor_radius);
+      }
       lbg.push_back(im.m1_a1 * D2R); ubg.push_back(im.m1_a2 * D2R);
       lbg.push_back(im.m2_a1 * D2R); ubg.push_back(im.m2_a2 * D2R);
       lbg.push_back(im.m3_a1 * D2R); ubg.push_back(im.m3_a2 * D2R);
@@ -297,11 +314,11 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
       lbg.push_back(im.m5_lo * D2R); ubg.push_back(im.m5_hi * D2R);
     }
   };
-  push_state_bounds();
-  push_state_bounds();
+  push_state_bounds(false);
+  push_state_bounds(true);
   for (int k = 0; k < kNp; ++k) {           // 底盘速度
-    lbg.push_back(-4.0); ubg.push_back(4.0);
-    lbg.push_back(-4.0); ubg.push_back(4.0);
+    lbg.push_back(im.cfg.enforce_feasibility?-2.1:-4.0); ubg.push_back(im.cfg.enforce_feasibility?2.1:4.0);
+    lbg.push_back(im.cfg.enforce_feasibility?-2.1:-4.0); ubg.push_back(im.cfg.enforce_feasibility?2.1:4.0);
   }
   {                                          // 关节速度(分型选表;口径=目标
     const bool front =                      // x>5.0,与角窗的 pitch>50 不同,
@@ -335,6 +352,7 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
   p.push_back(use_plat_vx ? 1.0 : 0.0);     // 末端vx是否计入底盘vx
   p.push_back(tgt[2] < 0.99 ? 10.0 : 0.0);  // 低球 vy 目标偏置(速度误差权重)
 
+  if(im.cfg.actuator_prediction){for(double x:req.effective_q)p.push_back(x);for(double x:req.effective_dq)p.push_back(x);}
   // ---- 求解 ----
   bool solver_ok = false;
   std::vector<double> res_control_all;
@@ -353,6 +371,21 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
     casadi::Dict stats = im.solver.stats();
     const std::string st = static_cast<std::string>(stats.at("return_status"));
     solver_ok = (st == "Solve_Succeeded" || st == "Solved_To_Acceptable_Level");
+    const auto gv=std::vector<double>(res.at("g"));
+    double violation=0;
+    for(size_t i=0;i<gv.size();++i)violation=std::max(violation,std::max(lbg[i]-gv[i],gv[i]-ubg[i]));
+    for(size_t i=0;i<res_control_all.size();++i) {
+      if(!std::isfinite(res_control_all[i]))violation=1e9;
+      violation=std::max(violation,std::max(lbx[i]-res_control_all[i],res_control_all[i]-ubx[i]));
+    }
+    for(double g:gv)if(!std::isfinite(g))violation=1e9;
+    out->max_constraint_violation=violation;
+    out->solver_ok=solver_ok;
+    if(im.cfg.enforce_feasibility&&(!solver_ok||violation>im.cfg.constraint_tolerance)) {
+      out->status=solver_ok?LegacyNmpcStatus::kConstraintViolation:LegacyNmpcStatus::kSolverFail;
+      out->solve_ms=std::chrono::duration<double>(std::chrono::steady_clock::now()-t0).count()*1e3;
+      ++rejects;return false;
+    }
     if (getenv("NMPC6_DEBUG")) {
       std::fprintf(stderr, "[nmpc6] status=%s target=(%.3f,%.3f,%.3f) T=%.3f q=(%.3f,%.3f,%.3f,%.3f,%.3f)\n", st.c_str(), tgt[0],tgt[1],tgt[2],req.dt[0]*3,cs_in[2],cs_in[3],cs_in[4],cs_in[5],cs_in[6]);
     }
@@ -502,12 +535,20 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
   // ---- 精度门(双档):严格 = 三轴<acc_thr 且 |vx|>0.6·hit_spd;
   //      宽松 = 三轴<0.20 且 IPOPT 成功。严格档不要求 solver_ok(原语义),
   //      但 solve_number/跳变锚/m5 收紧只在 严格+solver_ok 时推进 ----
+  if(im.cfg.actuator_prediction) {
+    auto predicted=std::vector<double>(im.actuator_rollout(std::vector<casadi::DM>{casadi::DM(res_control_all),casadi::DM(p)}).at(0));
+    EndPos(predicted.data(),use_plat_vx,ep);
+  }
   const double ex = std::fabs(ep[0] - tgt[0]);
   const double ey = std::fabs(ep[1] - tgt[1]);
   const double ez = std::fabs(ep[2] - tgt[2]);
   bool strict = ex < im.acc_thr && ey < im.acc_thr && ez < im.acc_thr &&
                 std::fabs(ep[4]) > hit_spd * 0.6;
   bool loose = ex < 0.20 && ey < 0.20 && ez < 0.20 && solver_ok;
+  if(im.cfg.enforce_feasibility) {
+    strict=strict&&solver_ok&&std::hypot(ep[0]-req.target[0],ep[1]-req.target[1],ep[2]-req.target[2])<=im.cfg.terminal_tolerance_m;
+    loose=false;
+  }
   if (!strict && !loose) {
     out->status = LegacyNmpcStatus::kAccFail;
     out->solver_ok = solver_ok;

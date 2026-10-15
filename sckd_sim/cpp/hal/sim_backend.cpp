@@ -147,6 +147,15 @@ bool SimBackend::arm_gravity(const double q[kNumArm], double tau_ff[kNumArm]) {
   return true;
 }
 
+bool SimBackend::arm_inverse(const double q[5],const double dq[5],const double ddq[5],double tau[5]) {
+  if(!ok())return false;
+  mj_resetDataKeyframe(m_,scratch_,0);scratch_->qpos[2]+=.5;
+  for(int j=0;j<5;++j){int a=AxisArm(j);scratch_->qpos[qadr_[a]]=q[j];scratch_->qvel[vadr_[a]]=dq[j];scratch_->qacc[vadr_[a]]=ddq[j];}
+  mj_inverse(m_,scratch_);
+  for(int j=0;j<5;++j)tau[j]=scratch_->qfrc_inverse[vadr_[AxisArm(j)]];
+  return true;
+}
+
 void SimBackend::set_arm_hybrid(const ArmHybridCmd& cmd) {
   for (int j = 0; j < kNumArm; ++j) {
     MotorCmd c;

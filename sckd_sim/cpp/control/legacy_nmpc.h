@@ -42,6 +42,10 @@ struct LegacyNmpcConfig {
   std::string linear_solver = "mumps";              // mumps / ma57(需 libcoinhsl)
   bool sim_joint23_limits = false;  // 仿真关节坐标直接来自加载的 MJCF
   double joint23_lo[2] = {-3.14, -3.14}, joint23_hi[2] = {0.5, 0.5};
+  bool actuator_prediction = false;
+  bool enforce_feasibility = false; // 新候选：终端锚、状态/约束/精度联合验收
+  double constraint_tolerance = 1e-4;
+  double terminal_tolerance_m = .05;
   int max_iter = 270;                               // IPOPT 上限(原值)
 };
 
@@ -50,6 +54,7 @@ struct LegacyNmpcRequest {
   double state[14] = {0};
   double target[3] = {0};      // 击球点(m,世界系)
   double dt[3] = {0};          // 每步时长(s;和=剩余击球时间,均分由调用方给)
+  double effective_q[5]={0},effective_dq[5]={0};
   double hit_spd = 10.0;       // 出球速度 m/s(拍末端 vx 目标)
   double hit_yaw_deg = 0.0;    // 出球方位(°)
   double hit_pitch_deg = 20.0; // 出球仰角(°,决定拍面法向目标)
@@ -59,6 +64,7 @@ struct LegacyNmpcRequest {
   // 由上游走位策略保证;sim 侧同源物 = 规划器 base_target(IK 可达环带)。
   // 不加时 NMPC 自由落位出现过"底盘停 1.3m 外臂全伸展凑目标",末段目标
   // 精化外移 → 全拒收 → 冻结旧计划,全伸展下关节小误差拍端放大 0.36m miss
+  bool corridor_ok=false;double corridor_xy[3][2]={{0}};double corridor_radius=.25;
   bool base_anchor_ok = false;
   double base_anchor[2] = {0, 0};
   double base_anchor_r = 0.40;
@@ -72,10 +78,12 @@ enum class LegacyNmpcStatus {
   kJump,           // 与上一接受解跳变过大(m1>60°/m3>50°/m4>90°)
   kAngleLimit,     // rollout 终态角度超窗(动态角窗+10°)
   kAccFail,        // 精度门未过且不满足宽松档(解不可用)
+  kConstraintViolation, kInputInvalid, kTerminalError,
 };
 
 struct LegacyNmpcResult {
   LegacyNmpcStatus status = LegacyNmpcStatus::kAccFail;
+  double max_constraint_violation = 0;
   bool solver_ok = false;      // IPOPT return_status ∈ {Solved, Acceptable}
   double term_state[14] = {0}; // rollout 终态=下发目标(x/y 含末端误差反馈修正)
   double controls[21] = {0};   // 控制增量,块序 [dvx×3, dvy×3, dω1×3 … dω5×3]

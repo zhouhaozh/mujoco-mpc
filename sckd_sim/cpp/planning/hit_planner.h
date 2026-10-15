@@ -4,6 +4,8 @@
 #include "estimation/ball_predictor.h"
 #include "core/types.h"
 #include "sim/ball_aero.h"
+#include <functional>
+#include <string>
 
 namespace sckd {
 
@@ -17,6 +19,8 @@ struct HitIntent {
 };
 
 struct HitPlan {
+  unsigned long version=0; double capture_time=-1;
+  double v_out[3]={0};
   double p_hit[3] = {0, 0, 0};
   double t_hit = 0;
   double base_target[3] = {0, 0, 0};
@@ -53,6 +57,7 @@ struct PlannerParams {
   double fly_speed_max = 1.2;      // v_base* 上限(m/s,移动击球方案 B′)
   int fly_rule = 0;                // 0=B′ 原规则;1=方案B v0 OCP 蒸馏规则
   double fly_sat = 0.55;           // 规则 1 的饱和系数(见 hit_planner.cpp 注)
+  bool atomic_targets=false;
   int cross_bounce = 0;            // 0=只打反弹前(基线);1=允许反弹后候选(跨反弹
                                    // 规划,§3.5 地面支落地后开启:预测器与真值侧
                                    // 同为已知反弹模型,跨反弹残差=估计误差 0.064;
@@ -62,6 +67,10 @@ struct PlannerParams {
 class HitPlanner {
  public:
   HitPlanner(const PlannerParams& pp, const BallAeroParams& aero);
+  std::function<bool(const HitPlan&,const BaseState&,double)> contact_feasible;
+  int checked=0,rejected=0;
+  std::string last_reject;
+
   // min_lead_s:候选击球时刻相对 t_now 的最小提前量;-1(默认)取 prep+swing
   // (首次规划,底盘需就位时间);重规划传挥拍服务窗(约 0.55s,底盘已在途)
   HitPlan Plan(const BallPredictionInterface& predictor, const BaseState& base,

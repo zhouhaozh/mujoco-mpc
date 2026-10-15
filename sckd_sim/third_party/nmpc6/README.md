@@ -52,3 +52,16 @@ ctest --test-dir build -R legacy_nmpc   # 回归(实机日志参数用例,sim FK
 ## 许可
 
 CasADi runtime 部分 MIT-0,用户代码部分归用户(灵足/旧仓库作者)。
+
+## 2026-10-15：可选执行器状态预测库
+
+`gen_nlp.cc`不传参数时仍生成原27参数/87约束模型；传入项目辨识JSON时生成独立37参数/87约束 `nlp_servo.c`及`actuator_rollout.c`。新增10个参数是已生效的五轴位置/速度命令；局部二阶关节状态与9ms传输参与末端预测。
+
+在团队根目录运行：
+
+```bash
+.venv/bin/python tools/build_servo_nmpc.py --team .
+# 可用 --output <独立目录> 做重建检查，不覆盖当前运行库
+```
+
+辨识参数保存在 `models/config/servo_identified_20261015.json`，来自当前MuJoCo模型；不是实机标定。原 `nlp.so`保留。该候选不含完整底盘非线性；本批几何拦截未优于辨识增益候选，详见主工程 `docs/tennis_pfly_nmpc6_control_optimization.md`。

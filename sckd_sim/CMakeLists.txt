@@ -102,3 +102,6 @@ target_link_libraries(m2_prediction_probe PRIVATE sckd_core)
 add_executable(measured_replay_check cpp/apps/measured_replay_check.cpp)
 target_include_directories(measured_replay_check PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cpp)
 add_test(NAME measured_replay COMMAND measured_replay_check ${CMAKE_CURRENT_BINARY_DIR}/measured-check)
+
+add_executable(m1_arm_identification cpp/apps/m1_arm_identification.cpp)
+target_link_libraries(m1_arm_identification PRIVATE sckd_core)

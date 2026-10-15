@@ -3,6 +3,7 @@
 #include "estimation/measured_ball_replay.h"
 #include "sim_fk.h"
 #include <memory>
+#include <fstream>
 // M2 验收:定点喂球拦截闭环(集成验收,≥80% 命中)。
 // 链路:发球 → 观测(300Hz/σ=30mm) → 预测器(EKF,差分预热) → 命中点规划
 //       → 底盘就位(P 控) → IK → 挥拍(绝对时序) → 触球 → 统计
@@ -269,6 +270,13 @@ int main(int argc, char** argv) {
   // 末段(<100ms)仅接受 严格+成功+<10ms 新解(原 MpcThread 语义);连败
   // 回退 B′(wbmpc 同法)
   const bool n6_mode = (base_mode == "nmpc6");
+  const std::string variant=getenv("M2_CONTROL_VARIANT")?getenv("M2_CONTROL_VARIANT"):((n6_mode||base_mode=="pfly")?"feasible":"baseline");
+  const bool corrected=(variant!="baseline")&&(n6_mode||base_mode=="pfly");
+  const bool coherent=corrected&&variant!="feasible";
+  const bool inverse_ff=coherent&&variant!="clock";
+  const bool identified_gains=inverse_ff&&(variant=="gains"||variant=="base_feedback"||variant=="servo_mpc");
+  if(variant!="baseline"&&variant!="feasible"&&variant!="clock"&&variant!="feedforward"&&variant!="gains"&&variant!="base_feedback"&&variant!="servo_mpc")throw std::runtime_error("unknown control variant");
+  std::printf("[control variant] %s\n",variant.c_str());
   const bool fly = (base_mode == "mpcfly" || base_mode == "pfly" ||
                     base_mode == "ocpfly" || wb_mode || n6_mode);
   const bool ocp_mode = (base_mode == "ocpfly");
@@ -310,6 +318,7 @@ int main(int argc, char** argv) {
   BounceParams bp;
   PlannerParams pp;
   pp.fly_rule = fly_rule;
+  pp.atomic_targets=coherent;
   pp.cross_bounce = cross_bounce ? 1 : 0;
   ChassisServo servo(be.chassis_config(), &be);
   // IK 必须用独立 scratch mjData:ArmIk::Solve 直接写 qpos(base+臂),
@@ -403,7 +412,7 @@ int main(int argc, char** argv) {
     std::printf("[predictor] %s dedup=%d\n", remote_predictor ? "external" : "legacy", deduplicate_obs);
     HitPlanner planner(pp, aero);
     SwingGenerator swing;
-    ArmSwing aswing;
+    ArmSwing aswing;aswing.Configure(corrected,coherent,be.motor_config().command_delay_ms*.001);
     double dq_cur[5] = {0};
     HitPlan plan; plan.feasible = false;
     bool planned = false;
@@ -432,7 +441,9 @@ int main(int argc, char** argv) {
     double wb_tau = 0.0;        // τ̂ 闭环滞后补偿(EMA,采样时钟前移量)
     // nmpc6 每 trial 状态:旧机 NMPC 实例(回合态隔离;首解全零 guess 自触发
     // 新回合)+ 最后接受的 1ms 执行轨迹(Plans 式拷贝,绝对时刻采样)
-    LegacyNmpcConfig n6_config;
+    LegacyNmpcConfig n6_config;n6_config.enforce_feasibility=corrected;
+    n6_config.actuator_prediction=variant=="servo_mpc";
+    if(n6_config.actuator_prediction)n6_config.nlp_so="third_party/nmpc6/nlp_servo.so";
     if (!std::getenv("NMPC6_LEGACY_LIMITS")) {
       n6_config.sim_joint23_limits = true;
       for (int k=0;k<2;++k) {
@@ -537,6 +548,28 @@ int main(int argc, char** argv) {
     };
     record_video(0.0);
 
+    HitPlan locked_plan;
+    double previous_dq_command[5]={0};bool have_dq_command=false;
+    if(corrected)planner.contact_feasible=[&](const HitPlan& hp,const BaseState& bs,double now){
+      const double T=hp.t_hit-now-be.motor_config().command_delay_ms*.001;
+      if(T<=0){planner.last_reject="time";return false;}
+      double dx=hp.base_target[0]-bs.x,dy=hp.base_target[1]-bs.y,D=std::hypot(dx,dy);
+      double steer=be.joint(AxisSteer(0)).q;
+      double heading=std::remainder(std::atan2(dy,dx)-bs.yaw-steer,M_PI);
+      double turn=D>.05?std::fabs(heading)/be.chassis_config().ramp.dir_rate_limit_rad_s:0;
+      double available=std::max(0.0,T-turn);
+      double vx=cos(bs.yaw)*bs.vx-sin(bs.yaw)*bs.vy,vy=sin(bs.yaw)*bs.vx+cos(bs.yaw)*bs.vy;
+      double v0=D>1e-9?std::clamp((vx*dx+vy*dy)/D,-pp.base_v_max,pp.base_v_max):0;
+      double a=be.chassis_config().ramp.accel_limit_mps2;
+      double ta=std::clamp((pp.base_v_max-v0)/a,0.0,available);
+      double distance=v0*ta+.5*a*ta*ta+pp.base_v_max*(available-ta);
+      if(D>distance+.15){planner.last_reject="base_accel_speed_steer";return false;}
+      const double* seed=q_cur;auto ikr=ik.Solve(hp.p_hit,hp.base_target[0],hp.base_target[1],0,seed,120);
+      if(ikr.err>.03){planner.last_reject="arm_ik";return false;}
+      const double alim[5]={30,30,180,400,200},vlim[5]={10,10,20,48,15};
+      for(int j=0;j<5;++j){double reach=std::fabs(dq_cur[j])*T+.5*alim[j]*T*T;reach=std::min(reach,vlim[j]*T);if(std::fabs(ikr.q[j]-q_cur[j])>reach+.03){planner.last_reject="arm_travel";return false;}}
+      planner.last_reject="accepted";return true;
+    };
     HitIntent intent;  // 全程同一意图(旧版重规划误用默认意图,已修)
     intent.v_out_speed = 8.0;
     intent.v_out_elev_deg = 15.0;
@@ -679,6 +712,7 @@ int main(int argc, char** argv) {
                               // (100Hz 重解试验负结果:RefineAt 抖动+计划置换
                               //  断续,执行底盘/臂低通跟不上 → 20%,回 50Hz)
             LegacyNmpcRequest rq;
+            for(int j=0;j<5;++j){auto c=be.motor_effective(AxisArm(j));rq.effective_q[j]=c.q;rq.effective_dq[j]=c.dq;}
             const BaseState bsn = be.base_state();
             rq.state[0] = bsn.x;
             rq.state[1] = bsn.y;
@@ -693,10 +727,12 @@ int main(int argc, char** argv) {
               rq.target[i] = tgt_locked ? lock_p[i] : plan.p_hit[i];
             // 底盘锚:规划器可达环带位置(= 旧机上游走位策略的 sim 同源物;
             // 不加则 NMPC 自由落位停 1.3m 外臂全伸展凑目标,末段全拒收)
+            if(coherent&&tgt_locked) {for(int i=0;i<3;++i){plan.v_racket[i]=locked_plan.v_racket[i];plan.n_face[i]=locked_plan.n_face[i];plan.base_target[i]=locked_plan.base_target[i];}}
             rq.base_anchor_ok = true;
             rq.base_anchor[0] = plan.base_target[0];
             rq.base_anchor[1] = plan.base_target[1];
             rq.base_anchor_r = 0.40;
+            if(corrected){rq.corridor_ok=true;for(int k=0;k<3;++k){double vx,vy;BaseRefGen::EvalAt(mpc_sched,ts+(k+1)*T6/3,&rq.corridor_xy[k][0],&rq.corridor_xy[k][1],&vx,&vy);}}
             rq.dt[0] = rq.dt[1] = rq.dt[2] = T6 / 3.0;
             rq.hit_spd = std::hypot(plan.v_racket[0], plan.v_racket[1],
                                     plan.v_racket[2]);
@@ -730,9 +766,9 @@ int main(int argc, char** argv) {
             const bool n6_accepted = StageProfile::Measure("nmpc6_solver", [&]{return n6.Solve(rq, &r6);});
             ++n6_attempts; n6_attempt_ms += r6.solve_ms;
             n6_attempt_max_ms = std::max(n6_attempt_max_ms, r6.solve_ms);
-            const bool diag_near_ok=n6_accepted&&((T6>=.100)||(r6.status==LegacyNmpcStatus::kOk&&r6.solver_ok&&r6.solve_ms<10));
+            const bool diag_near_ok=n6_accepted&&(coherent||(T6>=.100)||(r6.status==LegacyNmpcStatus::kOk&&r6.solver_ok&&r6.solve_ms<10));
             if(g_control_diag){
-              nlohmann::json e={{"kind","solve"},{"mode","nmpc6"},{"t",ts},{"target",Vec(rq.target,3)},{"target_time",ts+T6},{"accepted",n6_accepted},{"applied",diag_near_ok},{"reason",static_cast<int>(r6.status)},{"solver_ok",r6.solver_ok},{"ms",r6.solve_ms},{"endpoint_fk",Vec(r6.end_pos,3)},{"state",Vec(rq.state,14)}};
+              nlohmann::json e={{"kind","solve"},{"mode","nmpc6"},{"t",ts},{"target",Vec(rq.target,3)},{"target_time",ts+T6},{"accepted",n6_accepted},{"applied",diag_near_ok},{"reason",static_cast<int>(r6.status)},{"constraint_violation",r6.max_constraint_violation},{"target_version",plan.version},{"capture_time",plan.capture_time},{"base_anchor",Vec(rq.base_anchor,2)},{"solver_ok",r6.solver_ok},{"ms",r6.solve_ms},{"endpoint_fk",Vec(r6.end_pos,3)},{"state",Vec(rq.state,14)}};
               if(n6_accepted && r6.plan_ms>0){int w=r6.plan_ms+1;double b[2]={r6.plan_pos[r6.plan_ms],r6.plan_pos[w+r6.plan_ms]},q[5],ep[3];for(int j=0;j<5;++j)q[j]=r6.plan_pos[(2+j)*w+r6.plan_ms];SimArmPos(b,q,ep);e["dense_endpoint_fk"]=Vec(ep,3);}
               ControlEvent(e);
             }
@@ -749,7 +785,7 @@ int main(int argc, char** argv) {
                             r6.term_state[4] * 57.3, r6.term_state[5] * 57.3,
                             r6.term_state[6] * 57.3);
               const bool near_ok =
-                  (T6 >= 0.100) || (r6.status == LegacyNmpcStatus::kOk &&
+                  coherent || (T6 >= 0.100) || (r6.status == LegacyNmpcStatus::kOk &&
                                     r6.solver_ok && r6.solve_ms < 10.0);
               if (near_ok) {
                 if (!n6_have)
@@ -876,7 +912,7 @@ int main(int argc, char** argv) {
       if (planned && !locked_saved &&
           (wb_lock || (use_qp ? (aswing.active() && aswing.locked())
                               : (swing.active() && swing.locked())))) {
-        locked_saved = true;
+        locked_saved = true;locked_plan=plan;
         for (int i = 0; i < 3; ++i) lock_p[i] = plan.p_hit[i];
         lock_t = plan.t_hit;
         lock_base[0] = (wb_mode && wb_lock) ? wb_plan.term_base[0]
@@ -1004,6 +1040,7 @@ int main(int argc, char** argv) {
         const double tau_hat6 = (den > 1e-6)
             ? std::clamp(-num / den, 0.0, 0.10) : n6_tau;
         n6_tau = 0.7 * n6_tau + 0.3 * tau_hat6;
+        if(coherent)n6_tau=variant=="servo_mpc"?0:be.motor_config().command_delay_ms*.001;
         sample6(ts + n6_tau, n6_q, n6_dq);
         {   // 底盘速度:ts 时刻(无 τ̂ —— 伺服斜坡与 Plans 斜坡同 8 m/s²)
           const double tau6 = ts - n6_t0;
@@ -1023,8 +1060,9 @@ int main(int argc, char** argv) {
         if (n6_exec) {
           // nmpc6:Plans 速度直下(真机语义,无 P 位置环 —— 见上执行采样注)
           const double c = std::cos(bs.yaw), sn = std::sin(bs.yaw);
-          servo.set_twist(Twist{c * n6_vbase[0] + sn * n6_vbase[1],
-                                -sn * n6_vbase[0] + c * n6_vbase[1], 0});
+          double vx=n6_vbase[0],vy=n6_vbase[1];
+          if(variant=="base_feedback") {vx+=2.5*(n6_base[0]-bs.x);vy+=2.5*(n6_base[1]-bs.y);double speed=std::hypot(vx,vy);if(speed>2.1){vx*=2.1/speed;vy*=2.1/speed;}}
+          servo.set_twist(Twist{c*vx+sn*vy,-sn*vx+c*vy,0});
         } else if (wb_exec) {
           // wbmpc:P+ff 跟踪优化底盘段(pfly 同增益同口径,参考=WmPlan 轨迹)
           const double c = std::cos(bs.yaw), sn = std::sin(bs.yaw);
@@ -1140,10 +1178,26 @@ int main(int argc, char** argv) {
       for (int j = 0; j < 5; ++j)
         ac.tau_ff[j] += kArmInertia[j] *
                         (wb_exec ? wb_ddq[j] : (n6_exec ? 0.0 : sc.ddp[j]));
+      if(inverse_ff&&!wb_mode) {
+        double accel[5],inv[5],qa[5],dqa[5];
+        for(int j=0;j<5;++j){qa[j]=ac.q[j];dqa[j]=ac.dq[j];accel[j]=n6_exec?(have_dq_command?std::clamp((ac.dq[j]-previous_dq_command[j])/.001,-(j<2?30.0:j==2?180.0:j==3?400.0:200.0),(j<2?30.0:j==2?180.0:j==3?400.0:200.0)):0):sc.ddp[j];}
+        if(be.arm_inverse(qa,dqa,accel,inv))for(int j=0;j<5;++j)ac.tau_ff[j]=inv[j];
+      }
+      if(identified_gains) {
+        // 候选受原协议/限矩约束；具体辨识参数由独立文件加载，未设置则拒绝运行。
+        static nlohmann::json gains=[](){const char* path=getenv("M2_SERVO_IDENTIFICATION");if(!path)path="models/config/servo_identified_20261015.json";std::ifstream f(path);nlohmann::json j;f>>j;return j;}();
+        for(int j=0;j<5;++j){ac.kp[j]=gains["kp"][j];ac.kd[j]=gains["kd"][j];}
+      }
+      for(int j=0;j<5;++j)previous_dq_command[j]=ac.dq[j];have_dq_command=true;
       StageProfile::Measure("actuator_write", [&]{be.set_arm_hybrid(ac);});
       if(wb_exec) StageProfile::Get().Count("wbmpc_execution_ticks");
       if(n6_exec) StageProfile::Get().Count("nmpc6_execution_ticks");
       if(g_control_diag && t%5==0){
+        if(!n6_exec&&!wb_exec&&aswing.active()) {
+          const HitPlan& ap=aswing.accepted_plan();
+          for(int j=0;j<3;++j)diagnostic_goal[j]=ap.p_hit[j];
+          diagnostic_goal_time=ap.t_hit;diagnostic_contact_time=ap.t_hit-(coherent?0:ArmSwing::kLead);diagnostic_plan_t=aswing.accepted_time();
+        }
         const BaseState ds=be.base_state();
         double actual_q[5],actual_dq[5],raw[5],applied[5],cap[5];
         for(int j=0;j<5;++j){auto r=be.joint(AxisArm(j));actual_q[j]=r.q;actual_dq[j]=r.dq;}
@@ -1155,7 +1209,9 @@ int main(int argc, char** argv) {
         double p_ref[3],p_base_actual[3],p_nominal_actual[3],actual_b[2]={ds.x,ds.y};
         SimArmPos(ref_b,ac.q,p_ref);SimArmPos(actual_b,ac.q,p_base_actual);SimArmPos(actual_b,actual_q,p_nominal_actual);
         mj_kinematics(m,d);double p_world[3],rot[3]={0,0,0};mju_rotVecQuat(rot,m->site_pos+3*site_id,d->xquat+4*m->site_bodyid[site_id]);for(int j=0;j<3;++j)p_world[j]=d->xpos[3*m->site_bodyid[site_id]+j]+rot[j];
-        ControlEvent({{"kind","state"},{"t",ts-.001},{"mode",base_mode},{"active",n6_exec?"nmpc6":wb_exec?"wbmpc":planned?"pfly_or_wait":"standby"},{"fallback",(n6_mode&&n6_dead)||(wb_mode&&wb_dead)},{"planned",planned},{"locked",locked_saved},{"goal",Vec(locked_saved?lock_p:plan.p_hit,3)},{"planner_goal",Vec(plan.p_hit,3)},{"goal_time",locked_saved?lock_t:plan.t_hit},{"accepted_goal",Vec(diagnostic_goal,3)},{"accepted_goal_time",diagnostic_goal_time},{"plan_issued_t",diagnostic_plan_t},{"contact_time",diagnostic_contact_time},{"p_actual",Vec(p_world,3)},{"p_reference",Vec(p_ref,3)},{"p_command_actualbase",Vec(p_base_actual,3)},{"p_nominal_actual",Vec(p_nominal_actual,3)},{"base",{ds.x,ds.y,ds.z,ds.yaw}},{"v_base_world",{cos(ds.yaw)*ds.vx-sin(ds.yaw)*ds.vy,sin(ds.yaw)*ds.vx+cos(ds.yaw)*ds.vy}},{"base_ref",Vec(ref_b,2)},{"v_base_ref",Vec(ref_v,2)},{"q",Vec(actual_q,5)},{"dq",Vec(actual_dq,5)},{"q_cmd",Vec(ac.q,5)},{"dq_cmd",Vec(ac.dq,5)},{"tau_raw",Vec(raw,5)},{"tau",Vec(applied,5)},{"tau_cap",Vec(cap,5)},{"tau_lead",n6_exec?n6_tau:wb_exec?wb_tau:0}});
+        nlohmann::json motors=nlohmann::json::array();
+        for(int a=0;a<kNumAxes;++a){auto r=be.joint(a);auto issued=be.motor_issued(a),eff=be.motor_effective(a);const bool wheel=a<12&&a%3!=0;motors.push_back({{"axis",a},{"name",kAxisJointName[a]},{"q",r.q},{"dq",r.dq},{"q_target",issued.q},{"wire_dq_target",issued.dq},{"dq_target",wheel?servo.wheel_velocity_reference(a):issued.dq},{"wheel_external_pi",wheel},{"kp",issued.kp},{"kd",issued.kd},{"tau_ff",issued.tau_ff},{"q_effective",eff.q},{"dq_effective",eff.dq},{"kp_effective",eff.kp},{"kd_effective",eff.kd},{"tau_ff_effective",eff.tau_ff},{"raw",be.motor_raw(a)},{"applied",r.tau_cmd},{"cap",be.motor_cap(a)}});}
+        ControlEvent({{"qp_attempts",aswing.plan_attempts},{"qp_accepts",aswing.plan_accepts},{"target_snapshot",{{"version",plan.version},{"capture_time",plan.capture_time},{"position",Vec(plan.p_hit,3)},{"racket_velocity",Vec(plan.v_racket,3)},{"normal",Vec(plan.n_face,3)},{"arrival_time",plan.t_hit},{"base_anchor",Vec(plan.base_target,2)}}},{"arm_qp_active",aswing.active()},{"variant",variant},{"motors",motors},{"qpos",Vec(d->qpos,m->nq)},{"qvel",Vec(d->qvel,m->nv)},{"planner_checked",planner.checked},{"planner_rejected",planner.rejected},{"planner_last_reason",planner.last_reject},{"target_version",plan.version},{"capture_time",plan.capture_time},{"qp_constraint_violation",aswing.last_constraint_violation},{"kind","state"},{"t",ts-.001},{"mode",base_mode},{"active",n6_exec?"nmpc6":wb_exec?"wbmpc":planned?"pfly_or_wait":"standby"},{"fallback",(n6_mode&&n6_dead)||(wb_mode&&wb_dead)},{"planned",planned},{"locked",locked_saved},{"goal",Vec(locked_saved?lock_p:plan.p_hit,3)},{"planner_goal",Vec(plan.p_hit,3)},{"goal_time",locked_saved?lock_t:plan.t_hit},{"accepted_goal",Vec(diagnostic_goal,3)},{"accepted_goal_time",diagnostic_goal_time},{"plan_issued_t",diagnostic_plan_t},{"contact_time",diagnostic_contact_time},{"p_actual",Vec(p_world,3)},{"p_reference",Vec(p_ref,3)},{"p_command_actualbase",Vec(p_base_actual,3)},{"p_nominal_actual",Vec(p_nominal_actual,3)},{"base",{ds.x,ds.y,ds.z,ds.yaw}},{"v_base_world",{cos(ds.yaw)*ds.vx-sin(ds.yaw)*ds.vy,sin(ds.yaw)*ds.vx+cos(ds.yaw)*ds.vy}},{"base_ref",Vec(ref_b,2)},{"v_base_ref",Vec(ref_v,2)},{"q",Vec(actual_q,5)},{"dq",Vec(actual_dq,5)},{"q_cmd",Vec(ac.q,5)},{"dq_cmd",Vec(ac.dq,5)},{"tau_raw",Vec(raw,5)},{"tau",Vec(applied,5)},{"tau_cap",Vec(cap,5)},{"tau_lead",n6_exec?n6_tau:wb_exec?wb_tau:0}});
       }
       // 拍-球解析冲量(§3.5 已知碰撞模型;求解器接触对已排除,真值侧在此施
       // 加)。命中事件接管 [calib] 标定捕获

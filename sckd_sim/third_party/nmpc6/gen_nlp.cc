@@ -16,6 +16,8 @@
 #include <cmath>
 #include <cstdio>
 #include <string>
+#include <fstream>
+#include <nlohmann/json.hpp>
 #include <vector>
 
 #include <casadi/casadi.hpp>
@@ -25,7 +27,9 @@
 using casadi::SX;
 using casadi::Slice;
 
-int main() {
+int main(int argc,char**argv) {
+  const bool servo=argc>1;
+  nlohmann::json identification;if(servo){std::ifstream f(argv[1]);f>>identification;}
   const int n_states = 14, n_controls = 7, m_predict_step = 3;
 
   // ---- sim(x4_tennis)精确 FK(2026-10-09 替换旧灵足 X1 解析式:旧式拍长
@@ -74,7 +78,7 @@ int main() {
 
   SX U = SX::sym("U", n_controls, m_predict_step);
   SX X = SX::sym("X", n_states, m_predict_step + 1);
-  SX PPPPP = SX::sym("PPPPP", n_states + 13);       // 27(HEAD 版)
+  SX PPPPP = SX::sym("PPPPP", n_states + 13+(servo?10:0));       // servo adds effective command q/dq
   SX opt_var = SX::reshape(U.T(), -1, 1);
   X(Slice(), 0) = PPPPP(Slice(0, n_states, 1));
 
@@ -105,10 +109,50 @@ int main() {
     X(13,i+1) = X(13,i) + U(6, i);
   }
 
+  // 执行器状态预测：固定姿态辨识的二阶PD误差模型 + 9ms传输。
+  // 全逆动力学前馈匹配局部I/B时，e_dot=w,w_dot=-kp/I*e-(kd+B)/I*w。
+  // 保留实际q/dq作为状态；旧有效命令填充最初9ms，不把目标误差伪装成时间移位。
+  SX Y=X;
+  if(servo) {
+    auto evolve=[&](int j,const SX&e,const SX&w,const SX&t) {
+      double I=identification["axes"][j]["inertia_kg_m2"],B=identification["axes"][j]["damping_Nms_rad"];
+      double kp=identification["kp"][j],kd=identification["kd"][j];
+      double a=(kd+B)/(2*I),om2=kp/I,disc=a*a-om2;
+      SX c,ss;
+      if(disc<0){double om=std::sqrt(-disc);c=cos(om*t);ss=sin(om*t)/om;}
+      else {double om=std::sqrt(std::max(disc,1e-12));c=cosh(om*t);ss=sinh(om*t)/om;}
+      return SX::vertcat({exp(-a*t)*((c+a*ss)*e+ss*w),exp(-a*t)*(-om2*ss*e+(c-a*ss)*w)});
+    };
+    for(int j=0;j<5;++j) {
+      SX oldq=PPPPP(27+j),oldv=PPPPP(32+j),q0=X(2+j,0),v0=X(9+j,0);
+      SX eq0=q0-oldq,ev0=v0-oldv;
+      const double delay=.009;
+      SX ed=evolve(j,eq0,ev0,SX(delay));
+      SX qd=oldq+oldv*delay+ed(0),vd=oldv+ed(1);
+      for(int k=0;k<3;++k){
+        SX Tk=(k+1)*PPPPP(17),query=fmax(Tk-delay,SX(0)),qref=q0,vref=v0;
+        for(int seg=0;seg<3;++seg){
+          SX h=PPPPP(17),u=U(2+j,seg),tt=fmin(fmax(query-seg*h,SX(0)),h);
+          double amax=1.0/static_cast<double>(ACC(2+j,0));
+          SX duration=sqrt(u*u+eps)/amax,on=fmin(tt,duration),acc=u/duration;
+          SX qq=X(2+j,seg)+X(9+j,seg)*tt+.5*acc*on*on+u*fmax(tt-duration,SX(0));
+          SX vv=X(9+j,seg)+acc*on;
+          qref=if_else(query>=seg*h,qq,qref);vref=if_else(query>=seg*h,vv,vref);
+        }
+        SX ee=evolve(j,qd-q0,vd-v0,fmax(Tk-delay,SX(0)));
+        SX early=evolve(j,eq0,ev0,Tk);
+        Y(2+j,k+1)=if_else(Tk>=delay,qref+ee(0),oldq+oldv*Tk+early(0));
+        Y(9+j,k+1)=if_else(Tk>=delay,vref+ee(1),oldv+early(1));
+      }
+    }
+    casadi::Function state_rollout("actuator_rollout",{opt_var,PPPPP},{Y(Slice(),3)});
+    state_rollout.generate("actuator_rollout.c");
+  }
+
   // ---- 代价(终端唯一) ----
   SX cost_fun = SX::sym("cost_fun");
   cost_fun = 0;
-  SX final_state = X(Slice(), m_predict_step);
+  SX final_state = Y(Slice(), m_predict_step);
   SX end_pos = fk_solver(std::vector<SX>{final_state, PPPPP(n_states+11)}).at(0);
   SX hitangles = SX::sym("hitangles", 3, 1);
   SX pitch = PPPPP(n_states+9)*M_PI/180.0;
@@ -147,16 +191,16 @@ int main() {
                         + smooth_fmax(-A, SX(0))*Fv*M2});
   }
   for (int i = 0; i < m_predict_step; ++i)
-    G = SX::vertcat({G, X(Slice(0,7,1), i+1)});
+    G = SX::vertcat({G, Y(Slice(0,7,1), i+1)});
   for (int i = 0; i < m_predict_step; ++i)
     G = SX::vertcat({G, X(Slice(7,9,1), i+1)});
   for (int i = 0; i < m_predict_step; ++i)
-    G = SX::vertcat({G, X(Slice(9,14,1), i+1)});
+    G = SX::vertcat({G, Y(Slice(9,14,1), i+1)});
   for (int i = 0; i < m_predict_step; ++i)
     G = SX::vertcat({G, 1.0/ACC*PPPPP(n_states+3+i)
                        - sqrt(U(Slice(0,7,1), i)*U(Slice(0,7,1), i) + eps)});
   for (int i = 0; i < m_predict_step; ++i) {
-    SX state_i = X(Slice(), i);
+    SX state_i = servo?Y(Slice(),i+1):X(Slice(),i);
     SX end_pos_i = fk_solver(std::vector<SX>{state_i, PPPPP(n_states+11)}).at(0);
     G = SX::vertcat({G, end_pos_i(2,3) - 0.35});
   }
@@ -169,9 +213,9 @@ int main() {
   opts["print_time"] = 0;
   casadi::Function solver = casadi::nlpsol("nlpsol", "ipopt", nlp_prob, opts);
   // 生成文件名不得含目录成分(CodeGenerator 以其为 C 入口名,斜杠非法)
-  solver.generate_dependencies("nlp.c");
-  std::printf("nlp.c generated: nx=%lld np=%lld ng=%lld\n",
+  solver.generate_dependencies(servo?"nlp_servo.c":"nlp.c");
+  std::printf("generated: nx=%lld np=%lld ng=%lld\n",
               solver.size_in(0).first, solver.size_in(1).first,
-              solver.size_out(1).first);
+              solver.size_out("g").first);
   return 0;
 }

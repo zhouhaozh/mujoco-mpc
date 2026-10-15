@@ -19,6 +19,10 @@ class ChassisServo {
   void update(double now_s);          // 每 1 ms 调用(与物理步同步)
 
   const Twist& ramped() const { return cur_; }
+  double wheel_velocity_reference(int axis)const {
+    const int idx=(axis/3)*2+(axis%3==2?1:0);
+    return cfg_.wheel_sign.at(idx)*target_lin_[idx]/cfg_.wheel_radius;
+  }
 
  private:
   void AllocateTick(double dt);       // 分配节拍:斜坡+分配+舵命令+轮目标

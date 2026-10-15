@@ -1,0 +1,82 @@
+{
+  "source": "current MuJoCo simulated motor state, not real hardware identification",
+  "method": "Huber diagonal local regression tau-gravity=I*ddq+B*dq; backward dq difference; unsaturated samples",
+  "kp": [
+    250,
+    120,
+    120,
+    120,
+    120
+  ],
+  "kd": [
+    27.597923052780605,
+    25.559121728143687,
+    4.927204101509279,
+    3.6850483490444,
+    0.5838969088642975
+  ],
+  "axes": [
+    {
+      "axis": 1,
+      "inertia_kg_m2": 1.192647254354881,
+      "damping_Nms_rad": 0.02985721974805817,
+      "fit_samples": 8762,
+      "residual_rmse_Nm": 0.0727973160447509,
+      "normalized_residual": 0.009993686499226107,
+      "kp_candidate": 250,
+      "kd_candidate": 27.597923052780605,
+      "known_command_transport_s": 0.009,
+      "step_position_error_p95_rad": 0.06091792601166142
+    },
+    {
+      "axis": 2,
+      "inertia_kg_m2": 2.161998614432165,
+      "damping_Nms_rad": 0.21229605112412703,
+      "fit_samples": 8615,
+      "residual_rmse_Nm": 0.1429160415528155,
+      "normalized_residual": 0.02551217331117415,
+      "kp_candidate": 120,
+      "kd_candidate": 25.559121728143687,
+      "known_command_transport_s": 0.009,
+      "step_position_error_p95_rad": 0.09307979776066397
+    },
+    {
+      "axis": 3,
+      "inertia_kg_m2": 0.08498999746855482,
+      "damping_Nms_rad": 0.18248544114789145,
+      "fit_samples": 8166,
+      "residual_rmse_Nm": 0.04323120706840179,
+      "normalized_residual": 0.0842348384458181,
+      "kp_candidate": 120,
+      "kd_candidate": 4.927204101509279,
+      "known_command_transport_s": 0.009,
+      "step_position_error_p95_rad": 0.0102860462748871
+    },
+    {
+      "axis": 4,
+      "inertia_kg_m2": 0.044211486622997086,
+      "damping_Nms_rad": 0.0002967759859147473,
+      "fit_samples": 8471,
+      "residual_rmse_Nm": 0.0012267869069295014,
+      "normalized_residual": 0.0033979734083997965,
+      "kp_candidate": 120,
+      "kd_candidate": 3.6850483490444,
+      "known_command_transport_s": 0.009,
+      "step_position_error_p95_rad": 0.011210558317939419
+    },
+    {
+      "axis": 5,
+      "inertia_kg_m2": 0.0011119739168411406,
+      "damping_Nms_rad": 0.0005672793060287827,
+      "fit_samples": 8755,
+      "residual_rmse_Nm": 0.0003341185434041113,
+      "normalized_residual": 0.0015217855290461677,
+      "kp_candidate": 120,
+      "kd_candidate": 0.5838969088642975,
+      "known_command_transport_s": 0.009,
+      "step_position_error_p95_rad": 0.0037355162784069203
+    }
+  ],
+  "limits": "unchanged mechanism and motor envelopes; no expansion",
+  "additional_lag": "do not conflate second-order transient with pure transport; transport from effective-command trace"
+}

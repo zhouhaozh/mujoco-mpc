@@ -103,4 +103,8 @@ void ArmIk::SiteJacobian(const double q[5], double base_x, double base_y, double
       J[r * 5 + c] = jacp[r * m_->nv + vadr_[c]];
 }
 
+bool ArmIk::WithinLimits(const double q[5])const {
+ for(int j=0;j<5;++j){int id=mj_name2id(m_,mjOBJ_JOINT,kAxisJointName[AxisArm(j)]);if(!std::isfinite(q[j])||(m_->jnt_limited[id]&&(q[j]<m_->jnt_range[2*id]-1e-5||q[j]>m_->jnt_range[2*id+1]+1e-5)))return false;}return true;
+}
+
 }  // namespace sckd

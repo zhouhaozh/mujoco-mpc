@@ -27,6 +27,8 @@ class MotorModel {
   double compute(int axis, double q_meas, double dq_meas);
 
   double last_tau_cmd(int axis) const;
+  MotorCmd issued_command(int axis) const {return st_.at(axis).issued;}
+  MotorCmd effective_command(int axis) const {return st_.at(axis).effective;}
   double last_raw_tau(int axis) const { return axis>=0&&axis<kNumAxes ? st_[axis].last_raw : 0; }
   double last_tau_cap(int axis) const { return axis>=0&&axis<kNumAxes ? st_[axis].last_cap : 0; }
   const MotorSystemConfig& config() const { return cfg_; }
@@ -35,6 +37,7 @@ class MotorModel {
  private:
   struct AxisState {
     bool enabled = false;
+    MotorCmd effective;
     MotorCmd issued;                 // 最近下发命令(断流时锁存 = 看门狗语义)
     std::deque<MotorCmd> pipe;       // 延迟管道:front = 当前生效命令
     double last_raw = 0.0, last_cap = 0.0;

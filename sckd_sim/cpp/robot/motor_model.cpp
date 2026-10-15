@@ -87,6 +87,7 @@ double MotorModel::compute(int axis, double q_meas, double dq_meas) {
   const auto& jc = joint_of(axis);
   const MotorCmd& c = st.pipe.empty() ? st.issued : st.pipe.front();  // 延迟后的生效命令
 
+  st.effective=c;
   // 手册混合控制律(RS04 p43 / RS06 p41)
   double tau = c.kp * (c.q - q_meas) + c.kd * (c.dq - dq_meas) + c.tau_ff;
 

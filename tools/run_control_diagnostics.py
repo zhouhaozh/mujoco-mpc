@@ -7,7 +7,7 @@ def run(team,prediction,source,out,mode,item):
  if done.exists():return json.loads(done.read_text())
  dest.mkdir(parents=True,exist_ok=True)
  if (dest/'diagnostics.jsonl').exists():raise FileExistsError(f'incomplete diagnostic run preserved: {dest}')
- env=dict(os.environ,OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1')
+ env=dict(os.environ,OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1',M2_CONTROL_VARIANT='baseline')
  for key in ('M2_VIDEO_TRACE','M2_VIEW','M2_TIMING_PATH','BALL_DEDUP','BALL_PREDICTOR_SOCKET','M2_CONTROL_DIAGNOSTICS','M2_MEASURED_REPLAY'):env.pop(key,None)
  sock=team/'.tmp'/f"diag-{mode}-{item['sample_id']}.sock"
  with (dest/'service.log').open('w') as log:

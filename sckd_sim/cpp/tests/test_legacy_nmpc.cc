@@ -143,3 +143,18 @@ TEST_CASE("simulation negative J2 standby uses MJCF frame bounds") {
   CHECK(sim.term_state[4]>=cfg.joint23_lo[1]);
   CHECK(sim.term_state[4]<=cfg.joint23_hi[1]);
 }
+
+TEST_CASE("corrected request rejects invalid clocks and nonfinite state") {
+  LegacyNmpcConfig cfg;cfg.enforce_feasibility=true;LegacyNmpc n(cfg);LegacyNmpcResult r;
+  auto q=MakeReq();q.dt[1]=0;CHECK_FALSE(n.Solve(q,&r));CHECK(r.status==LegacyNmpcStatus::kInputInvalid);
+  q=MakeReq();q.state[0]=NAN;CHECK_FALSE(n.Solve(q,&r));CHECK(r.status==LegacyNmpcStatus::kInputInvalid);
+}
+TEST_CASE("terminal anchor does not constrain first intermediate node") {
+  LegacyNmpcConfig cfg;cfg.enforce_feasibility=true;cfg.sim_joint23_limits=true;
+  LegacyNmpc n(cfg);LegacyNmpcResult r;auto q=MakeReq();
+  q.dt[0]=q.dt[1]=q.dt[2]=.32;q.state[3]=-.35;
+  const bool ok=n.Solve(q,&r);
+  if(ok){CHECK(r.solver_ok);CHECK(r.max_constraint_violation<=cfg.constraint_tolerance);CHECK(std::hypot(r.end_pos[0]-q.target[0],r.end_pos[1]-q.target[1],r.end_pos[2]-q.target[2])<=cfg.terminal_tolerance_m);}
+  q.base_anchor_ok=true;q.base_anchor[0]=5.5;q.base_anchor[1]=1.8;q.base_anchor_r=.02;q.dt[0]=q.dt[1]=q.dt[2]=.02;
+  CHECK_FALSE(n.Solve(q,&r));CHECK_FALSE((r.status==LegacyNmpcStatus::kOk||r.status==LegacyNmpcStatus::kLoose));
+}

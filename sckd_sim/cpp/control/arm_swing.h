@@ -16,6 +16,11 @@ class ArmSwing {
   static constexpr double kLead = 0.020;   // 终值提前基值(闭环 τ̂ 补偿主滞后)
 
   // 阶段1+2 一次性求解(t_now=当前绝对仿真时刻;dq=当前关节速度)
+  void Configure(bool validate,bool coherent_clock,double transport_s=.009) {validate_=validate;coherent_clock_=coherent_clock;transport_s_=transport_s;}
+  int plan_attempts=0,plan_accepts=0;
+  double last_constraint_violation=0;
+  const HitPlan& accepted_plan()const{return accepted_plan_;}
+  double accepted_time()const{return accepted_time_;}
   void Init(const HitPlan& plan, const double q_current[5], const double dq_current[5],
             class ArmIk& ik, double t_now);
   // 重规划:锁止前自由更新终值;锁止后按 §6.5"冻结大改、仅微调"——终值构型
@@ -34,6 +39,8 @@ class ArmSwing {
  private:
   // retime=true:初解,定 t0/T 锚;false:精化,仅更新终值目标
   bool Solve(const HitPlan& plan, class ArmIk& ik, double t_now, bool retime);
+  HitPlan accepted_plan_;double accepted_time_=-1;
+  bool validate_=false,coherent_clock_=false;double transport_s_=.009;
   double t0_ = 0, t_hit_ = 0, T_ = 0.65, t_last_solve_ = 0;
   double q0_[5] = {0}, dq0_[5] = {0}, q_hit_[5] = {0}, q_lock_[5] = {0};
   double coeff_[45] = {0};                // x[j*M+a] = C[j][a]

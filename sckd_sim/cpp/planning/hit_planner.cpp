@@ -10,6 +10,10 @@ HitPlanner::HitPlanner(const PlannerParams& pp, const BallAeroParams& aero)
 void HitPlanner::RefineAt(const BallPredictionInterface& predictor, const BaseState& base,
                           HitPlan* hp, double t_now) {
   if (!hp || !hp->feasible) return;
+  if(pp_.atomic_targets&&hp->t_hit-t_now<=.15)return;
+  HitPlan candidate=*hp;
+  HitPlan* original=hp;
+  if(pp_.atomic_targets||contact_feasible)hp=&candidate;
   double p[3], v_in[3];
   if (!predictor.PredictFull(hp->t_hit, p, v_in)) return;
   // 精化合法性:预测噪声不得把锚定击球点拖出高度窗——早期(起拍后 ~0.3s)预测
@@ -20,6 +24,14 @@ void HitPlanner::RefineAt(const BallPredictionInterface& predictor, const BaseSt
   double bc[3] = {base.x, base.y, base.yaw};
   BaseTargetFromHit(hp->p_hit, bc, hp->base_target);
   hp->time_margin = hp->t_hit - t_now - pp_.swing_time - 0.20;  // 服务窗口径
+  if(pp_.atomic_targets) {
+    ReboundInverse(v_in,hp->v_out,hp->v_racket,hp->n_face);
+    hp->capture_time=predictor.t_last();hp->version++;
+  }
+  if(contact_feasible){++checked;if(!contact_feasible(*hp,base,t_now)){++rejected;return;}}
+  if(pp_.atomic_targets||contact_feasible) {
+    *original=*hp;
+  }
   // v_base_star 不动:fly-through 可行性取决于初规划时跑道 D₀(锚点→目标),
   // 用途中位置重算会使 D 随接近收缩、v_base* 在触球前塌到 0 —— 意图与参考
   // 起锚一样属"冻结量"(方案 B′ 交接契约,2026-10-07)。
@@ -121,6 +133,9 @@ HitPlan HitPlanner::Plan(const BallPredictionInterface& predictor, const BaseSta
       }
     }
     hp.t_hit=t; hp.time_margin=margin; hp.feasible=true;
+    hp.version=1;hp.capture_time=predictor.t_last();
+    for(int i=0;i<3;++i)hp.v_out[i]=v_out[i];
+    if(contact_feasible){++checked;if(!contact_feasible(hp,base,t_now)){++rejected;continue;}}
     hp.score = Score(hp, base, t_now);
     if (hp.score > best.score) best = hp;
   }

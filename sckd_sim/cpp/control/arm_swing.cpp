@@ -72,7 +72,7 @@ OsqpCtx& Qp() {
 }
 
 // 求解:等式行 l=u=B_eq·p;不等式行 l=−INFTY,u=u_row
-bool SolveQp(const double p[kNp], double x[kNx]) {
+bool SolveQp(const double p[kNp], double x[kNx],bool validate,double* violation) {
   OsqpCtx& c = Qp();
   if (!c.solver) return false;
   for (int r = 0; r < kNg; ++r) {
@@ -90,7 +90,10 @@ bool SolveQp(const double p[kNp], double x[kNx]) {
   if (osqp_solve(c.solver) != 0) return false;
   const OSQPInt st = c.solver->info->status_val;
   if (st != OSQP_SOLVED && st != OSQP_SOLVED_INACCURATE) return false;
-  for (int i = 0; i < kNx; ++i) x[i] = c.solver->solution->x[i];
+  *violation=0;
+  for (int i = 0; i < kNx; ++i) {x[i]=c.solver->solution->x[i];if(!std::isfinite(x[i]))*violation=1e9;}
+  for(int r=0;r<kNg;++r){double v=0;for(int i=0;i<kNx;++i)v+=arm_qp_data::A[r][i]*x[i];*violation=std::max(*violation,std::max(c.l[r]-v,v-c.u[r]));}
+  if(validate&&(*violation>1e-4||st!=OSQP_SOLVED))return false;
   return true;
 }
 
@@ -196,10 +199,11 @@ bool ArmSwing::UpdatePlan(const HitPlan& plan, ArmIk& ik, double t_now) {
 
 bool ArmSwing::locked() const {
   // 锁止:距终值点(t_hit−kLead)的剩余时间 < 裕量(以最近一次求解时刻计)
-  return (t_hit_ - ArmSwing::kLead) - t_last_solve_ < 0.15;
+  return (t_hit_ - (coherent_clock_?0:ArmSwing::kLead)) - t_last_solve_ < 0.15;
 }
 
 bool ArmSwing::Solve(const HitPlan& plan, ArmIk& ik, double t_now, bool retime) {
+  ++plan_attempts;
   // 终值锚定基座:v2 triage(2026-10-08)——优先预测实际底盘位姿(app 外推填充),
   // 拍终值随"底盘真正会在的位置"解;未填时退回规划 base_target(旧行为)
   const double bx = plan.base_pred_ok ? plan.base_pred[0] : plan.base_target[0];
@@ -260,7 +264,7 @@ bool ArmSwing::Solve(const HitPlan& plan, ArmIk& ik, double t_now, bool retime) 
   t_hit_ = plan.t_hit;
   double T = T_;
   if (retime) {
-    const double t_term = t_hit_ - ArmSwing::kLead;
+    const double t_term = t_hit_ - (coherent_clock_?0:ArmSwing::kLead);
     T = (t_term - t_now) / kSHit;
     if (T < 0.30 || T > 1.8) return false;   // 时窗异常(过近/过远)拒解
     T_ = T;
@@ -278,17 +282,19 @@ bool ArmSwing::Solve(const HitPlan& plan, ArmIk& ik, double t_now, bool retime) 
 
   double z[kNx];
   const auto tc0 = std::chrono::steady_clock::now();
-  const bool ok = SolveQp(p, z);
+  const bool ok = SolveQp(p, z,validate_,&last_constraint_violation);
   solve_ms_ = std::chrono::duration<double>(std::chrono::steady_clock::now() - tc0).count() * 1e3;
   if (!ok) return false;
+  if(validate_)for(int k=0;k<=100;++k){double tk[kM],d1[kM],d2[kM],d3[kM],q[5]={0};Basis(k/100.0,tk,d1,d2,d3);for(int j=0;j<5;++j)for(int a=0;a<kM;++a)q[j]+=z[j*kM+a]*tk[a];if(!ik.WithinLimits(q))return false;double pos[3];ik.SitePos(q,bx,by,pos);if(pos[2]<.35)return false;}
   for (int i = 0; i < kNx; ++i) coeff_[i] = z[i];
+  accepted_plan_=plan;accepted_time_=t_now;++plan_accepts;
   return true;
 }
 
 bool ArmSwing::Update(double t_abs, const double* q_meas, SwingCmd& cmd) {
   if (!active_) return false;
   double tau = 0.0;   // 闭环滞后:指令轨迹最小二乘时间移位(s 域)
-  if (q_meas) {
+  if (q_meas && !coherent_clock_) {
     double snom = std::clamp((t_abs - t0_) / T_, 0.0, 1.0);
     double tk[kM], d1[kM], d2[kM], d3[kM];
     Basis(snom, tk, d1, d2, d3);
@@ -305,6 +311,7 @@ bool ArmSwing::Update(double t_abs, const double* q_meas, SwingCmd& cmd) {
     }
     if (den > 1e-6) tau = std::clamp(-num / den, 0.0, 0.10);
   }
+  if(coherent_clock_)tau=transport_s_;
   const double s = std::clamp((t_abs + tau - t0_) / T_, 0.0, 1.0);
   double tk[kM], d1[kM], d2[kM], d3[kM];
   Basis(s, tk, d1, d2, d3);
