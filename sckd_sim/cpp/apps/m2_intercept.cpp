@@ -1,6 +1,7 @@
 #include "core/stage_profile.h"
 #include "estimation/socket_ball_predictor.h"
 #include "estimation/measured_ball_replay.h"
+#include "sim_fk.h"
 #include <memory>
 // M2 验收:定点喂球拦截闭环(集成验收,≥80% 命中)。
 // 链路:发球 → 观测(300Hz/σ=30mm) → 预测器(EKF,差分预热) → 命中点规划
@@ -42,6 +43,11 @@
 #include "sim/analytic_contact.h"
 
 using namespace sckd;
+using sckd_nmpc6::SimArmPos;
+static FILE* g_control_diag=nullptr;
+static nlohmann::json Vec(const double* p,int n) {return std::vector<double>(p,p+n);}
+static void ControlEvent(nlohmann::json row) {if(g_control_diag)std::fprintf(g_control_diag,"%s\n",row.dump().c_str());}
+
 
 // v2 triage(2026-10-08):预测实际底盘位姿@t_hit,ArmSwing 终值 IK/J/J5 对准
 // 按它解——fly-through 底盘滞后 0.1-0.2m,按规划 base_target 解则拍随基座
@@ -178,7 +184,13 @@ static bool RunWbmpc(WholebodyMpc& wb, const HitPlan& plan, SimBackend& be,
   req.k_contact = std::clamp(
       (int)std::lround((t_c - ts) / (req.t_hit - ts) * WholebodyMpc::kN),
       1, WholebodyMpc::kN - 3);
-  return StageProfile::Measure("wbmpc_solver", [&]{return wb.Solve(req, out);});
+  const bool ok=StageProfile::Measure("wbmpc_solver", [&]{return wb.Solve(req, out);});
+  if(g_control_diag){
+    nlohmann::json e={{"kind","solve"},{"mode","wbmpc"},{"t",ts},{"target",Vec(req.p_hit,3)},{"target_time",plan.t_hit},{"contact_time",req.t_now+req.k_contact*((req.t_hit-req.t_now)/WholebodyMpc::kN)},{"accepted",ok},{"reason",wb.last_reason},{"ms",wb.last_ms},{"pos_res",wb.last_pos_res}};
+    if(ok){double p[3];SimArmPos(out->term_base,out->term_q,p);e["endpoint_fk"]=Vec(p,3);e["n_dot"]=out->n_dot;}
+    ControlEvent(e);
+  }
+  return ok;
 }
 
 // WmPlan 绝对时刻采样(节点间线性插值)。t 超出终端节点后按终端速度恒速
@@ -217,6 +229,10 @@ static void SampleWm(const WmPlan& p, double t, double q[5], double dq[5],
 
 int main(int argc, char** argv) {
   StageProfile::Get();
+  if(const char* path=std::getenv("M2_CONTROL_DIAGNOSTICS")){
+    g_control_diag=fopen(path,"wx");if(!g_control_diag)throw std::runtime_error("cannot create control diagnostic file");
+    std::atexit([]{if(g_control_diag){fclose(g_control_diag);g_control_diag=nullptr;}});
+  }
   const std::string scene = argc > 1 ? argv[1] : "models/generated/x4_tennis_demo.mjcf";
   const int kTrials = argc > 2 ? atoi(argv[2]) : 10;
   const char* replay_path=std::getenv("M2_MEASURED_REPLAY");
@@ -382,6 +398,7 @@ int main(int argc, char** argv) {
       ? static_cast<BallPredictionInterface&>(*remote_predictor)
       : static_cast<BallPredictionInterface&>(legacy_predictor);
     const bool deduplicate_obs = remote_predictor || std::getenv("BALL_DEDUP");
+    double diagnostic_goal[3]={0};double diagnostic_goal_time=-1,diagnostic_plan_t=-1,diagnostic_contact_time=-1;
     double last_obs_t = -1e30;
     std::printf("[predictor] %s dedup=%d\n", remote_predictor ? "external" : "legacy", deduplicate_obs);
     HitPlanner planner(pp, aero);
@@ -713,6 +730,12 @@ int main(int argc, char** argv) {
             const bool n6_accepted = StageProfile::Measure("nmpc6_solver", [&]{return n6.Solve(rq, &r6);});
             ++n6_attempts; n6_attempt_ms += r6.solve_ms;
             n6_attempt_max_ms = std::max(n6_attempt_max_ms, r6.solve_ms);
+            const bool diag_near_ok=n6_accepted&&((T6>=.100)||(r6.status==LegacyNmpcStatus::kOk&&r6.solver_ok&&r6.solve_ms<10));
+            if(g_control_diag){
+              nlohmann::json e={{"kind","solve"},{"mode","nmpc6"},{"t",ts},{"target",Vec(rq.target,3)},{"target_time",ts+T6},{"accepted",n6_accepted},{"applied",diag_near_ok},{"reason",static_cast<int>(r6.status)},{"solver_ok",r6.solver_ok},{"ms",r6.solve_ms},{"endpoint_fk",Vec(r6.end_pos,3)},{"state",Vec(rq.state,14)}};
+              if(n6_accepted && r6.plan_ms>0){int w=r6.plan_ms+1;double b[2]={r6.plan_pos[r6.plan_ms],r6.plan_pos[w+r6.plan_ms]},q[5],ep[3];for(int j=0;j<5;++j)q[j]=r6.plan_pos[(2+j)*w+r6.plan_ms];SimArmPos(b,q,ep);e["dense_endpoint_fk"]=Vec(ep,3);}
+              ControlEvent(e);
+            }
             if (n6_accepted) {
               if (getenv("N6_TRACE"))
                 std::printf("  [n6+] t=%.3f %s e=(%.3f,%.3f,%.3f) end=(%.2f,%.2f,%.2f) "
@@ -734,6 +757,8 @@ int main(int argc, char** argv) {
                               ts, r6.end_pos[0], r6.end_pos[1], r6.end_pos[2],
                               r6.end_pos[4], r6.end_pos[5], r6.end_pos[6],
                               r6.solve_ms);
+                for(int j=0;j<3;++j)diagnostic_goal[j]=rq.target[j];
+                diagnostic_goal_time=ts+T6;diagnostic_plan_t=ts;diagnostic_contact_time=ts+T6;
                 n6_pos = r6.plan_pos;
                 n6_vel = r6.plan_vel;
                 n6_ms = r6.plan_ms;
@@ -787,6 +812,9 @@ int main(int argc, char** argv) {
                               ts, cand.term_base[0], cand.term_base[1],
                               cand.term_vbase[0], cand.term_vbase[1],
                               cand.pos_res, cand.n_dot, cand.ms);
+                for(int j=0;j<3;++j)diagnostic_goal[j]=plan.p_hit[j];
+                diagnostic_goal_time=plan.t_hit;diagnostic_plan_t=ts;diagnostic_contact_time=cand.contact_time;
+                ControlEvent({{"kind","wb_apply"},{"t",ts},{"target",Vec(plan.p_hit,3)},{"contact_time",cand.contact_time},{"target_time",plan.t_hit}});
                 wb_plan = cand;
                 wb_have = true;
                 wb_fails_streak = 0;
@@ -947,7 +975,7 @@ int main(int argc, char** argv) {
       // 实测失稳 dq 冲 24 rad/s,负结果留档)。τ̂ 补偿 sim 伺服与真机驱动
       // 器的带宽差(wbmpc 同法,机器本身驱动器快不需要)
       double n6_q[5] = {0}, n6_dq[5] = {0};
-      double n6_vbase[2] = {0};
+      double n6_vbase[2] = {0}, n6_base[2] = {0};
       const bool n6_exec = (n6_mode && n6_have && !n6_dead);
       if (n6_exec) {
         const int W = n6_ms + 1;
@@ -980,6 +1008,7 @@ int main(int argc, char** argv) {
         {   // 底盘速度:ts 时刻(无 τ̂ —— 伺服斜坡与 Plans 斜坡同 8 m/s²)
           const double tau6 = ts - n6_t0;
           const int idx = std::clamp((int)std::lround(tau6 * 1000.0), 0, n6_ms);
+          n6_base[0]=n6_pos[idx];n6_base[1]=n6_pos[W+idx];
           n6_vbase[0] = n6_vel[idx];
           n6_vbase[1] = n6_vel[W + idx];
           if (tau6 - n6_ms * 0.001 > 0.15)
@@ -1114,6 +1143,20 @@ int main(int argc, char** argv) {
       StageProfile::Measure("actuator_write", [&]{be.set_arm_hybrid(ac);});
       if(wb_exec) StageProfile::Get().Count("wbmpc_execution_ticks");
       if(n6_exec) StageProfile::Get().Count("nmpc6_execution_ticks");
+      if(g_control_diag && t%5==0){
+        const BaseState ds=be.base_state();
+        double actual_q[5],actual_dq[5],raw[5],applied[5],cap[5];
+        for(int j=0;j<5;++j){auto r=be.joint(AxisArm(j));actual_q[j]=r.q;actual_dq[j]=r.dq;}
+        be.arm_effort(raw,applied,cap);
+        double ref_b[2]={ds.x,ds.y},ref_v[2]={0,0};
+        if(n6_exec){for(int j=0;j<2;++j){ref_b[j]=n6_base[j];ref_v[j]=n6_vbase[j];}}
+        else if(wb_exec){for(int j=0;j<2;++j){ref_b[j]=wb_base[j];ref_v[j]=wb_vbase[j];}}
+        else if(planned&&ref_built){ref_b[0]=mpc_ref[0];ref_b[1]=mpc_ref[1];double c=cos(ds.yaw),sn=sin(ds.yaw);ref_v[0]=c*mpc_ref[3]-sn*mpc_ref[4];ref_v[1]=sn*mpc_ref[3]+c*mpc_ref[4];}
+        double p_ref[3],p_base_actual[3],p_nominal_actual[3],actual_b[2]={ds.x,ds.y};
+        SimArmPos(ref_b,ac.q,p_ref);SimArmPos(actual_b,ac.q,p_base_actual);SimArmPos(actual_b,actual_q,p_nominal_actual);
+        mj_kinematics(m,d);double p_world[3],rot[3]={0,0,0};mju_rotVecQuat(rot,m->site_pos+3*site_id,d->xquat+4*m->site_bodyid[site_id]);for(int j=0;j<3;++j)p_world[j]=d->xpos[3*m->site_bodyid[site_id]+j]+rot[j];
+        ControlEvent({{"kind","state"},{"t",ts-.001},{"mode",base_mode},{"active",n6_exec?"nmpc6":wb_exec?"wbmpc":planned?"pfly_or_wait":"standby"},{"fallback",(n6_mode&&n6_dead)||(wb_mode&&wb_dead)},{"planned",planned},{"locked",locked_saved},{"goal",Vec(locked_saved?lock_p:plan.p_hit,3)},{"planner_goal",Vec(plan.p_hit,3)},{"goal_time",locked_saved?lock_t:plan.t_hit},{"accepted_goal",Vec(diagnostic_goal,3)},{"accepted_goal_time",diagnostic_goal_time},{"plan_issued_t",diagnostic_plan_t},{"contact_time",diagnostic_contact_time},{"p_actual",Vec(p_world,3)},{"p_reference",Vec(p_ref,3)},{"p_command_actualbase",Vec(p_base_actual,3)},{"p_nominal_actual",Vec(p_nominal_actual,3)},{"base",{ds.x,ds.y,ds.z,ds.yaw}},{"v_base_world",{cos(ds.yaw)*ds.vx-sin(ds.yaw)*ds.vy,sin(ds.yaw)*ds.vx+cos(ds.yaw)*ds.vy}},{"base_ref",Vec(ref_b,2)},{"v_base_ref",Vec(ref_v,2)},{"q",Vec(actual_q,5)},{"dq",Vec(actual_dq,5)},{"q_cmd",Vec(ac.q,5)},{"dq_cmd",Vec(ac.dq,5)},{"tau_raw",Vec(raw,5)},{"tau",Vec(applied,5)},{"tau_cap",Vec(cap,5)},{"tau_lead",n6_exec?n6_tau:wb_exec?wb_tau:0}});
+      }
       // 拍-球解析冲量(§3.5 已知碰撞模型;求解器接触对已排除,真值侧在此施
       // 加)。命中事件接管 [calib] 标定捕获
       if(!measured) {

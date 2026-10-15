@@ -23,6 +23,7 @@
 // 诚实标注)+终端底盘跳变拒收+末段窗(t_hit−t<0.15 冻结)。失败=调用方
 // 保持上一计划,连续失败回退 B′ 由调用方管。
 #include <vector>
+#include <string>
 
 #include "control/arm_ik.h"
 
@@ -110,6 +111,7 @@ struct WmRequest {
 
 struct WmPlan {
   bool ok = false;
+  double contact_time = 0;                 // 诊断：离散接触节点绝对时刻
   double t0 = 0, h = 0;                      // 计划锚(绝对时刻;t0=t_now)
   // 逐节点轨迹(k=0..N;执行层绝对时刻线性插值采样)
   std::vector<double> rx, ry, rvx, rvy;              // 底盘
@@ -136,6 +138,7 @@ class WholebodyMpc {
   bool Solve(const WmRequest& req, WmPlan* out);
 
   // 诊断统计(实例级)
+  std::string last_reason; double last_ms=0, last_pos_res=1e9;
   int solves = 0, fails = 0, rejects = 0, timeouts = 0;
   double ms_max = 0, ms_sum = 0;
 

@@ -255,13 +255,14 @@ WholebodyMpc::WholebodyMpc(ArmIk& ik, const mjModel* m, const WmLimits& lim)
 }
 
 bool WholebodyMpc::Solve(const WmRequest& req, WmPlan* out) {
+  last_reason="time_domain";last_ms=0;last_pos_res=1e9;
   const double T = req.t_hit - req.t_now;
   if (T < 0.15 || T > 3.0) return false;
   const double h = T / kN;
   // 接触节点:内点(k_contact)或终端(legacy);行/信任域/法向块都挂它
   const int kc = (req.k_contact > 0 && req.k_contact <= kN) ? req.k_contact : kN;
   WmQp& qp = Qp();
-  if (!qp.ok) return false;
+  if (!qp.ok) {last_reason="qp_setup";return false;}
   const auto tc0 = std::chrono::steady_clock::now();
 
   double x0r[kNXs];
@@ -464,7 +465,8 @@ bool WholebodyMpc::Solve(const WmRequest& req, WmPlan* out) {
   }
   const double ms = std::chrono::duration<double>(
       std::chrono::steady_clock::now() - tc0).count() * 1e3;
-  if (!solved) { ++fails; return false; }
+  last_ms=ms;
+  if (!solved) { last_reason="qp_or_sqp_failed";++fails; return false; }
   // 质量门槛:best 迭代对真值流形的残差必须过线,否则按拒收(调用方保持
   // 上一计划)。best-effort 解的终端可在流形外任意远(松弛罚有限),执行它
   // = 底盘奔向臂不可达点(闭环 1m 级 miss 定位,2026-10-09)
@@ -472,7 +474,9 @@ bool WholebodyMpc::Solve(const WmRequest& req, WmPlan* out) {
     double pr0, vr0;
     TermResidual(ik_, best_term, best_term + 2, best_term + 4, best_term + 9,
                  req.p_hit, req.v_star, &pr0, &vr0);
+    last_pos_res=pr0;
     if (pr0 > lim_.accept_pos) {
+      last_reason="position_residual";
       ++rejects;
       if (getenv("WM_DEBUG"))
         std::fprintf(stderr, "[wm] reject: pos_res=%.3f\n", pr0);
@@ -480,6 +484,7 @@ bool WholebodyMpc::Solve(const WmRequest& req, WmPlan* out) {
     }
   }
   if (ms > (has_prev_ ? lim_.ms_budget : lim_.ms_budget_first)) {
+    last_reason="solve_time_budget";
     ++timeouts; ++rejects;
     if (getenv("WM_DEBUG")) std::fprintf(stderr, "[wm] reject: ms=%.1f\n", ms);
     return false;
@@ -491,6 +496,7 @@ bool WholebodyMpc::Solve(const WmRequest& req, WmPlan* out) {
     const double jump = std::hypot(best_term[0] - prev_term_[0],
                                    best_term[1] - prev_term_[1]);
     if (dp < 0.05 && jump > lim_.jump_reject) {
+      last_reason="base_jump";
       ++rejects;
       if (getenv("WM_DEBUG")) std::fprintf(stderr, "[wm] reject: jump=%.2f\n", jump);
       return false;
@@ -498,7 +504,9 @@ bool WholebodyMpc::Solve(const WmRequest& req, WmPlan* out) {
   }
 
   // 输出(best 迭代点)
+  last_reason="accepted";
   out->ok = true;
+  out->contact_time=req.t_now+kc*h;
   out->t0 = req.t_now;
   out->h = h;
   out->term_base[0] = best_term[0]; out->term_base[1] = best_term[1];

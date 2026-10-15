@@ -42,6 +42,9 @@ class SimBackend : public RobotInterface {
   bool run(int steps);                   // 每步:tick -> compute -> ctrl -> mj_step(+IMU 采样)
   uint64_t tick() const { return tick_; }
   double quantize(double q) const;       // 编码器量化(固件视角;评估侧用真值)
+  void arm_effort(double raw[5], double applied[5], double cap[5]) const {
+    for(int j=0;j<5;++j){raw[j]=motor_->last_raw_tau(AxisArm(j));applied[j]=motor_->last_tau_cmd(AxisArm(j));cap[j]=motor_->last_tau_cap(AxisArm(j));}
+  }
   const MotorSystemConfig& motor_config() const { return cfg_; }
   const ChassisConfig& chassis_config() const { return chcfg_; }
   const mjModel* model() const { return m_; }

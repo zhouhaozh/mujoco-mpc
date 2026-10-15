@@ -101,6 +101,7 @@ double MotorModel::compute(int axis, double q_meas, double dq_meas) {
   } else {
     cap = std::min(cap, m.braking_torque_nm);
   }
+  st.last_raw=tau;st.last_cap=cap;
   st.last_tau = std::clamp(tau, -cap, cap);
   return st.last_tau;
 }
