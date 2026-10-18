@@ -27,8 +27,9 @@
 // LegacyNmpcStatus(原代码统一返回空 vector,排障靠 cout)。
 //
 // 【移植注】线性求解器默认 mumps(随 casadi 便携包,免 HSL);原机用 MA57
-// (libcoinhsl),config 可切回。手写速度雅可比省略 ω2/ω5 项 —— 原机由误差
-// 网吸收,sim 下是模型误差的一部分,保留原样(与生成码一致,不可单方改)。
+// (libcoinhsl),config 可切回。速度雅可比:旧机手写 J 丢 ω2/ω5 项、plat
+// 开关只加 vx —— 换 sim FK 时两处均已消除(生成码=符号精确 jacobian,数值
+// 侧=中心差分,plat 计入 vx,vy;gen_nlp.cc/legacy_nmpc.cpp 同口径)。
 #include <functional>
 #include <string>
 #include <vector>
