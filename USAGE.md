@@ -148,8 +148,12 @@ B+速度环积分(供应商固件假设)/C+理想τ前馈(T位固件假设)/D �
 ```bash
 cmake --build build --target mit_motor_sim
 ./build/mit_motor_sim all eval/reports    # step/chirp/swing 三场景 → CSV
-python3 python/tools/plot_mit_motor.py    # 三张跟踪图(位置/误差/力矩)+指标表
+python3 python/tools/plot_mit_motor.py    # 三张四行图(位置/速度/误差/力矩)+指标表
 # 参数覆盖(B 实验扰动档直接复用):./build/mit_motor_sim all eval/reports J=0.24 G=9.6
+# 前馈辨识误差注入(独立输出目录,勿覆盖标称):
+mkdir -p eval/reports/fferr_x && ./build/mit_motor_sim all eval/reports/fferr_x ff_J=0.16 ff_G=9.6
+python3 python/tools/mit_ff_err.py eval/reports/mit_ff_err.png eval/reports \
+  "J−20%=eval/reports/fferr_J16" "G+20%=eval/reports/fferr_G96"  # 跨配置对比(C/D+速度误差行)
 ```
 
 常量来源:量化帧=旧仓 robot_control.h RS04(±12.57/±36/kp[0,5000]/

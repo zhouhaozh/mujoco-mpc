@@ -58,15 +58,19 @@ def lag_est(ref, y):
 
 def fig_scenario(d, scen, out_dir):
     t, qr = d["t"], d["q_ref"]
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(11, 8.5), sharex=True,
-                                        gridspec_kw={"height_ratios": [3, 2, 2]})
+    fig, (ax1, axv, ax2, ax3) = plt.subplots(
+        4, 1, figsize=(11, 10.5), sharex=True,
+        gridspec_kw={"height_ratios": [3, 2, 2, 2]})
     ax1.plot(t, qr, "k--", lw=1.6, label="q_ref")
+    axv.plot(t, d["dq_ref"], "k--", lw=1.4, label="dq_ref")
     for tag, lab, c, ls in VAR:
         ax1.plot(t, d[f"q_{tag}"], c, ls=ls, lw=1.3, alpha=0.9, label=lab)
+        axv.plot(t, d[f"dq_{tag}"], c, ls=ls, lw=1.0)
         ax2.plot(t, d[f"err_{tag}"], c, ls=ls, lw=1.0, label=lab)
         ax3.plot(t, d[f"tau_{tag}"], c, ls=ls, lw=1.0)
-    ax3.plot(t, d["tau_ff_ideal"], "k:", lw=1.2, label="τ_ff 理想值")
+    ax3.plot(t, d["tau_ff_ideal"], "k:", lw=1.2, label="τ_ff 前馈(随帧)")
     ax1.set_ylabel("位置 (rad)"); ax1.legend(loc="best", fontsize=9); ax1.grid(alpha=0.3)
+    axv.set_ylabel("速度 (rad/s)"); axv.grid(alpha=0.3)
     ax2.set_ylabel("误差 q−q* (rad)"); ax2.grid(alpha=0.3)
     ax2.axhline(0, color="k", lw=0.5)
     ax3.set_ylabel("力矩 (N·m)"); ax3.set_xlabel("t (s)")
@@ -79,7 +83,7 @@ def fig_scenario(d, scen, out_dir):
 
 
 def main(csv_dir, out_dir):
-    print(f"{'场景':6s} {'变体':34s} {'RMS rad':>8s} {'max rad':>8s}")
+    print(f"{'场景':6s} {'变体':34s} {'RMS rad':>8s} {'max rad':>8s} {'速度RMS':>8s}")
     for scen in ("step", "chirp", "swing"):
         d = load(f"{csv_dir}/mit_{scen}.csv")
         t, qr = d["t"], d["q_ref"]
@@ -89,7 +93,8 @@ def main(csv_dir, out_dir):
             err = d[f"err_{tag}"]
             errs[tag] = err
             r, mx = rms_max(t, err)
-            print(f"{scen:6s} {lab:34s} {r:8.4f} {mx:8.4f}")
+            vr = float(np.sqrt(np.mean((d[f"dq_{tag}"][t >= 0.3] - d["dq_ref"][t >= 0.3]) ** 2)))
+            print(f"{scen:6s} {lab:34s} {r:8.4f} {mx:8.4f} {vr:8.4f}")
         if scen == "step":  # 各保持段末 300ms 稳态下垂(°)
             print("  保持段稳态误差(°, 末300ms均值):")
             for name, t1 in (("hold0.6@0.7-1.0s", 1.0), ("hold−0.4@2.7-3.0s", 3.0),

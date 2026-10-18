@@ -67,6 +67,9 @@ struct Cfg {
   double ti_max = 12.0;  // 积分项力矩限幅 N·m
   int delay_ms = 9;      // 命令延迟(motors.json)
   int frame_ms = 4;      // 发帧周期 4ms=250Hz
+  // 前馈辨识值(-1=跟随对象真值=理想前馈;注入辨识误差做 B 实验用:
+  // 真机上这组来自 A 实验辨识表,与对象真值的偏差即辨识误差)
+  double ffJ = -1, ffb = -1, fftc = -1, ffG = -1;
 };
 
 struct Plant {
@@ -194,9 +197,12 @@ void run_scenario(const std::string& sc, const std::string& outdir,
   for (int ms = 1; ms <= n_ms && f; ++ms) {
     const double t = ms * 1e-3;
     const auto [qr, dqr, ddqr] = RefAt(sc, t);
-    // 理想 τ 前馈(参考逆动力学;C/D 随帧量化下发,A/B 无槽不发)
-    const double tff = c.J * ddqr + c.b * dqr + c.tc * std::tanh(dqr / 0.05) +
-                       c.G * std::cos(qr);
+    // τ 前馈(参考逆动力学,参数取辨识值组——缺省=真值即理想前馈;
+    // C/D 随帧量化下发,A/B 无槽不发;CSV 的 tau_ff_ideal 列=此随帧值)
+    const double fJ = c.ffJ < 0 ? c.J : c.ffJ, fb = c.ffb < 0 ? c.b : c.ffb;
+    const double ftc = c.fftc < 0 ? c.tc : c.fftc, fG = c.ffG < 0 ? c.G : c.ffG;
+    const double tff = fJ * ddqr + fb * dqr + ftc * std::tanh(dqr / 0.05) +
+                       fG * std::cos(qr);
     if ((ms - 1) % c.frame_ms == 0) {  // 250Hz 发帧(量化)
       for (int k = 0; k < kNV; ++k) {
         dr[k].fr.p = quant16(qr, -12.57, 12.57);
@@ -238,6 +244,8 @@ int main(int argc, char** argv) {
     else if (k == "ki") c.ki = v; else if (k == "ti_max") c.ti_max = v;
     else if (k == "delay_ms") c.delay_ms = static_cast<int>(v);
     else if (k == "frame_ms") c.frame_ms = static_cast<int>(v);
+    else if (k == "ff_J") c.ffJ = v; else if (k == "ff_b") c.ffb = v;
+    else if (k == "ff_tc") c.fftc = v; else if (k == "ff_G") c.ffG = v;
   }
   std::printf("[cfg] J=%.3f b=%.3f tc=%.2f G=%.1f kp=%.0f kd=%.0f ki=%.1f "
               "ti_max=%.1f delay=%dms frame=%dms\n",
