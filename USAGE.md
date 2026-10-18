@@ -138,3 +138,21 @@ ctest --test-dir build -R wbmpc   # 全身 MPC 单测
 `/home/ubuntu/sckd/badminton-mpc-6.0`(只读参考)。移植版在
 `sckd_sim/cpp/control/legacy_nmpc.{h,cpp}` + `third_party/nmpc6/`,
 差异与考古记录见 `sckd_sim/third_party/nmpc6/README.md`。
+
+## 8. MIT 单机协议仿真(独立,2026-10-18)
+
+真机臂执行链的单关节独立仿真(纯标准库,不依赖 MuJoCo/sckd_core),
+四变体同参并行对比跟踪曲线:A 纯MIT(真机现状,rob J2 kp50/kd30)/
+B+速度环积分(供应商固件假设)/C+理想τ前馈(T位固件假设)/D 兼有。
+
+```bash
+cmake --build build --target mit_motor_sim
+./build/mit_motor_sim all eval/reports    # step/chirp/swing 三场景 → CSV
+python3 python/tools/plot_mit_motor.py    # 三张跟踪图(位置/误差/力矩)+指标表
+# 参数覆盖(B 实验扰动档直接复用):./build/mit_motor_sim all eval/reports J=0.24 G=9.6
+```
+
+常量来源:量化帧=旧仓 robot_control.h RS04(±12.57/±36/kp[0,5000]/
+kd[0,100],τ 槽 ±120 为 T 位假设);T-N 包络=motors.json;增益=rob
+robot_sim.ini [Arm] J2 track。ki/ti_max/τ 槽为假设档,待供应商固件
+确认(交接文档 §1.3「臂执行帧」行)。

@@ -482,6 +482,73 @@ m2_demo 同款)。挥拍层模式(pfly/B′)首规划后 0.25s 五次过渡到�
 - **定位结论(设计文档方案 B′)**:击球是事件边值问题,臂层时间锚定 QP 是正解;
   MPC 主场 = 底盘约束轨迹跟踪(M3 fly-through);不做"全 MPC"架构
 
+## 真机移植立项:nmpc6+pfly → sckd-robot(2026-10-15,交接文档备妥)
+
+- 用户定调:移植对象 **nmpc6 与 pfly 两者都要**,真机实测 A/B;执行方式=另一
+  项目 Claude(主仓 `/home/ubuntu/research/sckd-robot`,双目录挂本仓)做移植;
+  本仓职责=提前备好文档/基准/先验。
+- 侦察结论(全部写入 **docs/真机移植交接_nmpc6_pfly.md**):
+  - **sckd-robot=本体控制代码,零球感知**(用户定调):感知/击球决策在上位机,
+    30B 串口包(hit_*/dt/robot_target/hittype,hal/vision_protocol.h)即其全部
+    输入;nmpc6 的 Request 字段与包**一一对应**(旧机原生契约)。
+  - 其 motion/**MpcPlanner 已存在**(Phase 5b,2026-09-20):与本仓 legacy_nmpc
+    同出旧 nmpc.cc 的两条独立移植线(彼=运行时符号构建+Waypoint 消费+
+    mpc_replay 对拍,我=nlp.so codegen+sim 精确 FK)→ **nmpc6 侧=对齐修复非
+    搬运**:FK 换 sim_fk.h 几何(其默认 dims={0.69,0.706,−0.1705,−0.85} 为
+    羽毛球腕/拍常数,残差 0.1-0.3m 级)+参数网球化。
+  - **pfly=真新增**(IPlanner 第三实现):hit_planner 感知规划段(采样/评分/
+    RefineAt)不进机器人(上位机职责),机器人侧=参数变换器(30B 包→
+    BaseRefGen/ArmSwing 终值,缺口 v_in/v_base* 选项表在文档 §3.4)+执行栈;
+    ArmIk 去 MuJoCo 是唯一硬重写(解析 FK/雅可比材料=sim_fk.h+gen_nlp.cc)。
+  - A/B 同上游天然公平(同 30B 包/同 robot_target);sim 无补偿口径 nmpc6
+    全面低于 pfly 的先验数字随文档带走,误差网重训/在线 comp 为必选项。
+- 文档结构:职责边界三方表→接口契约盘点(30B 包↔两控制器输入映射/单位坐标
+  差异)→nmpc6 对齐清单(FK 换血两路线+对拍口径/参数网球化/sim 适配取舍/
+  误差网)→pfly 移植清单(模块映射/去 MuJoCo/执行映射/缺口选项)→共性前置
+  (零位纪律/电压/伺服/k 实测)→A/B 分阶段协议(台架→fixed 采数→挂补偿→
+  rand/gs)→资产清单→坑索引(两仓留档合并)。
+- 用户拍板(2026-10-15):①实机电压=**72V**(sim 的 72V 口径 T-N 包络直接
+  适用,du_max/jv/ACC 起步用现值);②pfly 法向来源=**选项 A**(由
+  hitpitch/hityaw 直接构造,与 nmpc6 同源;B/C 留档备查)。
+
+## M1 底盘阶跃响应基准(2026-10-16,m1_step_resp)
+
+- 工具:`cpp/apps/m1_step_resp.cpp`(阶跃 twist 时序:vx +1/+4/−2/0、vy +1.5、
+  wz +1.5,臂 hold 隔离,逐毫秒 CSV)+ `python/tools/plot_step_resp.py`
+  (曲线+指标);产物 `eval/reports/step_resp.csv/_vx.png/_lat.png`。
+- **响应数字**:起响应延迟 22ms(9ms 命令管道+伺服);vx→1 上升 229ms
+  (ramp 125ms+执行滞后 ~100ms);vx→4 力矩峰仅 10.7 N·m(RS06 峰值 36,
+  非力矩瓶颈),±2% 入带 918ms;稳态欠速 2-3%(1 m/s 段 0.032、4 m/s 段
+  0.070、wz 段 3.3%);超调 ≤4.5%(大阶跃无超调)。
+- **两个行为特征**:①方向反转(vx +4→−2)的代价 = 过零(8 m/s² 斜坡,
+  实测斜率 8.0 验证)+ **舵物理旋转 180°**(dir_rate 3 rad/s,≈0.6-0.9s,
+  与轮反转策略不同:reverse_threshold 下选择转舵过零);②vy 阶跃的舵 90°
+  转位 ~250-300ms(角速率 ~5 rad/s,未触 8 rad/s 前馈钳)。开环 twist 机动
+  航向漂移 ~5.5°(无航向闭环)。
+- **含义**:对 50Hz 重解的 nmpc6/pfly,底盘执行滞后(0.1-0.4s,随幅值)是
+  带宽主导项,远大于 9ms 命令延迟;CSP 内环未建模(见 2026-10-16 对答:
+  涌现交越 ≈28 rad/s 设计注)不影响此结论。
+
+## MIT 单机协议仿真(前馈 A/B 前置件,2026-10-18)
+
+- **动机**:真机臂执行帧=4×16bit MIT(pos/speed/kp/kd,无力矩槽,旧仓
+  robot_control.cc:3243);供应商固件称速度环含积分。建独立单关节仿真把
+  「执行层变体」从全机仿真剥离,为 B 实验(扰动敏感)提供 plant 档位。
+- **实现**:`cpp/apps/mit_motor_sim.cpp`(纯标准库,不链 sckd_core/MuJoCo;
+  CMake 独立目标)。链路=250Hz 量化帧(旧仓 RS04 常量 ±12.57/±36/
+  kp[0,5000]/kd[0,100])→1kHz 驱动器 τ=kp·e_p+kd·e_v+τ_ff→9ms 命令延迟→
+  RS04 T-N 包络(motors.json 11 点)+臂侧负载(J/b/τc/G·cosθ)。四同参
+  对象并行:A 纯MIT(rob J2 track kp50/kd30)/B+速度环积分(ki15 限幅12,
+  结构假设)/C+理想τ前馈(T位假设,±120 16bit 槽)/D 兼有。
+- **结果**(eval/reports/mit_{step,chirp,swing}.{csv,png}):稳态重力下垂
+  A −5.6°~−8.9°(与 rob ini「纯P锁不进3°=旧机固有」同因)→B 部分收窄
+  (−6~−7°)→C/D 归零;RMS 误差 C≈0.003rad 比 A(0.12-0.14)好 ~40×;
+  快挥段峰差 A 11.4°→C 0.74°(T=0.2s 段);chirp 相位滞后 A ~5-7°@2-4Hz→
+  C≈0;0.14s 快挥段触及 ±120N·m T-N 包络。
+- **结论**:该增益档位下理想前馈(需固件 T 位)收益远大于速度环积分;
+  B 的积分仅收 ~25% 稳态下垂且慢。J/b/τc/G 即待辨识量,可 argv 覆盖
+  (J= b= tc= G= kp= kd= ki= …),B 实验直接复用本可执行做档位扫描。
+
 ## 待用户提供(按优先级,不变)
 1. 网球拍末端实际质量/惯量(拍 CAD 或称重)
 2. 拍-球回弹实测(几组:挥速×拍面位置→出球速度)
