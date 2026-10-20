@@ -43,18 +43,22 @@ struct LegacyNmpcConfig {
   bool sim_joint23_limits = false;  // 仿真关节坐标直接来自加载的 MJCF
   double joint23_lo[2] = {-3.14, -3.14}, joint23_hi[2] = {0.5, 0.5};
   bool actuator_prediction = false;
+  bool chassis_prediction = false;
   bool enforce_feasibility = false; // 新候选：终端锚、状态/约束/精度联合验收
   double constraint_tolerance = 1e-4;
   double terminal_tolerance_m = .05;
   int max_iter = 270;                               // IPOPT 上限(原值)
+  double freeze_window_s = 1.0;  // 0关闭冻结；默认保留remaining>1s规则。
+  bool allow_nonuniform_dt = false; // 仅配套独立--nonuniform-time基线生成库。
 };
 
 struct LegacyNmpcRequest {
   // 状态:[x,y,θ1..θ5, vx,vy, ω1..ω5](m/rad, m/s / rad/s;θ 为关节角)
   double state[14] = {0};
   double target[3] = {0};      // 击球点(m,世界系)
-  double dt[3] = {0};          // 每步时长(s;和=剩余击球时间,均分由调用方给)
+  double dt[3] = {0};          // 每步时长(s;和=剩余时间)。非均分须显式启用及重生成库。
   double effective_q[5]={0},effective_dq[5]={0};
+  double chassis_state[11]={0}; // ramp body vx/vy, four steer angles, four wheel target means, yaw
   double hit_spd = 10.0;       // 出球速度 m/s(拍末端 vx 目标)
   double hit_yaw_deg = 0.0;    // 出球方位(°)
   double hit_pitch_deg = 20.0; // 出球仰角(°,决定拍面法向目标)
@@ -83,7 +87,14 @@ enum class LegacyNmpcStatus {
 
 struct LegacyNmpcResult {
   LegacyNmpcStatus status = LegacyNmpcStatus::kAccFail;
+  // 只读诊断；不参与控制或接纳决策。
+  std::string ipopt_status = "not_called", solver_exception;
+  int ipopt_iterations = -1, worst_index = -1;
+  std::string worst_constraint, worst_side;
+  double worst_value = 0, worst_lower = 0, worst_upper = 0;
+  std::vector<double> diagnostic_g, diagnostic_lbg, diagnostic_ubg, diagnostic_u, diagnostic_lbx, diagnostic_ubx;
   double max_constraint_violation = 0;
+  bool freeze_speed_gate = false, freeze_active = false;
   bool solver_ok = false;      // IPOPT return_status ∈ {Solved, Acceptable}
   double term_state[14] = {0}; // rollout 终态=下发目标(x/y 含末端误差反馈修正)
   double controls[21] = {0};   // 控制增量,块序 [dvx×3, dvy×3, dω1×3 … dω5×3]

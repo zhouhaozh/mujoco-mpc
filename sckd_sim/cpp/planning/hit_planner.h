@@ -48,6 +48,9 @@ struct PlannerParams {
   double height_lo = 0.5, height_hi = 2.0;
   double arm_reach_min = 0.4, arm_reach_max = 1.1;
   double swing_time = 0.35, prep_time = 0.55;
+  double min_lead_s = -1;  // 显式时间实验；负数保留prep+swing。
+  double max_horizon_s = 2.5;
+  double target_lock_s = .15;
   double max_base_travel = 5.0;
   double base_v_max = 2.1;         // 底盘速度上限(伺服 clamp 同源):时间可达性判据
   double bounce_guard = 0.08;      // 反弹时刻保护带(s):锚定 t_hit 须早于预测反弹−此值

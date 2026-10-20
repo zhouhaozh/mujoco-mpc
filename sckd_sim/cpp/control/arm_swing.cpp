@@ -199,7 +199,7 @@ bool ArmSwing::UpdatePlan(const HitPlan& plan, ArmIk& ik, double t_now) {
 
 bool ArmSwing::locked() const {
   // 锁止:距终值点(t_hit−kLead)的剩余时间 < 裕量(以最近一次求解时刻计)
-  return (t_hit_ - (coherent_clock_?0:ArmSwing::kLead)) - t_last_solve_ < 0.15;
+  return (t_hit_ - (coherent_clock_?0:lead_s_)) - t_last_solve_ < lock_margin_s_;
 }
 
 bool ArmSwing::Solve(const HitPlan& plan, ArmIk& ik, double t_now, bool retime) {
@@ -264,9 +264,9 @@ bool ArmSwing::Solve(const HitPlan& plan, ArmIk& ik, double t_now, bool retime) 
   t_hit_ = plan.t_hit;
   double T = T_;
   if (retime) {
-    const double t_term = t_hit_ - (coherent_clock_?0:ArmSwing::kLead);
+    const double t_term = t_hit_ - (coherent_clock_?0:lead_s_);
     T = (t_term - t_now) / kSHit;
-    if (T < 0.30 || T > 1.8) return false;   // 时窗异常(过近/过远)拒解
+    if (T < duration_min_s_ || T > duration_max_s_) return false;
     T_ = T;
     t0_ = t_now;
   }

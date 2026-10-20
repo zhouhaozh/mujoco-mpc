@@ -16,6 +16,9 @@ class ChassisServo {
   ChassisServo(const ChassisConfig& cfg, RobotInterface* hw);
 
   void set_twist(const Twist& cmd);   // 语义命令(m/s, rad/s, 车体系)
+  // 仿真实验开关:分别控制平移方向角限率和舵速度前馈钳位;默认保持原行为。
+  // 不改变车体 yaw 斜坡、轮目标斜坡或电机物理保护。
+  void set_steering_rate_limits(bool direction_limited, bool feedforward_limited);
   void update(double now_s);          // 每 1 ms 调用(与物理步同步)
 
   const Twist& ramped() const { return cur_; }
@@ -33,6 +36,8 @@ class ChassisServo {
   RobotInterface* hw_;
   SwerveKinematics kin_;
   Twist cmd_{}, cur_{};
+  bool direction_limited_ = true;
+  bool feedforward_limited_ = true;
   bool reversed_[kSwerveCorners] = {};
   double wheel_int_[kDriveWheels] = {};     // PI 积分(幅值钳制抗饱和)
   double alloc_lin_[kDriveWheels] = {};     // 分配节拍轮目标(m/s,线速度)

@@ -20,6 +20,7 @@ class StageProfile {
  public:
  StageProfile() {if(const char* p=std::getenv("M2_TIMING_PATH"))path_=p;}
  static StageProfile& Get() {static StageProfile p;return p;}
+ void Configure(const std::string& path) {path_=path;}
  bool enabled() const {return !path_.empty();}
  void Add(const std::string& key,double ms) {values_[key].push_back(ms);}
  void Count(const char* key) {if(enabled())++counts_[key];}

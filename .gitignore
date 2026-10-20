@@ -9,3 +9,41 @@ sckd_sim/models/generated/_*.urdf
 
 # 日志产物
 sckd_sim/eval/reports/*.csv
+
+# 本地环境、依赖和可重建编译产物
+.venv/
+.venv-*/
+venv/
+deps/
+**/build*/
+**/.tmp/
+**/.cache/
+*.so
+*.a
+*.o
+*.dylib
+.DS_Store
+
+# 运行日志和视频；不要整体忽略 artifacts 或必要模型权重
+*.log
+MUJOCO_LOG.TXT
+**/video/
+**/videos/
+**/logs/
+**/artifacts/**/logs/
+**/artifacts/**/video/
+
+# 本机认证、编辑器状态
+.env
+.env.*
+!.env.example
+!.env.sample
+.ssh/
+.git-credentials
+.netrc
+*.pem
+*.key
+credentials*.json
+client_secret*.json
+.claude/
+.vscode/

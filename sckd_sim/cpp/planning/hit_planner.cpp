@@ -10,7 +10,7 @@ HitPlanner::HitPlanner(const PlannerParams& pp, const BallAeroParams& aero)
 void HitPlanner::RefineAt(const BallPredictionInterface& predictor, const BaseState& base,
                           HitPlan* hp, double t_now) {
   if (!hp || !hp->feasible) return;
-  if(pp_.atomic_targets&&hp->t_hit-t_now<=.15)return;
+  if(pp_.atomic_targets&&hp->t_hit-t_now<=pp_.target_lock_s)return;
   HitPlan candidate=*hp;
   HitPlan* original=hp;
   if(pp_.atomic_targets||contact_feasible)hp=&candidate;
@@ -83,10 +83,11 @@ HitPlan HitPlanner::Plan(const BallPredictionInterface& predictor, const BaseSta
   // 自救(随机族实测 plan_err 0.68/0.99,2026-10-07)。反弹后紧邻段(z≈R)
   // 低于高度窗天然被拒,无需额外 guard
   const double t_bounce = predictor.NextBounceTime();
-  double t_end = t_now + 2.5;
+  double t_end = t_now + pp_.max_horizon_s;
   if (t_bounce > 0.0 && pp_.cross_bounce == 0)
     t_end = std::min(t_bounce - pp_.bounce_guard, t_end);
-  const double lead = (min_lead_s > 0.0) ? min_lead_s : pp_.prep_time + pp_.swing_time;
+  const double lead = (min_lead_s > 0.0) ? min_lead_s :
+      (pp_.min_lead_s > 0.0 ? pp_.min_lead_s : pp_.prep_time + pp_.swing_time);
   for (double t = t_now + lead; t < t_end; t += 0.02) {
     if (t_bounce > 0.0 && t > t_bounce - pp_.bounce_guard && t <= t_bounce) continue;
     double p[3], v_in[3];

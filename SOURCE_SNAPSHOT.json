@@ -1,0 +1,1790 @@
+{
+  "schema": "UBUNTU_GITLAB_HISTORY_INTEGRATION/1",
+  "date": "2026-10-20",
+  "source_host": "ubuntu-11",
+  "source_root": "/home/ubuntu/Zhaohui/sim",
+  "source_branch": "codex/pipeline-modularization",
+  "parent_commit": "7a95839fc9fb752e402cd66d4cb241f19695f972",
+  "original_commit_count": 73,
+  "team_main": "3121caaa49b604afc192cf8f9dcff889f681d73c",
+  "initial_gitlab_snapshot": "a0d34af2d23bc0a099a44154f5dd564e3f39d8c6",
+  "source_only": "Ubuntu saved worktree; no Mac project files",
+  "source_file_count": 352,
+  "source_bytes": 42986823,
+  "scope": "Reviewed current source and documentation; manifest excludes itself. Historical tracked paths below retain parent blobs, not current runtime changes.",
+  "inherited_unchanged_paths": [
+    "sckd_sim/MUJOCO_LOG.TXT",
+    "sckd_sim/eval/reports/m0_report.txt",
+    "sckd_sim/eval/reports/m1_report.txt",
+    "sckd_sim/eval/reports/render_allgroups.png",
+    "sckd_sim/eval/reports/render_home.png",
+    "sckd_sim/eval/reports/render_home_front.png",
+    "sckd_sim/eval/reports/rz_closeup_v2.png",
+    "sckd_sim/models/source/x4_tennis/tmp3s6lgjem.urdf",
+    "sckd_sim/third_party/nmpc6/nlp.so",
+    "sckd_sim/third_party/nmpc6/nlp_sep8.so",
+    "sckd_sim/third_party/osqp/libosqp.a"
+  ],
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 691,
+      "sha256": "db8d61f819074e95f7553afdbd88e717c48d67a313fa9ef5df38690c483718bf"
+    },
+    {
+      "path": "BRANCH_COLLABORATION.md",
+      "bytes": 2454,
+      "sha256": "6d9c599d7d9aeaa025572ced45a4b78edec71b66151905473450f38b0d2576a4"
+    },
+    {
+      "path": "PREDICTOR_INTEGRATION.md",
+      "bytes": 4224,
+      "sha256": "8a91904900ada12363ba0b72856bff9799e9f2f3881b66e5cf5317decce692e6"
+    },
+    {
+      "path": "PROGRESS.md",
+      "bytes": 37495,
+      "sha256": "edd8e7842c09159c776004dbf5d34f60cea91e755aa715c93b2bb77c2ba98886"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2107,
+      "sha256": "f7e0e36003a615f4a0b5e13d5a09b4f4181b68e48764a33c6bb607eee289b8db"
+    },
+    {
+      "path": "USAGE.md",
+      "bytes": 6829,
+      "sha256": "110821e61f7a10929e6a7e4d1867c04c6ad9ac10db200a2c36da1f3c364d3e4f"
+    },
+    {
+      "path": "docs/MPC_CONTROL_OPTIMIZATION_20261015.md",
+      "bytes": 1930,
+      "sha256": "e1068ea9b25647a28f0a10e8570ec2b4f8503d1e0db01038309b66609e4078b4"
+    },
+    {
+      "path": "docs/MPC_PROJECT_STATUS.md",
+      "bytes": 21202,
+      "sha256": "16aa94bec8e04bb79feae75db4fa381e174bea3f97d3394864a25eac7def589d"
+    },
+    {
+      "path": "docs/PIPELINE_IMPLEMENTATION_20261019.md",
+      "bytes": 10657,
+      "sha256": "99e245cca510d95c6d3ccc857325cd8e319fbc5592799c971c67c801fd1528f1"
+    },
+    {
+      "path": "docs/REAL_MACHINE_PARAMS.md",
+      "bytes": 3135,
+      "sha256": "4d8119ed6d5949918e58580348985ea9932d585eb1d8482249cd86e617bce0f8"
+    },
+    {
+      "path": "docs/SIM_SYSTEM_DESIGN.md",
+      "bytes": 59819,
+      "sha256": "36e97430ed53fc4edba5f0b79511f5280f43b4cfc84849178f21e1ccffadd396"
+    },
+    {
+      "path": "docs/TIME_WINDOW_SEARCH_20261019.md",
+      "bytes": 13612,
+      "sha256": "37b9851ecc9063e4c0c5e4174d7993c745e471497392acfdb176689b6ff37bfb"
+    },
+    {
+      "path": "docs/motors/RS04使用说明书260713.pdf",
+      "bytes": 1937083,
+      "sha256": "9d6eca5923a01f6865ca7f99d8e77673239989c459839edc5d864c37e706ac0a"
+    },
+    {
+      "path": "docs/motors/RS04使用说明书260713.pdf.html",
+      "bytes": 230166,
+      "sha256": "66e7448b9197911035623c84ffce713e7d825cbcf2d4f7e611e0d5c8e3e90889"
+    },
+    {
+      "path": "docs/motors/RS04使用说明书260713.txt",
+      "bytes": 76090,
+      "sha256": "791bc3efbfd062796948b8f16fb0c2c708f25a3e5a31c71627c66d50de71613f"
+    },
+    {
+      "path": "docs/motors/RS06使用说明书260713.pdf",
+      "bytes": 1838501,
+      "sha256": "28972fe4ddb6e2731856536e16cd95d0d5b1f4556c9cd3389fa0bef5e6c53497"
+    },
+    {
+      "path": "docs/motors/RS06使用说明书260713.txt",
+      "bytes": 74158,
+      "sha256": "16a9cb3ad9f28f38446101174fd1837968a7f7633565b434e1a389657a4a92db"
+    },
+    {
+      "path": "docs/nmpc6_vs_pfly_建模求解.md",
+      "bytes": 9691,
+      "sha256": "51ee8c7a5cde907e709ae02afdb2b490ef8c89163b05dd21fb9206e62be3f2f4"
+    },
+    {
+      "path": "docs/球场平面图.png",
+      "bytes": 190080,
+      "sha256": "f8f9ab0cfb740cac7ecf9731a6e88678033a11aedbe86bb7bb36c2a6433d9262"
+    },
+    {
+      "path": "docs/羽机尺寸电机参数示意.pdf",
+      "bytes": 2772998,
+      "sha256": "66f1236a3ee08e1b55e76deda9ddaa97b773ad1e55245ac19d193f6b879f7bbc"
+    },
+    {
+      "path": "notes.md",
+      "bytes": 23,
+      "sha256": "16ef15bc943a4a7967e9e3dcc91130c98e20a02e3a91448b5b6846c5c6a73536"
+    },
+    {
+      "path": "prediction/tennis_calibration/README.md",
+      "bytes": 1602,
+      "sha256": "27e308d0a15b675d310fee9cb7e10fbb845a89f167fbcc49ed5e741ccbd6600f"
+    },
+    {
+      "path": "prediction/tennis_calibration/__init__.py",
+      "bytes": 75,
+      "sha256": "3abdc5d116187bb87f3a383e66d9fd4ce89d639b88f9b16096dfc470d78791f8"
+    },
+    {
+      "path": "prediction/tennis_calibration/audit_robust_results.py",
+      "bytes": 29195,
+      "sha256": "0c48c41c3ac7b6de6855663ea02f1c0aab801c062e41249886f1f4bce9cf8753"
+    },
+    {
+      "path": "prediction/tennis_calibration/bounce.py",
+      "bytes": 15882,
+      "sha256": "0c79eedb15ad0cf436e75d9d12bd0f658e66570d1324197e9e6a5ba49d53f974"
+    },
+    {
+      "path": "prediction/tennis_calibration/bounce_replay.py",
+      "bytes": 5016,
+      "sha256": "e4c64ff5fe631e1cdaa6e107cf7199979d87ee35cf505ed7ce5b86f72ee2266e"
+    },
+    {
+      "path": "prediction/tennis_calibration/clean.py",
+      "bytes": 17502,
+      "sha256": "c4e50a9e0021192f6a0fb1b7265c51654fa05b3e60c9d0f448732399d627ad1d"
+    },
+    {
+      "path": "prediction/tennis_calibration/collision_forecast.py",
+      "bytes": 3626,
+      "sha256": "fd2f99e89b6cc1bf4738f2847a3fcb2eb5bbf5d030e5d2f8c7ed3fb72418193d"
+    },
+    {
+      "path": "prediction/tennis_calibration/collision_labels.py",
+      "bytes": 3035,
+      "sha256": "51fcf3574d536662b2a7dedc7d62beda89914769debe4b7f9830cb0a3cecf5e9"
+    },
+    {
+      "path": "prediction/tennis_calibration/collision_mapping.py",
+      "bytes": 21660,
+      "sha256": "0919057f02674b1e212777af3498d76f910ef18bdab61f47adceb9ef27070a4b"
+    },
+    {
+      "path": "prediction/tennis_calibration/collision_metrics.py",
+      "bytes": 10727,
+      "sha256": "7b7b52f6bf1b935d98e95a03e6a5fbafc641c1770d520851736d8a1029121034"
+    },
+    {
+      "path": "prediction/tennis_calibration/collision_model_bank.py",
+      "bytes": 6584,
+      "sha256": "7d4810de11c6015d7af68122382594037efcdaf3d334af8a1b18e06e9b7bda7e"
+    },
+    {
+      "path": "prediction/tennis_calibration/collision_numeric_audit.py",
+      "bytes": 13066,
+      "sha256": "8e1217555ee4426ba7bfebe01e94cd5b29d0cab2e994d2fad5c6b0bafe300cb4"
+    },
+    {
+      "path": "prediction/tennis_calibration/collision_online_baseline.py",
+      "bytes": 12906,
+      "sha256": "fd201b03d024e713f2f1e2db662cf283284f02e48014f0ddda547478742f0015"
+    },
+    {
+      "path": "prediction/tennis_calibration/collision_plots.py",
+      "bytes": 8063,
+      "sha256": "249d05c907888f088ad601c45dafb54b3a77cceca210075925c66af2117fb8a4"
+    },
+    {
+      "path": "prediction/tennis_calibration/collision_predictor.py",
+      "bytes": 4188,
+      "sha256": "1ff843b0654d9b1119ad7d0855dd9802f4c9843a6f0e18e231e43fe2c8febf9f"
+    },
+    {
+      "path": "prediction/tennis_calibration/collision_prefix.py",
+      "bytes": 11148,
+      "sha256": "fd6cb12128e6a81f5d49bb0103c7595dd49611c2bf6185fb74cbff1166fa8790"
+    },
+    {
+      "path": "prediction/tennis_calibration/collision_run.py",
+      "bytes": 21033,
+      "sha256": "7919692974dd0b5e8321c835ccefe3bf386b778a0c68a8c2792c98dfa3e3187a"
+    },
+    {
+      "path": "prediction/tennis_calibration/controller_audit.py",
+      "bytes": 1711,
+      "sha256": "5e399003b2c045961274a16868f3bd2a2c8ec8abe358080f6b5a7bbca4a14278"
+    },
+    {
+      "path": "prediction/tennis_calibration/controller_contract.py",
+      "bytes": 766,
+      "sha256": "5e6164fa2fa162b3ff881483506b62c26fcc39676aff4ac7daa9711f7b514c1a"
+    },
+    {
+      "path": "prediction/tennis_calibration/controller_group_validation.py",
+      "bytes": 4184,
+      "sha256": "70a0a8a7c7c2f607afaea7da6390308bb30d08bc60459e341a7bf7019996b3f3"
+    },
+    {
+      "path": "prediction/tennis_calibration/controller_horizon_evaluation.py",
+      "bytes": 9618,
+      "sha256": "0bb1a716055e57485d16083e5ca37b676e1fa4b73a55bf67aac708983074e8e4"
+    },
+    {
+      "path": "prediction/tennis_calibration/controller_report.py",
+      "bytes": 2700,
+      "sha256": "6175ef3eb43933e4671bb96756878b6b229ce24143a7cb8d7967f3175836afb5"
+    },
+    {
+      "path": "prediction/tennis_calibration/controller_service.py",
+      "bytes": 9892,
+      "sha256": "1e6e6d475f840bd4de2637db5aceaf4d5d72dcafc6d9f1e1101f2ac72df16617"
+    },
+    {
+      "path": "prediction/tennis_calibration/flight.py",
+      "bytes": 34536,
+      "sha256": "75c3f2af498185a819d72ed2ebd1da7bda8cebc2fc2f84d05aa5c51925481441"
+    },
+    {
+      "path": "prediction/tennis_calibration/gp_analysis_plots.py",
+      "bytes": 26005,
+      "sha256": "b28327c074fa2cfe0b87316c92829809f8695ae1bc191c8e5a0ed46d1babfc6a"
+    },
+    {
+      "path": "prediction/tennis_calibration/gp_analysis_run.py",
+      "bytes": 19768,
+      "sha256": "f94bae178353e36b8cf469cf5f1c001ed1b27b5da41b7ed9a6f83142d142da10"
+    },
+    {
+      "path": "prediction/tennis_calibration/gp_detailed_method_plots.py",
+      "bytes": 17207,
+      "sha256": "1bc2c49a20a4b2219c0f082326fc6295adf20e116dadff5de64ddd2afc19ed54"
+    },
+    {
+      "path": "prediction/tennis_calibration/gp_online.py",
+      "bytes": 11689,
+      "sha256": "046b40c2b49fd86e3ce86ebf0b4ab4f64b0494d1109cd3f244d010e0efff13ab"
+    },
+    {
+      "path": "prediction/tennis_calibration/gp_spike_ablation.py",
+      "bytes": 23985,
+      "sha256": "94eed18c426ae7d2d8b7228e525207536081250793d464528748cf0649267257"
+    },
+    {
+      "path": "prediction/tennis_calibration/gp_spike_plots.py",
+      "bytes": 9857,
+      "sha256": "7acc2da1048a5cbdb51abcc23401c0d4c88afbc9f347f762571b7ea5564c3ec7"
+    },
+    {
+      "path": "prediction/tennis_calibration/group_fold_evaluation.py",
+      "bytes": 21173,
+      "sha256": "35402b2b70ba366db9a2a3a021c9cf4f5f424bbe294599f6ed640ceffa7527bd"
+    },
+    {
+      "path": "prediction/tennis_calibration/group_fold_training.py",
+      "bytes": 18706,
+      "sha256": "85e4a0e11b2183b972e132a03ff3b77021ead2c249dd546885e9e1e98de044db"
+    },
+    {
+      "path": "prediction/tennis_calibration/height_forecast.py",
+      "bytes": 6385,
+      "sha256": "a06e5a694c8e8cd06404c3225d829a7d9bab9ed37d3c065e11cdd0c97314311b"
+    },
+    {
+      "path": "prediction/tennis_calibration/height_legacy_baseline.py",
+      "bytes": 13787,
+      "sha256": "327b171a9942c972b900c0255547b8ee711ed49f8d1741e3909dcec1b660f98d"
+    },
+    {
+      "path": "prediction/tennis_calibration/height_numeric_audit.py",
+      "bytes": 16587,
+      "sha256": "2ee2e7ab0f1f44a8f56c52d2e82f24bb2b51c9a96373c0720d3b19d13657c545"
+    },
+    {
+      "path": "prediction/tennis_calibration/height_policy.py",
+      "bytes": 9108,
+      "sha256": "029cce7fa3f3988b0a156a0c4d8a8447ba642ab0026164551e8590d5ecb34c0c"
+    },
+    {
+      "path": "prediction/tennis_calibration/height_policy_plots.py",
+      "bytes": 14790,
+      "sha256": "f8bd1bbb745bae9680a730dab3f3a6b3f685c413bb8dc8bd559c1697b62f2c27"
+    },
+    {
+      "path": "prediction/tennis_calibration/height_policy_run.py",
+      "bytes": 21708,
+      "sha256": "f2b3886d85d3fd2078d3f848f7373a4bdc2cf066adf918071b751cc5c16a97ee"
+    },
+    {
+      "path": "prediction/tennis_calibration/height_policy_simple_plots.py",
+      "bytes": 7523,
+      "sha256": "8de3633642378e23c85c2ab6489e1076c60346f631554b081da83440619e44f5"
+    },
+    {
+      "path": "prediction/tennis_calibration/hold_sweep.py",
+      "bytes": 32450,
+      "sha256": "71667cbdeb5cfb26b28a5b94fa2348f11a4038967b20fb9b6e68e2a80da5ad60"
+    },
+    {
+      "path": "prediction/tennis_calibration/hybrid_hold_evaluation.py",
+      "bytes": 19630,
+      "sha256": "dee8de21f871f126deb0765158d425c1bd761734419170fd96f9ad3629422783"
+    },
+    {
+      "path": "prediction/tennis_calibration/identified_dynamics.py",
+      "bytes": 18309,
+      "sha256": "6f4638cea025818743cd9befac29ea66e071d63f9d9659d126a5268fb2c9f8cc"
+    },
+    {
+      "path": "prediction/tennis_calibration/identified_evaluation.py",
+      "bytes": 7693,
+      "sha256": "2bac505fabad30b61bf15fd788cdb40425c0ba7af34b9c64d88fae4517aca9af"
+    },
+    {
+      "path": "prediction/tennis_calibration/identified_filter.py",
+      "bytes": 33332,
+      "sha256": "11644acd8279b3400be0fe4981a3688b58d3fa6d42b6bbdd2ac1776f1c3e715e"
+    },
+    {
+      "path": "prediction/tennis_calibration/identified_mujoco.py",
+      "bytes": 11721,
+      "sha256": "4625560ba17c020e8bdfcbebeea8301f3a39102a8fefb757d43ff30089510076"
+    },
+    {
+      "path": "prediction/tennis_calibration/identified_player.py",
+      "bytes": 22111,
+      "sha256": "059d9fb811ac68cfaa5935bfb69b1760c43e0bfdd2dd67b29ba58b67e6047649"
+    },
+    {
+      "path": "prediction/tennis_calibration/identified_plots.py",
+      "bytes": 8215,
+      "sha256": "5b64c43f38c618b93c69ec7e6a3faf09064123ce4c79eea388acc5a4e1ceffe7"
+    },
+    {
+      "path": "prediction/tennis_calibration/identified_run.py",
+      "bytes": 16999,
+      "sha256": "4ae0a0ddfee346158af763f4cf3385160d16c99ee4f9be0d769931bb58fa0159"
+    },
+    {
+      "path": "prediction/tennis_calibration/legacy_hold_adapter.py",
+      "bytes": 4391,
+      "sha256": "a40bb83d6b64ccdd5e02a9b623e7ec05ed7dc866ae6ac198956a5cd63344d3f9"
+    },
+    {
+      "path": "prediction/tennis_calibration/measurement_noise_probe.py",
+      "bytes": 12212,
+      "sha256": "32663080fcd5e0eac92b13e9d07361d6e26f6e454785cff2610d524b27fa2009"
+    },
+    {
+      "path": "prediction/tennis_calibration/model_bundle.py",
+      "bytes": 27521,
+      "sha256": "1fd1f4299e76aad9f2ae9a3a0b0559684e50c9b5b7f9053473121d56c74f0bb4"
+    },
+    {
+      "path": "prediction/tennis_calibration/online_data.py",
+      "bytes": 17545,
+      "sha256": "9846b47c2438cc5e50b2941a01c1de76dfa4d53e1c899631c8506800e321b10c"
+    },
+    {
+      "path": "prediction/tennis_calibration/online_features.py",
+      "bytes": 3990,
+      "sha256": "8cb5a1f07161729d401f52849f97ab9eb5c6373cb735f4910a4947579382eaa7"
+    },
+    {
+      "path": "prediction/tennis_calibration/online_filter.py",
+      "bytes": 32331,
+      "sha256": "bfa3dea40818a7fe6060e99e85ff42fb8a6c4db29b7d8518ad0ffb093cc7c4c4"
+    },
+    {
+      "path": "prediction/tennis_calibration/online_mlp.py",
+      "bytes": 16565,
+      "sha256": "2ebbc8afa66b3b82da34385b1f0e0906880b47fd95d19ed6d690cb45873fa451"
+    },
+    {
+      "path": "prediction/tennis_calibration/online_plots.py",
+      "bytes": 15879,
+      "sha256": "fd525a18dec1bc3f08ae16eb808f049f21fb1432b7d1f72c14de6395db7263cb"
+    },
+    {
+      "path": "prediction/tennis_calibration/online_predictor.py",
+      "bytes": 10306,
+      "sha256": "fcb58053a47cacd664f8f763c6410a3c2a6d0445af36b176be6e6bf9bbbb0fc0"
+    },
+    {
+      "path": "prediction/tennis_calibration/online_run.py",
+      "bytes": 19923,
+      "sha256": "29b3ae84a56395d8897ce8ff6104a6089e72f3a46914f789358e77dabb359c0f"
+    },
+    {
+      "path": "prediction/tennis_calibration/pipeline.py",
+      "bytes": 5522,
+      "sha256": "2a81fc6a95d822ea2b662423361235aa55d70df8b1616a5883fff942eca35ef1"
+    },
+    {
+      "path": "prediction/tennis_calibration/player_bounce.py",
+      "bytes": 3273,
+      "sha256": "ab88105ddc82cc680f5bcbc4caf2d8be3d9ef21a6286d5ed5eb60a84ac643013"
+    },
+    {
+      "path": "prediction/tennis_calibration/player_controls.py",
+      "bytes": 23040,
+      "sha256": "6401a65deff4deb94f8ceaf2d02711ce1711e9d3b88cd435ce1450de5e40d1b7"
+    },
+    {
+      "path": "prediction/tennis_calibration/player_scene.py",
+      "bytes": 7917,
+      "sha256": "960a246c1282097b85d99687119fd59c3a26341746334a52f408bc4b1189f9dc"
+    },
+    {
+      "path": "prediction/tennis_calibration/player_session.py",
+      "bytes": 9994,
+      "sha256": "7e02987ed10c56f59e3a0ccfd6c39c72d40da69f46cc5d94ccd412690b0149d0"
+    },
+    {
+      "path": "prediction/tennis_calibration/plots.py",
+      "bytes": 6656,
+      "sha256": "a7b2b2e6f2f286f2bb739ab2c431860af972fd52f75e5cd6642710e5a75fbe5b"
+    },
+    {
+      "path": "prediction/tennis_calibration/requirements.identified.lock.txt",
+      "bytes": 332,
+      "sha256": "bcdf8f13cd29b371fa6fa29385bbec9517186c72689da57f3c3e47b1b510e003"
+    },
+    {
+      "path": "prediction/tennis_calibration/requirements.lock.txt",
+      "bytes": 203,
+      "sha256": "8bc8e627e99fd1f97d4460346cc05fb541e17af261733bb2c691877d3f42ecf9"
+    },
+    {
+      "path": "prediction/tennis_calibration/residual_distribution.py",
+      "bytes": 17851,
+      "sha256": "7de0b75e6d418788829ca0eba3d4069daa5bfb31cb84f7ad030eec86bade0f65"
+    },
+    {
+      "path": "prediction/tennis_calibration/residual_evaluation.py",
+      "bytes": 16437,
+      "sha256": "bc7c21a9f43ae71ab0ab4d33cd4e81a3132e116e2e2db9cd81eec958b1a66f63"
+    },
+    {
+      "path": "prediction/tennis_calibration/residual_head.py",
+      "bytes": 13920,
+      "sha256": "c6f446d858bc8fb13a7e59c4d082774bdb18f6669f0bf8837b98ab0a3708b4d8"
+    },
+    {
+      "path": "prediction/tennis_calibration/robust_merge.py",
+      "bytes": 4752,
+      "sha256": "3e1dfc1590ead9d784f8fa2b00635d1bd0398de87bb56be1bdf36e7bc2866160"
+    },
+    {
+      "path": "prediction/tennis_calibration/robust_observer.py",
+      "bytes": 18561,
+      "sha256": "8a5933a15a3e6d067e3c5902dc7ba20a6f743f57e493989f3ed3a46a0ad67574"
+    },
+    {
+      "path": "prediction/tennis_calibration/robust_optimization.py",
+      "bytes": 30308,
+      "sha256": "94d10b32e47dc14b5aaf7e42f145ebae309f0a80a09f155eeb8e92cd9673ce89"
+    },
+    {
+      "path": "prediction/tennis_calibration/robust_optimization_report.py",
+      "bytes": 11826,
+      "sha256": "a8bbd5d288c3d1437be136980efe2c6c2f1f246b92159a24d83425061a388889"
+    },
+    {
+      "path": "prediction/tennis_calibration/robust_suite.py",
+      "bytes": 7301,
+      "sha256": "c5a4a27e27571fcdb86db1d162b6eecca4321bc0c07ac94f5c18c7e42a0d8ab4"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_bounce_replay.py",
+      "bytes": 15163,
+      "sha256": "3de955a045fe8a1348574cba16b9ea4b6cb8d6bcb9a5cab0e5c172bd2c5158ba"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_collision_forecast.py",
+      "bytes": 5424,
+      "sha256": "8a36bec6a9b45ab47559e44f14f6f19983a1e00bafa4013619f4bafa6fb861c7"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_collision_mapping.py",
+      "bytes": 7977,
+      "sha256": "335ee3ff5b0a373d39f64f3b039b478fdadad678b99306e59e362b07d5139197"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_collision_metrics.py",
+      "bytes": 2753,
+      "sha256": "011ed6fceb0d787365952be8c1b3d023fff6002605abb1e1c26b824627a248d5"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_collision_online_baseline.py",
+      "bytes": 2419,
+      "sha256": "c96041f1458135542996d53ce3a90156c17d7ce94462b239bdc6131f63d74928"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_collision_prefix.py",
+      "bytes": 5453,
+      "sha256": "8fba776e003aab641de1f59cba34f0c5fe0fcb5153a77c759789ebb610ae3d1d"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_collision_run.py",
+      "bytes": 13042,
+      "sha256": "79036c1399498c9cbb0911a1ebc6e1ab2e89613d7397d0a53212304b1563bd25"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_controller_integration.py",
+      "bytes": 8157,
+      "sha256": "7f1355d70503818fd17e000e8d8bcd4e60f17ed7a1aefecafa8402bec2e9f86c"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_gp_analysis_boundary.py",
+      "bytes": 5076,
+      "sha256": "afe22973aacbbc0dac5ed8e15765a57b442f0650321d29ffe0e6e6244dd58dc9"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_gp_online.py",
+      "bytes": 11247,
+      "sha256": "13a53963c0d8a03b723094411bc62d36aa25839d9d2ee9dbdf90aed7ffcd6ec4"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_gp_spike_ablation.py",
+      "bytes": 5476,
+      "sha256": "89e7abcd1154bc8337103ee152a80af118cb0d622b701283c9e4fee5d9ce327b"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_group_fold_evaluation.py",
+      "bytes": 2474,
+      "sha256": "ace34d7662763f7326acc15955b4f880920983efa469abbd515412dfee6a5c6d"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_group_fold_training.py",
+      "bytes": 3444,
+      "sha256": "230840f81c625d5bc85a20e7ec799e85e4c2432f83734a5954eed8873ff32b87"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_height_forecast.py",
+      "bytes": 8398,
+      "sha256": "e739d5680e6105cbc1d0caab6626ef1a09105625904c0c1fafc0a53fa1efef33"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_height_legacy_baseline.py",
+      "bytes": 5073,
+      "sha256": "7b67d8548dadc66afd8cc6d48f72c13cb60e2b8b3329944f21533b8da6896ed2"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_height_policy.py",
+      "bytes": 12296,
+      "sha256": "9b85c1ed6015a50c628f82503de99549d39f1e2c223450afb9a2186e9bf10899"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_height_policy_run.py",
+      "bytes": 5141,
+      "sha256": "008c4aaf16f5d294963c432f4492a7b803c77130f8c6ebad66ce532b6cef0da9"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_hold_sweep.py",
+      "bytes": 6489,
+      "sha256": "ed5b2591078a797cea2aa1102acb3abe016e5ceb33274c46273be10a27fdaed7"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_identified_dynamics.py",
+      "bytes": 8721,
+      "sha256": "8b8d379762a30cd2302e587e9762dbf1f6e7d3b683487cb1d06deba9f2367923"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_identified_evaluation.py",
+      "bytes": 5578,
+      "sha256": "beb0a181d0b20ea9f3d0ecb0acc3d146f377109adbc7863db3211dd8b1906145"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_identified_filter.py",
+      "bytes": 11906,
+      "sha256": "209aae5060c0a70f5ecef532a001477ae65d8e3a06eadbd61af18e16ba53bbc3"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_identified_mujoco.py",
+      "bytes": 3480,
+      "sha256": "be88cc82de3f04c7efe96e36f93c6656eedaa02383e7d2b66f080945e199ebe5"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_legacy_hold_adapter.py",
+      "bytes": 7244,
+      "sha256": "4ea6ba3e7b1f2867041b45da70676a45f404cf871b175d7559f18f08039e0947"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_measurement_noise_probe.py",
+      "bytes": 5316,
+      "sha256": "0afb45eb654040f284bcd853eecb26067f0364d70cd7cf788135721f413cbb15"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_model_bundle.py",
+      "bytes": 17591,
+      "sha256": "31ced3c8f8476898b4775736311644565f0dce993b8f225ddc1a1d7aeea3ff48"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_online_data.py",
+      "bytes": 8256,
+      "sha256": "ee63e905f8bf766ed8fea9583934e97359cc70d46ac995bd5a427539caa1e812"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_online_filter.py",
+      "bytes": 9138,
+      "sha256": "97d0ea5ddb0710eaf5a5db1873bb885a6ee56747d5dcc5ab7f50c19ab1ebdbcf"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_online_mlp.py",
+      "bytes": 6550,
+      "sha256": "b354901a435b8989d96399ebc9c6e3fcb9980180cff64e5f99298b451b256242"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_online_predictor.py",
+      "bytes": 8049,
+      "sha256": "eaa46ea7c0052771885132d49d5f2f2fac46595a0ce35cee865fbf1289b4b552"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_player_bounce.py",
+      "bytes": 10120,
+      "sha256": "cbfa999421346acd7f53c053c16025165f379a5ce5e5738bf5ce4815a1878635"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_player_controls.py",
+      "bytes": 5166,
+      "sha256": "4248d074e532b9f4705c6db015388d3feb6b2aeb2cb96bd867541bca695774da"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_player_session.py",
+      "bytes": 19585,
+      "sha256": "313c7a39ab224a4b4f795e1ddc1f05252f9a2e2692e2aa8ef1f9832848d5ad0c"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_residual_evaluation.py",
+      "bytes": 4453,
+      "sha256": "e003e6e4b0189284d913b6f2259ed40d5f9545e24c335955bacb79c51833a448"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_residual_head.py",
+      "bytes": 5691,
+      "sha256": "665598ea822fff26f1168f35dbe7be787e746dee3b974a41d9437fae7a374a65"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_robust_observer.py",
+      "bytes": 9740,
+      "sha256": "ace1b8415eecd667a139d8002f089ab34c2530c7b83f8095a3e400797c052787"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_robust_optimization.py",
+      "bytes": 6458,
+      "sha256": "86fad6b88b17344d6b45d9a96679c11058fc59f83e9fce0e86ef976130661bf7"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_tennis_bounce.py",
+      "bytes": 1840,
+      "sha256": "eed5e658877172db787ca545302391e80f2e263f379e9ed6a72c6247edd37c9d"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_tennis_clean.py",
+      "bytes": 4225,
+      "sha256": "f86e26759c12d3e78c0e65b95ebc4163957b01317da010596412f613de28338a"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_tennis_flight.py",
+      "bytes": 5125,
+      "sha256": "57469c4d49b2f005bbd3431f4daef4526d0d32e170411c3f1a8fccc10e445730"
+    },
+    {
+      "path": "prediction/tennis_calibration/tests/test_viewer.py",
+      "bytes": 12612,
+      "sha256": "4c7c074c1bef034e6e1f8415bfe000392c166ce5cee63fa628529aebafa464ab"
+    },
+    {
+      "path": "prediction/tennis_calibration/viewer.html",
+      "bytes": 40630,
+      "sha256": "d9d26220740d8803586ca9a26082e7d93c09e8b6cc27e9b6769b0cc2122d50f5"
+    },
+    {
+      "path": "prediction/tennis_calibration/viewer.py",
+      "bytes": 17588,
+      "sha256": "9ad934e3ac78f1d239e2db92e516433039a57e3718f9ff8d3048ad7b8effb34b"
+    },
+    {
+      "path": "sckd_sim/CMakeLists.txt",
+      "bytes": 7313,
+      "sha256": "e08275b99ffecb87ee050db90a6631df9e458987c8318e12e133e58f5d6b2be3"
+    },
+    {
+      "path": "sckd_sim/README.md",
+      "bytes": 2470,
+      "sha256": "0194cdaa126440db6cb00e0439ad8850204bec75e24a8028104490df14cfea56"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/demo_hit.cpp",
+      "bytes": 13890,
+      "sha256": "30e65e7579f70dc2d0d82fb1d2ac133bf82541dcb8824372719a58557c855ffe"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/m0_arm_step_response.cpp",
+      "bytes": 3935,
+      "sha256": "cb489c53ec811519a655d0b079f7e3f98f3083f069d3af3c1baabf5f0a824f19"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/m0_determinism.cpp",
+      "bytes": 2888,
+      "sha256": "8db15209ce4dfb7ad8f69a52577ba01c825d128b0c910c2b77d4f2d07fd19aec"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/m0_static_contact.cpp",
+      "bytes": 3192,
+      "sha256": "9c884065ca178165ab70adc49bfd6c126a1b3da7e270c1baec38dd384f138b28"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/m0_step_rate.cpp",
+      "bytes": 1587,
+      "sha256": "52486af28fa727e28f2f4f630d1b3de659fdb56ef266c2540f95da42454d2c6b"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/m1_arm_gravity.cpp",
+      "bytes": 3131,
+      "sha256": "f17d150e1d643c0aa49a052c12f662f6bcd03601bad647f2fd3ab1c9bc77f3fe"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/m1_arm_identification.cpp",
+      "bytes": 1737,
+      "sha256": "7a28de4ec31252503dc85032f5f0d863f8c88d938b918e6e9f06cfb062bdf42a"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/m1_chassis_identification.cpp",
+      "bytes": 2101,
+      "sha256": "278a5bde60e7e7a8df192dfff98c6f1a6f9e7a9655bb5c8bd1cfc1f620a433e4"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/m1_dbg_chassis.cpp",
+      "bytes": 2787,
+      "sha256": "e24cb12fa3059da1171f39b4d4d292a644a74042196b4ec4ece912950009d264"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/m1_mpc_tracking.cpp",
+      "bytes": 6543,
+      "sha256": "31809ae78f200a4bb3a121ac1e0fd3544a63a209d9f449d35565d3abe6d9ac67"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/m1_odom.cpp",
+      "bytes": 4723,
+      "sha256": "f42819d8551c9945329406235406db66b7a5e1990db40787b6282d52d5f397f2"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/m1_traj_tracking.cpp",
+      "bytes": 5229,
+      "sha256": "df7290b468f5aae4bfb84c09d37bf5aed19d0fed2fc0886dafa14c961fba1204"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/m2_demo.cpp",
+      "bytes": 12307,
+      "sha256": "fbe691e2a2114a7964e551569581e391a705c0d8fca54a789181bfa671d374b7"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/m2_intercept.cpp",
+      "bytes": 44042,
+      "sha256": "0d7538fc9550a99255794222e528abdce0fbda7ea73c5dad7d098aa152c045e5"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/m2_prediction_probe.cpp",
+      "bytes": 1099,
+      "sha256": "2677f22f3b153111b70efeb7314316e27d3a457f2da759c1e9982826c4240c9e"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/m2_predictor.cpp",
+      "bytes": 6706,
+      "sha256": "aa459e4cc4c716b011207a6881e78e66a0930b5d7810a0d321e67d860be45e0c"
+    },
+    {
+      "path": "sckd_sim/cpp/apps/measured_replay_check.cpp",
+      "bytes": 1456,
+      "sha256": "61f8d9ae2868378c230eaa3de9a07c27659fbfab8c188106c2eed5de3921ca1e"
+    },
+    {
+      "path": "sckd_sim/cpp/control/arm_ik.cpp",
+      "bytes": 5340,
+      "sha256": "97878c98d82f2947f2fe1af1fbc0efef89a9062ea93e3717812081484e8c45a4"
+    },
+    {
+      "path": "sckd_sim/cpp/control/arm_ik.h",
+      "bytes": 1360,
+      "sha256": "e860a82cf7a893415a144618e4f6ae5dd6efe76f7d1305e1fc09ba702888e8b5"
+    },
+    {
+      "path": "sckd_sim/cpp/control/arm_swing.cpp",
+      "bytes": 14327,
+      "sha256": "a1249b50e4c1fc583717c9036c26edf66ec958bfc7d9151c493b48e1069f6e93"
+    },
+    {
+      "path": "sckd_sim/cpp/control/arm_swing.h",
+      "bytes": 3353,
+      "sha256": "738004ea9f2e2bee4a6658b190cce85d93decb880cb50ee5bcb62dda10f3ebad"
+    },
+    {
+      "path": "sckd_sim/cpp/control/base_ref_gen.h",
+      "bytes": 5313,
+      "sha256": "c1eb3abb4818f0dc6978503cdd666444726865dff55afd90230548fc6e8dc69a"
+    },
+    {
+      "path": "sckd_sim/cpp/control/chassis_mpc.cpp",
+      "bytes": 1969,
+      "sha256": "ee993ba21ea85fe63a8d02234c74bc511722d4eb23682ccd67085cddaeab5433"
+    },
+    {
+      "path": "sckd_sim/cpp/control/chassis_mpc.h",
+      "bytes": 3000,
+      "sha256": "e3303b16d404d02be03e67227fd1a758592a1fe34547d7af0619930768a3de11"
+    },
+    {
+      "path": "sckd_sim/cpp/control/chassis_servo.cpp",
+      "bytes": 5604,
+      "sha256": "2343fbae23458d05baa9f869e64768d3ff8738ba1f0765f17b803e52ad94bd6c"
+    },
+    {
+      "path": "sckd_sim/cpp/control/chassis_servo.h",
+      "bytes": 2283,
+      "sha256": "992298521b3b0e683c18b7ee94aee3017d711b1efb06e97abce3a353208b8d09"
+    },
+    {
+      "path": "sckd_sim/cpp/control/gen/arm_nlp.json",
+      "bytes": 394,
+      "sha256": "8eab54a07ca66531518981328c4b96ffb537cafe99437ffa105efae9e7dc0254"
+    },
+    {
+      "path": "sckd_sim/cpp/control/gen/arm_qp_data.h",
+      "bytes": 348800,
+      "sha256": "1be003d23ab0d790910f68dbf67030ea2f715fa7b4a93f697a4aad4620b2de60"
+    },
+    {
+      "path": "sckd_sim/cpp/control/gen/chassis_mpc.c",
+      "bytes": 651522,
+      "sha256": "bbdc2273158d9e849b1649eb330bf1760cc7d02112a4486404fbcc656fb317ed"
+    },
+    {
+      "path": "sckd_sim/cpp/control/legacy_nmpc.cpp",
+      "bytes": 31883,
+      "sha256": "fd12524d7faa3938344fcddbf248a0018cf4d4513f2e1de3256655feab9ac2e8"
+    },
+    {
+      "path": "sckd_sim/cpp/control/legacy_nmpc.h",
+      "bytes": 8232,
+      "sha256": "ca3f9134f5e9530ca1ad4167df421336cff94f55cf3538be349e7197190c39c5"
+    },
+    {
+      "path": "sckd_sim/cpp/control/nmpc_time_policy.h",
+      "bytes": 1838,
+      "sha256": "14ef20c7d5864bd600bd9bcc4318f93f08652f60f852f3a871712041ba9a2e51"
+    },
+    {
+      "path": "sckd_sim/cpp/control/swing_generator.cpp",
+      "bytes": 5038,
+      "sha256": "f4352d6ccad9b114f5e39fe324c90de6e4c9987f27e710796fa3ebcd9f84923f"
+    },
+    {
+      "path": "sckd_sim/cpp/control/swing_generator.h",
+      "bytes": 2005,
+      "sha256": "e1937db90939e606ba9b117dc88ad472f42d499b576e1db936feefe6f35e1041"
+    },
+    {
+      "path": "sckd_sim/cpp/control/wholebody_mpc.cpp",
+      "bytes": 23239,
+      "sha256": "318aeb9b45abad67d5a4fb3cc5cc2b6c5794b11df482e780f2aaf996fe3c66c7"
+    },
+    {
+      "path": "sckd_sim/cpp/control/wholebody_mpc.h",
+      "bytes": 9173,
+      "sha256": "00cf65f3253a2ac6ecfb0e2eb0251bb9825e2035d11503806411a25ed0f0da5b"
+    },
+    {
+      "path": "sckd_sim/cpp/control/wholebody_ocp.cpp",
+      "bytes": 10078,
+      "sha256": "497591eac39989da6196ef8fa419bce5af406898d68f9597d59757a162bcdf15"
+    },
+    {
+      "path": "sckd_sim/cpp/control/wholebody_ocp.h",
+      "bytes": 4198,
+      "sha256": "7610a3a6cfe2712233ed42a7b4221f40bc841703409a4cb0fd583759b6f8599d"
+    },
+    {
+      "path": "sckd_sim/cpp/core/config.cpp",
+      "bytes": 5673,
+      "sha256": "34b0168c0fa571818f5098719585b10f2e0ce2f989c7f84218c3d6c658b51b3f"
+    },
+    {
+      "path": "sckd_sim/cpp/core/config.h",
+      "bytes": 3550,
+      "sha256": "035e3bd31e8dbdc5a551d4783b739c693a4a6e8e635a7e8eba4160a2784078e7"
+    },
+    {
+      "path": "sckd_sim/cpp/core/stage_profile.h",
+      "bytes": 2240,
+      "sha256": "b8a2a811c97a5506dee9661f4feaf8546241ca5d777a4dd366997f684673d7a3"
+    },
+    {
+      "path": "sckd_sim/cpp/core/types.h",
+      "bytes": 3018,
+      "sha256": "7d1205a058ebd2ead78a1f40793afad9229309f69eb06b4c7bd74f24b89ce9bd"
+    },
+    {
+      "path": "sckd_sim/cpp/estimation/ball_prediction_interface.h",
+      "bytes": 590,
+      "sha256": "f074aa8b0c49d3de717ce37c783a0a586c8436ef6790c858ff9ddceaa7f5e432"
+    },
+    {
+      "path": "sckd_sim/cpp/estimation/ball_predictor.cpp",
+      "bytes": 9103,
+      "sha256": "6b9acaf673a6cfee0dd37e54c90ea68493aafbed78d353e56ba79710c5f25cca"
+    },
+    {
+      "path": "sckd_sim/cpp/estimation/ball_predictor.h",
+      "bytes": 3433,
+      "sha256": "1866d722c706a0c05cf5a0c124d389b36115c2fb675341daeb7ba8c893b0b7a1"
+    },
+    {
+      "path": "sckd_sim/cpp/estimation/measured_ball_replay.h",
+      "bytes": 2045,
+      "sha256": "b524501dd3348d949d459c0e462ad87a185d1ec6cb244be5c48daa405406c92f"
+    },
+    {
+      "path": "sckd_sim/cpp/estimation/socket_ball_predictor.h",
+      "bytes": 4830,
+      "sha256": "6e15929d876aa96dd0bd7e41b3c3b5f582ae5c446b2ea91391c6347071ec8d4f"
+    },
+    {
+      "path": "sckd_sim/cpp/estimation/wheel_odom.cpp",
+      "bytes": 1285,
+      "sha256": "ad427c3685133241e0aca4b8100e975a7170594ec9c4fca3feb014ce08cdc636"
+    },
+    {
+      "path": "sckd_sim/cpp/estimation/wheel_odom.h",
+      "bytes": 1260,
+      "sha256": "f06be1089d2bf007840c014f49aca825d3e1451d5921b565454a05de0d9e6e5b"
+    },
+    {
+      "path": "sckd_sim/cpp/hal/robot_interface.h",
+      "bytes": 1248,
+      "sha256": "fe8ac20ca3d5204e5a6b918784e54b7da4dc8ce8e8326648d053a038d16146bb"
+    },
+    {
+      "path": "sckd_sim/cpp/hal/sim_backend.cpp",
+      "bytes": 10112,
+      "sha256": "da1202bd53af53b917b0e6fcd9eb416d7d4138e1c06cb32dfaa0f857a255253f"
+    },
+    {
+      "path": "sckd_sim/cpp/hal/sim_backend.h",
+      "bytes": 4500,
+      "sha256": "9a0eb1c750c500887fc1bc1cfd816cd49239b87fed595f4cfe504e9a402aa9ad"
+    },
+    {
+      "path": "sckd_sim/cpp/planning/hit_planner.cpp",
+      "bytes": 8061,
+      "sha256": "7355e51a78f07b42857a8df7ce0faab16c0e8560bfdeac8b4ae5ecc410778773"
+    },
+    {
+      "path": "sckd_sim/cpp/planning/hit_planner.h",
+      "bytes": 4968,
+      "sha256": "55a6ed35091d0f9118389336e4d8c3aa5728b97b27c2a58243b28be8b686e68c"
+    },
+    {
+      "path": "sckd_sim/cpp/robot/motor_model.cpp",
+      "bytes": 4039,
+      "sha256": "6af077c418d3eb251caadf24969b5816bc54b0cc2c030cebaeb8fc632abad098"
+    },
+    {
+      "path": "sckd_sim/cpp/robot/motor_model.h",
+      "bytes": 2217,
+      "sha256": "21a20691bf321ef6c51123b0bc297720848255bb39ecb67e9c1295fa58e3786b"
+    },
+    {
+      "path": "sckd_sim/cpp/robot/swerve_kinematics.cpp",
+      "bytes": 4534,
+      "sha256": "8e852e5a0f3e8c071891e8622fde2e5474501216c83e88047c5d28365e4aa7e3"
+    },
+    {
+      "path": "sckd_sim/cpp/robot/swerve_kinematics.h",
+      "bytes": 2791,
+      "sha256": "da12de40d13733bf52d13cfdd9678b39b6e35e94043c3e07ee4affdf59bfddbf"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/contracts.h",
+      "bytes": 7609,
+      "sha256": "f2370dff24c2084a77b315b5e3b90a34b6ffe7e52f2ede273a47494a16085658"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/control_telemetry.cpp",
+      "bytes": 5436,
+      "sha256": "a961a1066a151231f8800ef878efab655b814d0db484a70b49b031f006fcd3d5"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/control_trace.h",
+      "bytes": 2162,
+      "sha256": "13c235368de8576f279d39857e2402951b53f17b9285aa9f7a57e00988a58524"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/controller_adapters.cpp",
+      "bytes": 7464,
+      "sha256": "298c0edae03e351404fab58889250f7e9de46211f6a608deeb1e04a6b5aad7e9"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/controller_adapters.h",
+      "bytes": 367,
+      "sha256": "891d929174af803b5f5fbabd5e45fc31c436bbe7f1555b59271afa0893306b69"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/intercept_modules.h",
+      "bytes": 6500,
+      "sha256": "05c7379090caa34a69df5ebe9c533b7c17d6d34aa9d14fabfb8db7d25d2c5f91"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/plan_supervisor.h",
+      "bytes": 619,
+      "sha256": "e97dd1c1037e95a60d8c1235b278f5bb9123ddca94f92f67a837731178a47a83"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/planning_session.cpp",
+      "bytes": 25874,
+      "sha256": "7827805e44499ef1ffee5b5c2de1ec6a4465dc5cab240c25c017e289186f46a4"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/runtime_config.h",
+      "bytes": 24467,
+      "sha256": "38b98523594a5006dd9ef34fc8740f10a0b49f3712328fc58286fcfd759e0d40"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/simulation_physics.cpp",
+      "bytes": 2807,
+      "sha256": "c4e3f5c1bc9ab629234e2dc373d39cb24501cd6b604264d2ede1dd59c6dd4882"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/simulation_step.cpp",
+      "bytes": 1066,
+      "sha256": "6c2d453a52fa7a062c76425ebe1f73959d899e705f9eeeed13469a170b97b5e1"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/state_inputs.cpp",
+      "bytes": 2216,
+      "sha256": "569d466cbba060e1d3514e82f5ab8b76c80274c4151d111b818e43c830a303d4"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/synchronous_schedule.h",
+      "bytes": 454,
+      "sha256": "b2b584deddaaa2448de79efe3984a61376655644c4ac121a49e4ca76542ad380"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/time_window_policy.h",
+      "bytes": 5203,
+      "sha256": "22aed08e38c2048bc13529a8df0b601a498f7fa025ba895cda8de7954af623aa"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/trajectory_executor.cpp",
+      "bytes": 14889,
+      "sha256": "dd7f09284af60debf1063178c6c877724150cb7ad376d0aec0a061ba0da3a1cb"
+    },
+    {
+      "path": "sckd_sim/cpp/runtime/video_trace.cpp",
+      "bytes": 1621,
+      "sha256": "a96728dff3e9ba82be3df79081bc6c937c06e00b265d8ded986223a0d0691f3b"
+    },
+    {
+      "path": "sckd_sim/cpp/sim/analytic_contact.h",
+      "bytes": 6584,
+      "sha256": "12e4dd892da5c1c7a970775c70ffd867ba76e58c4e4f69780aa8e2e57d603f1d"
+    },
+    {
+      "path": "sckd_sim/cpp/sim/ball_aero.cpp",
+      "bytes": 1035,
+      "sha256": "0e3ccfcb33b2feebe18c5fef293bf27e6b0cd24efcad53fa229b437ba72dc8ad"
+    },
+    {
+      "path": "sckd_sim/cpp/sim/ball_aero.h",
+      "bytes": 776,
+      "sha256": "7cf6e546e576e11a38d4033ce9cd089af5ddd89b4c3d4cd852d36ca25a7b5361"
+    },
+    {
+      "path": "sckd_sim/cpp/sim/ball_server.cpp",
+      "bytes": 816,
+      "sha256": "e335f25c192ccbe758bd2248644644c8972bdc38aeade801259d5ab6396bcf8f"
+    },
+    {
+      "path": "sckd_sim/cpp/sim/ball_server.h",
+      "bytes": 729,
+      "sha256": "7d341be3e4259eed700b11ade68b0af06e246c3102d7e3785537356f3e48079b"
+    },
+    {
+      "path": "sckd_sim/cpp/tests/test_ball.cc",
+      "bytes": 5285,
+      "sha256": "1a6b514317c84ed3012a6778099c3fb5535472f631355486937442c2e3a6efc2"
+    },
+    {
+      "path": "sckd_sim/cpp/tests/test_legacy_nmpc.cc",
+      "bytes": 7639,
+      "sha256": "4807b79f6cd4258c2b233daff4e3db93bc577ca9894ee49077d3e5c4eec5b071"
+    },
+    {
+      "path": "sckd_sim/cpp/tests/test_motor_model.cpp",
+      "bytes": 5657,
+      "sha256": "13463a45ed3c77bfa8b46eced2bb7ca67d9720e7bca5928ad37f5a8621fd4186"
+    },
+    {
+      "path": "sckd_sim/cpp/tests/test_runtime_config.cc",
+      "bytes": 14034,
+      "sha256": "548bc8672081be2c79e4be597a8463a883e6a12e160107bd83fc27b5d12b1050"
+    },
+    {
+      "path": "sckd_sim/cpp/tests/test_runtime_supervision.cc",
+      "bytes": 6563,
+      "sha256": "39b0e2ffe80fe954b1eaed208ac51e071853a6627a52ff13147b1a31603a38b8"
+    },
+    {
+      "path": "sckd_sim/cpp/tests/test_steer_rate_limits.cc",
+      "bytes": 6708,
+      "sha256": "785fa48f5d1ed93a020bfdc0d189d53904ab4cc65ac6bcd599503e1adb99cd03"
+    },
+    {
+      "path": "sckd_sim/cpp/tests/test_swerve.cc",
+      "bytes": 5895,
+      "sha256": "b1ce00d1d7de467fa7b19d8c4d58bd9c246f77035e446fbdc1bef4b2915c63bf"
+    },
+    {
+      "path": "sckd_sim/cpp/tests/test_wbmpc.cc",
+      "bytes": 5974,
+      "sha256": "df393d4ceb1566409c9edcc8227ea65c76ae236883197beaf2cf4291bf591e85"
+    },
+    {
+      "path": "sckd_sim/cpp/tests/test_wbo.cc",
+      "bytes": 5423,
+      "sha256": "1061f58f18164f31f788ed15e0cd5659438d3eece0e1caa37069df51729fa8a7"
+    },
+    {
+      "path": "sckd_sim/cpp/tests/verify_nmpc_time_grid.cc",
+      "bytes": 4748,
+      "sha256": "e4855351c85b8fd6a1c24eeb736bdcb981fad91de836348034fead286c2cc990"
+    },
+    {
+      "path": "sckd_sim/eval/run_m0.sh",
+      "bytes": 1935,
+      "sha256": "8f7dbe700e35c815dda75386213623c2b720fbb72654853ed1c90092f4bc208c"
+    },
+    {
+      "path": "sckd_sim/eval/run_m1.sh",
+      "bytes": 1826,
+      "sha256": "cec3d5081f14e4743cfe7bc059e919e84e99afb289461980c3589222780b4c9c"
+    },
+    {
+      "path": "sckd_sim/models/build_model.py",
+      "bytes": 10021,
+      "sha256": "0b7e0ba7361e98c675f88255516058a745a282a9520ac534f6f33b3fafb912d7"
+    },
+    {
+      "path": "sckd_sim/models/config/build_manifest.json",
+      "bytes": 552,
+      "sha256": "d9f0ff6d9550089e22372866f296768f99b6c815b2cfe2e608af12c436c21e61"
+    },
+    {
+      "path": "sckd_sim/models/config/chassis_identified_20261015.json",
+      "bytes": 2851,
+      "sha256": "710e55a98aca443e6a5abdb4b85b6bcdb0facb28fbeec8bcfe51d4b528f045db"
+    },
+    {
+      "path": "sckd_sim/models/config/chassis_m1.json",
+      "bytes": 2268,
+      "sha256": "c97aa0ad858322660e8775be1ca7318bca759a414443fa1e8aa874dcc78e5b7e"
+    },
+    {
+      "path": "sckd_sim/models/config/m2_ball.json",
+      "bytes": 992,
+      "sha256": "db45212a5e7edbd9db35f5f253cfa398c918f78cd2322b23e9ae972976a78335"
+    },
+    {
+      "path": "sckd_sim/models/config/motors.json",
+      "bytes": 3090,
+      "sha256": "3665e2c389fff7dc2c9e241c3a5ea7243bc9eff078dfdc8e3a28b59e5c9e99bf"
+    },
+    {
+      "path": "sckd_sim/models/config/servo_identified_20261015.json",
+      "bytes": 2667,
+      "sha256": "fd23f00188218970898ab141dcdfc480ba86656d2ebe43b9adaa450cfb4e8bb9"
+    },
+    {
+      "path": "sckd_sim/models/config/x4_tennis.json",
+      "bytes": 2292,
+      "sha256": "d2004e9c9c47c8a78ba23f570e2529135ab44f9ccb2137d2db4a81bbd67624d3"
+    },
+    {
+      "path": "sckd_sim/models/generated/x4_tennis_demo.mjcf",
+      "bytes": 18797,
+      "sha256": "1f8812d703f2cbafc4c66f3bebf974981841b2a8abf49dc8d8eefd27fb965e01"
+    },
+    {
+      "path": "sckd_sim/models/generated/x4_tennis_demo.xml",
+      "bytes": 18797,
+      "sha256": "1f8812d703f2cbafc4c66f3bebf974981841b2a8abf49dc8d8eefd27fb965e01"
+    },
+    {
+      "path": "sckd_sim/models/generated/x4_tennis_manifest.json",
+      "bytes": 5146,
+      "sha256": "2c32f64679a590897176c92ef02144193a76af7a114726839737ba1ec3c5af49"
+    },
+    {
+      "path": "sckd_sim/models/generated/x4_tennis_scene.mjcf",
+      "bytes": 15907,
+      "sha256": "bdd4db872eb0e438741c680ad6fb3fd1fcde3c47bfec7cfce86eb5083cd537ac"
+    },
+    {
+      "path": "sckd_sim/models/generated/x4_tennis_scene.xml",
+      "bytes": 15907,
+      "sha256": "bdd4db872eb0e438741c680ad6fb3fd1fcde3c47bfec7cfce86eb5083cd537ac"
+    },
+    {
+      "path": "sckd_sim/models/patch_demo.py",
+      "bytes": 7807,
+      "sha256": "166891c8554da4d769acb1ccdd667bcf2deaf2c35aa9778ee059929cc3e32067"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/FL_steer_link.STL",
+      "bytes": 119234,
+      "sha256": "887bbc55e1a58b74a22374230d69ca06972c87e75a7bc6477af0c66869a21799"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/FL_wheel_left_link.STL",
+      "bytes": 313484,
+      "sha256": "99cb50db77d02363d363e68e46fc6680baafd92e582abfb46a5ca307c11d2947"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/FL_wheel_right_link.STL",
+      "bytes": 313484,
+      "sha256": "6419a4f22454915bbfbee0988a30f2b8407a1d68ed3bbdbe9320d7ee09832dcd"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/FR_steer_link.STL",
+      "bytes": 119234,
+      "sha256": "9c2c245b199c5e93fb39a5ab087f738ad0f21765c8ba358512ef0f0a5394c4e9"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/FR_wheel_left_link.STL",
+      "bytes": 313484,
+      "sha256": "da82fba38c0d3a9dd29e2ce6ace7eb9a4c58243b9c7ecd4a266c84b52a73d621"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/FR_wheel_right_link.STL",
+      "bytes": 313484,
+      "sha256": "28c78afefef7d4bd7ccd5b079b632e8a7fd324c083f5686a544b7a273090f765"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/Link1.STL",
+      "bytes": 916234,
+      "sha256": "cf96a7effebc9ce6f0ab1219051ccd09d0a365771629697d2e9ba241b995e625"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/Link2.STL",
+      "bytes": 80834,
+      "sha256": "5eae1f58511143a5e56c6e7e8216aaae5c2ac9f97915f69722bf0d20374eed6e"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/Link3.STL",
+      "bytes": 81634,
+      "sha256": "2d66651571f81b85d57bb7bad4c3de81c720acea5c037e0fd1256e359d3c1394"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/Link4.STL",
+      "bytes": 88234,
+      "sha256": "594c93310215c033b8c2add05d5e6f523e6aff54e48fc9f4e2885dc24d6141fd"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/Link5.STL",
+      "bytes": 214384,
+      "sha256": "36dd055f3ecd03c03a9cedbe9d28a1f0e19b090f7d105a6133938c846d22f014"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/RL_steer_link.STL",
+      "bytes": 119284,
+      "sha256": "55332b3a25f12b952cca63ef983a227430f424316b349a6b60fcf3a1336b7fb7"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/RL_wheel_left_link.STL",
+      "bytes": 313484,
+      "sha256": "583037975d719558bd365352f8fc7f8d603ec4ab030de9440d5c82c1b0e7e03b"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/RL_wheel_right_link.STL",
+      "bytes": 313484,
+      "sha256": "aeb2c528b58dd439d2ea2e1466165aa7e8547615c002950b20e2b166ffd2f6f1"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/RR_steer_link.STL",
+      "bytes": 119284,
+      "sha256": "26e09b18a13c732afd777c599ed3b8226fae29bd8d4d636c775cda62f7b9d7bd"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/RR_wheel_left_link.STL",
+      "bytes": 313484,
+      "sha256": "f8ae6ad0c5a3bd791f5bd5523bf17e59bdc4cb8a5a5f8c1e8f6bb104da304a91"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/RR_wheel_right_link.STL",
+      "bytes": 313484,
+      "sha256": "296458b4c959d9bed67c44b00700d06dc63ef4ad39bdc63902feb3f5a07e9c7d"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/meshes/base_link.STL",
+      "bytes": 1498934,
+      "sha256": "02805d8b9bdf8416255b90e98b7fd2f38eefe8e6a01ca422766296d9452b1c6d"
+    },
+    {
+      "path": "sckd_sim/models/source/x4_tennis/tennis_robot.urdf",
+      "bytes": 21544,
+      "sha256": "71597f503b692628a6d7ac4b8cf2ba4b76e648401b9d8ea41fd8aafc161bf740"
+    },
+    {
+      "path": "sckd_sim/python/tools/arm_fk_sym.py",
+      "bytes": 5291,
+      "sha256": "96068ac9b99bee9e1559802a18ad51f598f204cf59ca7a38491875f499a39e28"
+    },
+    {
+      "path": "sckd_sim/python/tools/demo_viewer.py",
+      "bytes": 4188,
+      "sha256": "6694103290a05885330d32d9bf84ec32c9a2863f65332a33a1bcff3ba8239a3a"
+    },
+    {
+      "path": "sckd_sim/python/tools/gen_arm_nlp.py",
+      "bytes": 9398,
+      "sha256": "4164e0a68bf6dd7c6e2ac7cae44a104bc5d813115a7472f1c948dae4a57b36e4"
+    },
+    {
+      "path": "sckd_sim/python/tools/gen_chassis_mpc.py",
+      "bytes": 4351,
+      "sha256": "908cedb06134bd8264b05da2dd08850b68aafad81599fa74316a9416965e45fc"
+    },
+    {
+      "path": "sckd_sim/python/tools/ground_calib.py",
+      "bytes": 9288,
+      "sha256": "e27eeb3c56f7e05ae534c33781aab1ac3d3e33e782ff4c792cf78c7e6188e64f"
+    },
+    {
+      "path": "sckd_sim/python/tools/rebound_calib.py",
+      "bytes": 6800,
+      "sha256": "c99ea9f7d42d0388273aad4b8e4d4c63aacbb0b03f10df15ee294e36c33f4a9d"
+    },
+    {
+      "path": "sckd_sim/python/tools/wholebody_ocp.py",
+      "bytes": 19260,
+      "sha256": "351cced8c116898b8d4d54ad3669051a5dc6ecae74b62074b56605435c96d660"
+    },
+    {
+      "path": "sckd_sim/third_party/doctest/doctest.h",
+      "bytes": 363071,
+      "sha256": "a58efc9446d70ddd5dd3b7724ebb8742882860f36f46da64d62993b02911fb6f"
+    },
+    {
+      "path": "sckd_sim/third_party/nmpc6/README.md",
+      "bytes": 3633,
+      "sha256": "81aeda97b95e05f603a77591d663bc8452072b4f8cbaedce3258d50520368c9b"
+    },
+    {
+      "path": "sckd_sim/third_party/nmpc6/actuator_rollout.c",
+      "bytes": 31060,
+      "sha256": "a137cda47ee167709908acafb27912fc62f676411b8dc2a349e6817871e229bb"
+    },
+    {
+      "path": "sckd_sim/third_party/nmpc6/chassis_rollout.c",
+      "bytes": 426027,
+      "sha256": "78d2016dd5bd3c97fb42c0fb287ed93cf8d21cd799225a6f0a1e1951c24a5cb6"
+    },
+    {
+      "path": "sckd_sim/third_party/nmpc6/gen_nlp.cc",
+      "bytes": 16047,
+      "sha256": "06d342fa9393f2d62b25510b7baa8b3e91bcfec3db6142ebdc60f632a5dbe24b"
+    },
+    {
+      "path": "sckd_sim/third_party/nmpc6/nlp.c",
+      "bytes": 505845,
+      "sha256": "30ab0e49fcdce7e7809b430ef68c9e3f46f98c8f772f313c63ecf4455d0e2614"
+    },
+    {
+      "path": "sckd_sim/third_party/nmpc6/nlp_chassis.c",
+      "bytes": 17058576,
+      "sha256": "e51e557b153b518fbddd3d0eeeed70431775362ff98260b07c95e21c4f69c435"
+    },
+    {
+      "path": "sckd_sim/third_party/nmpc6/nlp_sep8.c",
+      "bytes": 496235,
+      "sha256": "c6e1d7dc8ba534612b6a8786bb4b465b913afedfb5132e4bc3fce70e244d40dc"
+    },
+    {
+      "path": "sckd_sim/third_party/nmpc6/nlp_servo.c",
+      "bytes": 1440427,
+      "sha256": "d9cf674d4e81921235c05a43793b63ef913fb185a19386cf0cb2431927727be9"
+    },
+    {
+      "path": "sckd_sim/third_party/nmpc6/sim_fk.h",
+      "bytes": 3687,
+      "sha256": "ee432f0749b4f3e9f3b7e3b86aa7c817e91d5e834d3ede91623c27554f585adb"
+    },
+    {
+      "path": "sckd_sim/third_party/osqp/LICENSE",
+      "bytes": 11391,
+      "sha256": "ae5e69b1fea4c316b80e4bc2cb49ac82c0e9b34785415e128e00c975bd10f687"
+    },
+    {
+      "path": "sckd_sim/third_party/osqp/include/osqp/osqp.h",
+      "bytes": 236,
+      "sha256": "05a25a8f1cb7cfec3cbae83313714c53fef58b8ceeb0adf2c22884e75c1ab834"
+    },
+    {
+      "path": "sckd_sim/third_party/osqp/include/osqp/osqp_api_constants.h",
+      "bytes": 7354,
+      "sha256": "b10318c4284d08e9c4ad1cd078bb7d0a152b08e07878a1b098bb2a73a652a4d9"
+    },
+    {
+      "path": "sckd_sim/third_party/osqp/include/osqp/osqp_api_functions.h",
+      "bytes": 17081,
+      "sha256": "748c9ae5f31ff576bbabd9b57cf99cbf21f5ab50587fcba1738896fe67092ed7"
+    },
+    {
+      "path": "sckd_sim/third_party/osqp/include/osqp/osqp_api_types.h",
+      "bytes": 7933,
+      "sha256": "c65577b9c9682aa611f0b5beed009d52f1b45cbddcfb1d4daf5379860ac7be9b"
+    },
+    {
+      "path": "sckd_sim/third_party/osqp/include/osqp/osqp_api_utils.h",
+      "bytes": 1072,
+      "sha256": "7cc2fe89bf4d92ba54fc5751441c38f725a650f91667c62400f36cfb8f520a6b"
+    },
+    {
+      "path": "sckd_sim/third_party/osqp/include/osqp/osqp_configure.h",
+      "bytes": 1196,
+      "sha256": "e05262e0b235f5f7f08b07767b465e4842f84acd5ef38488c61b018bd14c863f"
+    },
+    {
+      "path": "sckd_sim/third_party/osqp/include/osqp/osqp_export_define.h",
+      "bytes": 713,
+      "sha256": "a391987ba62dd0cf753f7241c089b2b78685cb9b92210a5d14bf378f9cc8e0f3"
+    },
+    {
+      "path": "tennis_robot/meshes/FL_steer_link.STL",
+      "bytes": 119234,
+      "sha256": "887bbc55e1a58b74a22374230d69ca06972c87e75a7bc6477af0c66869a21799"
+    },
+    {
+      "path": "tennis_robot/meshes/FL_wheel_left_link.STL",
+      "bytes": 313484,
+      "sha256": "99cb50db77d02363d363e68e46fc6680baafd92e582abfb46a5ca307c11d2947"
+    },
+    {
+      "path": "tennis_robot/meshes/FL_wheel_right_link.STL",
+      "bytes": 313484,
+      "sha256": "6419a4f22454915bbfbee0988a30f2b8407a1d68ed3bbdbe9320d7ee09832dcd"
+    },
+    {
+      "path": "tennis_robot/meshes/FR_steer_link.STL",
+      "bytes": 119234,
+      "sha256": "9c2c245b199c5e93fb39a5ab087f738ad0f21765c8ba358512ef0f0a5394c4e9"
+    },
+    {
+      "path": "tennis_robot/meshes/FR_wheel_left_link.STL",
+      "bytes": 313484,
+      "sha256": "da82fba38c0d3a9dd29e2ce6ace7eb9a4c58243b9c7ecd4a266c84b52a73d621"
+    },
+    {
+      "path": "tennis_robot/meshes/FR_wheel_right_link.STL",
+      "bytes": 313484,
+      "sha256": "28c78afefef7d4bd7ccd5b079b632e8a7fd324c083f5686a544b7a273090f765"
+    },
+    {
+      "path": "tennis_robot/meshes/Link1.STL",
+      "bytes": 916234,
+      "sha256": "cf96a7effebc9ce6f0ab1219051ccd09d0a365771629697d2e9ba241b995e625"
+    },
+    {
+      "path": "tennis_robot/meshes/Link2.STL",
+      "bytes": 80834,
+      "sha256": "5eae1f58511143a5e56c6e7e8216aaae5c2ac9f97915f69722bf0d20374eed6e"
+    },
+    {
+      "path": "tennis_robot/meshes/Link3.STL",
+      "bytes": 81634,
+      "sha256": "2d66651571f81b85d57bb7bad4c3de81c720acea5c037e0fd1256e359d3c1394"
+    },
+    {
+      "path": "tennis_robot/meshes/Link4.STL",
+      "bytes": 88234,
+      "sha256": "594c93310215c033b8c2add05d5e6f523e6aff54e48fc9f4e2885dc24d6141fd"
+    },
+    {
+      "path": "tennis_robot/meshes/Link5.STL",
+      "bytes": 214384,
+      "sha256": "36dd055f3ecd03c03a9cedbe9d28a1f0e19b090f7d105a6133938c846d22f014"
+    },
+    {
+      "path": "tennis_robot/meshes/RL_steer_link.STL",
+      "bytes": 119284,
+      "sha256": "55332b3a25f12b952cca63ef983a227430f424316b349a6b60fcf3a1336b7fb7"
+    },
+    {
+      "path": "tennis_robot/meshes/RL_wheel_left_link.STL",
+      "bytes": 313484,
+      "sha256": "583037975d719558bd365352f8fc7f8d603ec4ab030de9440d5c82c1b0e7e03b"
+    },
+    {
+      "path": "tennis_robot/meshes/RL_wheel_right_link.STL",
+      "bytes": 313484,
+      "sha256": "aeb2c528b58dd439d2ea2e1466165aa7e8547615c002950b20e2b166ffd2f6f1"
+    },
+    {
+      "path": "tennis_robot/meshes/RR_steer_link.STL",
+      "bytes": 119284,
+      "sha256": "26e09b18a13c732afd777c599ed3b8226fae29bd8d4d636c775cda62f7b9d7bd"
+    },
+    {
+      "path": "tennis_robot/meshes/RR_wheel_left_link.STL",
+      "bytes": 313484,
+      "sha256": "f8ae6ad0c5a3bd791f5bd5523bf17e59bdc4cb8a5a5f8c1e8f6bb104da304a91"
+    },
+    {
+      "path": "tennis_robot/meshes/RR_wheel_right_link.STL",
+      "bytes": 313484,
+      "sha256": "296458b4c959d9bed67c44b00700d06dc63ef4ad39bdc63902feb3f5a07e9c7d"
+    },
+    {
+      "path": "tennis_robot/meshes/base_link.STL",
+      "bytes": 1498934,
+      "sha256": "02805d8b9bdf8416255b90e98b7fd2f38eefe8e6a01ca422766296d9452b1c6d"
+    },
+    {
+      "path": "tennis_robot/tennis_robot.urdf",
+      "bytes": 21544,
+      "sha256": "71597f503b692628a6d7ac4b8cf2ba4b76e648401b9d8ea41fd8aafc161bf740"
+    },
+    {
+      "path": "tests/test_interception_metrics.py",
+      "bytes": 11108,
+      "sha256": "f06b28373dd179312b5791fdbf6b23c111c66076abd600d6536281a4f76e74b3"
+    },
+    {
+      "path": "tests/test_pipeline_experiment.py",
+      "bytes": 17197,
+      "sha256": "b3f3901aede034131cd06c12482f802a1749f8fa5187c7c92dcd13e0b01f15a5"
+    },
+    {
+      "path": "tests/test_predictor_bundle_runner.py",
+      "bytes": 13544,
+      "sha256": "75b5557058dbbe645db3bb7f2b1e37218f378b4558c5b65cd1571810b7f5dd8b"
+    },
+    {
+      "path": "tests/test_summarize_time_window_search.py",
+      "bytes": 20538,
+      "sha256": "61050c781be6fa46223c5245f258b6bef5e01697a137bc1ccc5c9992ae636bad"
+    },
+    {
+      "path": "tests/test_time_window_caches.py",
+      "bytes": 10814,
+      "sha256": "0efaa5c0fe608d8fdb5c83dc59f4d053564d5566138d97d34615ff6ce744fad0"
+    },
+    {
+      "path": "tests/test_time_window_preservation.py",
+      "bytes": 8588,
+      "sha256": "141d13f9a75390af0c042434100a3ffd2f692c0b0fc94802617bd76c07a15df1"
+    },
+    {
+      "path": "tests/test_time_window_search.py",
+      "bytes": 18218,
+      "sha256": "8d4dcbd351c6be800a00bdb23032c75de4c0507af8f2d6367a9a9bf6945bfb38"
+    },
+    {
+      "path": "tests/test_time_windows_synthetic.py",
+      "bytes": 6487,
+      "sha256": "0ed508a560cbce827c639f3138ba5de59ee462c6fc7c71160060e28547c66489"
+    },
+    {
+      "path": "tools/analyze_arm_identification.py",
+      "bytes": 2809,
+      "sha256": "5d88dae8f214d0d032b32fa4b50ea05d0fbd2d4eb03b1ba8af26d635d280a6fd"
+    },
+    {
+      "path": "tools/analyze_control_ablation.py",
+      "bytes": 16583,
+      "sha256": "85db03a2e0dc42a9c2c2cca32cc04f613e9d4546f97359734d246e7e1fe1ab6c"
+    },
+    {
+      "path": "tools/analyze_solver_diagnostics.py",
+      "bytes": 11765,
+      "sha256": "819b8f35b7ed0bb1324d21fbdb2576b9338b84f4f71df7b4e901d147d7910f77"
+    },
+    {
+      "path": "tools/assemble_control_ablation_report.py",
+      "bytes": 2932,
+      "sha256": "e64e264bff9bf30b37c32928ab900e483041f595f611c1b9d3d1d8a3e7cc3f7d"
+    },
+    {
+      "path": "tools/audit_chassis_alignment.py",
+      "bytes": 4631,
+      "sha256": "58a3f43ec145dc8a8d94e651f057753e27b1b6aad26a38b99b6ca5616b612903"
+    },
+    {
+      "path": "tools/audit_chassis_hd_videos.py",
+      "bytes": 4117,
+      "sha256": "192f8e6f1c299d3d5880927c138935ab697cd37fd4ba563ba3a4c8755a218d6f"
+    },
+    {
+      "path": "tools/audit_control_diagnostics.py",
+      "bytes": 4539,
+      "sha256": "e78e6fa6cc37b6a6ba099afebd8efb575709dcffdb727e8110367ad15d19701e"
+    },
+    {
+      "path": "tools/audit_time_window_preservation.py",
+      "bytes": 14191,
+      "sha256": "aa6f380ca070abf08899944226d9a10e59facdd15a53234916d8daa40f4ae877"
+    },
+    {
+      "path": "tools/build_chassis_nmpc.py",
+      "bytes": 1154,
+      "sha256": "cfd6daa2fec35ac6e98e036f3a781f50b4ed3bde548776f9a60be38cb6ee2c8c"
+    },
+    {
+      "path": "tools/build_servo_nmpc.py",
+      "bytes": 1647,
+      "sha256": "3bf3312fe754255f875a55edb9046c7a8d1cb6e76bbbb499a5c5573e3262b5c7"
+    },
+    {
+      "path": "tools/check_time_windows_synthetic.py",
+      "bytes": 18704,
+      "sha256": "6ecb8f1c604cee2b593b5c8010157e4ff2b4fd0fed691a823d8d478290c296c0"
+    },
+    {
+      "path": "tools/control_ablation_cache.py",
+      "bytes": 2956,
+      "sha256": "195c658b1568e2940b099a5e5d93bb79ceb38e44a926927fd0a20e0d8572a963"
+    },
+    {
+      "path": "tools/control_diagnostic_metrics.py",
+      "bytes": 4800,
+      "sha256": "64ffc8ba143ddf145429fbdac0366c9de1d674289e2181bf1af709c30cc6e92b"
+    },
+    {
+      "path": "tools/evaluate_measured_interception.py",
+      "bytes": 6370,
+      "sha256": "81c43b26bccff30510b9a27b8a68ea266e1faaea51ee1af91e0dd1a19a5bd299"
+    },
+    {
+      "path": "tools/evaluate_predictor_control.py",
+      "bytes": 16977,
+      "sha256": "1c16ca6d2a99935d0bf4657c426f5475289b9cbcff82e3e9d55d670557313f06"
+    },
+    {
+      "path": "tools/fit_chassis_response.py",
+      "bytes": 2165,
+      "sha256": "5dfd9e45daf0702f25390da9ed1e68a8eb0cf10ad8729530d26ce6d04532fc56"
+    },
+    {
+      "path": "tools/interception_metrics.py",
+      "bytes": 7333,
+      "sha256": "e5ddc04f123891b92800499e54e6efc73c892dfb3af02887e4322551f1486066"
+    },
+    {
+      "path": "tools/pipeline_experiment.py",
+      "bytes": 14479,
+      "sha256": "077c7d57a1eba5162b0cd44834754b899152b61b22038a33ce358b38a1a3d5b3"
+    },
+    {
+      "path": "tools/plot_control_diagnostics.py",
+      "bytes": 12136,
+      "sha256": "b0015a37737351a8193eb5f6cded38f225c84d1d8e479c0491d5b4f79a748a2a"
+    },
+    {
+      "path": "tools/prepare_time_window_caches.py",
+      "bytes": 17065,
+      "sha256": "f76e91f0cd94bfac41a3320d2748cf92ee08f8b5058ba46011701aef3f02402d"
+    },
+    {
+      "path": "tools/record_all_prediction_samples.py",
+      "bytes": 4791,
+      "sha256": "29a6d41ae3e643ab54e761d7be744094a181fb305d0f828053aa027b9af332e4"
+    },
+    {
+      "path": "tools/record_chassis_hd_videos.py",
+      "bytes": 5910,
+      "sha256": "fa266acb619981f74f71c0ed08e5a16fd09b43cc98ba5971cc7d6383904838ea"
+    },
+    {
+      "path": "tools/record_measured_prediction_samples.py",
+      "bytes": 6376,
+      "sha256": "90f96aebc92d759c3c85810658b548d9d20a0716955d724ff78739d225836291"
+    },
+    {
+      "path": "tools/record_prediction_demo.py",
+      "bytes": 10038,
+      "sha256": "b34d4c0fc655de061e02efd19a5ae6dd03a03f23f585bdcd3858d9a49693376a"
+    },
+    {
+      "path": "tools/render_measured_hd.py",
+      "bytes": 12440,
+      "sha256": "2be65e941c39ecea93117e8e005fe7c21e33286a0e17202d38d7da3587d781af"
+    },
+    {
+      "path": "tools/run_control_ablation.py",
+      "bytes": 6559,
+      "sha256": "bcd631b44e719638d1f62f76f5ff59ab5592a17c71181e66883e8f8c283b25ea"
+    },
+    {
+      "path": "tools/run_control_diagnostics.py",
+      "bytes": 3500,
+      "sha256": "f6fc433575fec0294733d63c00b6b6496b3c4e2c412c029fa47ee2893ab5908e"
+    },
+    {
+      "path": "tools/run_steer_rate_ablation.py",
+      "bytes": 2467,
+      "sha256": "e6613c4bc80fb5c29628d2e92f2c7b8e1b6c93819b192f51e44ec1de5068b083"
+    },
+    {
+      "path": "tools/setup_predictor_ubuntu.py",
+      "bytes": 2592,
+      "sha256": "9685707c9fdc029092c8cfda6345287030659ea9cc7c27641406381bf79bb73c"
+    },
+    {
+      "path": "tools/summarize_predictor_timing.py",
+      "bytes": 3590,
+      "sha256": "3dbda653998e397ac5574694ec6a5d3d9d6132b7fb90a29835bf278752c2964c"
+    },
+    {
+      "path": "tools/summarize_time_window_search.py",
+      "bytes": 35667,
+      "sha256": "a0d5488a9ebd02137ddb700a60e832591b72f1353159bd83119b9c6a9776a131"
+    },
+    {
+      "path": "tools/test_video_clipping.py",
+      "bytes": 1341,
+      "sha256": "c7118b72caceb6d048f370369167672b47559c1e2dbeadef4ddd473df4e71c6f"
+    },
+    {
+      "path": "tools/time_window_search.py",
+      "bytes": 36466,
+      "sha256": "72e3ee74a858e2f9a6a5b6b30928ae56eb384c0e909f4478e72070a708a5f612"
+    },
+    {
+      "path": "tools/validate_chassis_prediction.py",
+      "bytes": 2676,
+      "sha256": "ffbec2be86864bc6ee5493eada883c7bb6bd8a00d92121bac1646acf13b28cd4"
+    },
+    {
+      "path": "tools/validate_control_ablation.py",
+      "bytes": 3128,
+      "sha256": "2ff1026b86fe864bb98a6382f2a2c771481cce76eac28c1cca31b509d9e9e99b"
+    },
+    {
+      "path": "tools/verify_modularization.py",
+      "bytes": 34432,
+      "sha256": "25bf9be65f0d5a9c7181ea2dd383c6cb1e022dc8051fea1d95a5a26c3e524a69"
+    },
+    {
+      "path": "tools/verify_predictor_bundle.py",
+      "bytes": 24856,
+      "sha256": "42f59b6ef7b29ec096597a3432d3bcac321d8aa4008de54582fbd3d537664d62"
+    }
+  ]
+}

@@ -10,13 +10,7 @@ MODES=('pfly','nmpc6','wbmpc');FAMILIES=('fixed','rand','gs');SEEDS=(2026,31,777
 def capture(job):
  team,prediction,out,mode,family,seed=job
  name=f'external_{mode}_{family}_{seed}';dest=out/'.records'/name
- summary=dest/'summary.json'
- if summary.exists() and (dest/'frames.jsonl').exists():
-  r=json.loads(summary.read_text())
-  if 'hits' in r:return str(dest)
- if dest.exists():raise RuntimeError(f'incomplete run retained: {dest}')
- os.environ['M2_VIDEO_TRACE']=str(dest/'frames.jsonl');os.environ.pop('M2_VIEW',None)
- a=SimpleNamespace(team=str(team),prediction=str(prediction),out=str(out/'.records'),trials=10,profile=False)
+ a=SimpleNamespace(team=str(team),prediction=str(prediction),out=str(out/'.records'),trials=10,profile=False,video_trace=True)
  r=evaluate((a,'external',mode,family,seed))
  if 'hits' not in r:raise RuntimeError(r)
  return str(dest)

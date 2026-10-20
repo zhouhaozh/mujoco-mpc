@@ -77,7 +77,7 @@ target_include_directories(sckd_nmpc6 PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/cpp ${CMAKE_CURRENT_SOURCE_DIR}/third_party/nmpc6
   ${CASADI_DIR}/include)
 target_link_directories(sckd_nmpc6 PUBLIC ${CASADI_DIR}/lib)
-target_link_libraries(sckd_nmpc6 PUBLIC casadi)
+target_link_libraries(sckd_nmpc6 PUBLIC casadi ${CMAKE_DL_LIBS})
 set_target_properties(sckd_nmpc6 PROPERTIES
   BUILD_RPATH "${CASADI_DIR}/lib" INSTALL_RPATH "${CASADI_DIR}/lib")
 
@@ -105,3 +105,42 @@ add_test(NAME measured_replay COMMAND measured_replay_check ${CMAKE_CURRENT_BINA
 
 add_executable(m1_arm_identification cpp/apps/m1_arm_identification.cpp)
 target_link_libraries(m1_arm_identification PRIVATE sckd_core)
+
+add_executable(m1_chassis_identification cpp/apps/m1_chassis_identification.cpp)
+target_link_libraries(m1_chassis_identification PRIVATE sckd_core)
+
+add_executable(test_steer_rate_limits cpp/tests/test_steer_rate_limits.cc)
+target_include_directories(test_steer_rate_limits PRIVATE third_party/doctest)
+target_link_libraries(test_steer_rate_limits PRIVATE sckd_core)
+add_test(NAME steer_rate_limits COMMAND test_steer_rate_limits)
+
+# 同步pipeline边界。契约/配置不携带仿真或solver链接依赖；具体运行适配分层链接。
+add_library(sckd_runtime_contracts INTERFACE)
+target_include_directories(sckd_runtime_contracts INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/cpp)
+
+add_library(sckd_runtime_execution STATIC cpp/runtime/trajectory_executor.cpp)
+target_link_libraries(sckd_runtime_execution PUBLIC sckd_core sckd_runtime_contracts)
+add_library(sckd_runtime_planning STATIC
+  cpp/runtime/controller_adapters.cpp cpp/runtime/planning_session.cpp)
+target_link_libraries(sckd_runtime_planning PUBLIC sckd_core sckd_nmpc6 sckd_runtime_contracts)
+add_library(sckd_runtime_telemetry STATIC
+  cpp/runtime/control_telemetry.cpp cpp/runtime/video_trace.cpp)
+target_link_libraries(sckd_runtime_telemetry PUBLIC sckd_core sckd_runtime_contracts)
+target_include_directories(sckd_runtime_telemetry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/nmpc6)
+add_library(sckd_runtime_simulation STATIC
+  cpp/runtime/state_inputs.cpp cpp/runtime/simulation_step.cpp cpp/runtime/simulation_physics.cpp)
+target_link_libraries(sckd_runtime_simulation PUBLIC sckd_core sckd_runtime_contracts)
+add_library(sckd_runtime INTERFACE)
+target_link_libraries(sckd_runtime INTERFACE sckd_runtime_planning sckd_runtime_execution
+  sckd_runtime_telemetry sckd_runtime_simulation)
+target_link_libraries(m2_intercept PRIVATE sckd_runtime)
+
+add_executable(test_runtime_config cpp/tests/test_runtime_config.cc)
+target_include_directories(test_runtime_config PRIVATE third_party/doctest)
+target_link_libraries(test_runtime_config PRIVATE sckd_runtime_contracts)
+add_test(NAME runtime_config COMMAND test_runtime_config)
+
+add_executable(test_runtime_supervision cpp/tests/test_runtime_supervision.cc)
+target_include_directories(test_runtime_supervision PRIVATE third_party/doctest)
+target_link_libraries(test_runtime_supervision PRIVATE sckd_runtime_contracts)
+add_test(NAME runtime_supervision COMMAND test_runtime_supervision)

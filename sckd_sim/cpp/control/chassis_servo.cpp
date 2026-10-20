@@ -13,6 +13,12 @@ ChassisServo::ChassisServo(const ChassisConfig& cfg, RobotInterface* hw)
 
 void ChassisServo::set_twist(const Twist& cmd) { cmd_ = cmd; }
 
+void ChassisServo::set_steering_rate_limits(bool direction_limited,
+                                           bool feedforward_limited) {
+  direction_limited_ = direction_limited;
+  feedforward_limited_ = feedforward_limited;
+}
+
 double ChassisServo::MoveToward(double v, double target, double max_dv) const {
   const double dv = target - v;
   if (std::fabs(dv) <= max_dv) return target;
@@ -28,7 +34,8 @@ void ChassisServo::AllocateTick(double dt) {
     const double a0 = std::atan2(cur_.vy, cur_.vx);
     const double a1 = std::atan2(cmd_.vy, cmd_.vx);
     double da = AngleDiff(a1, a0);
-    da = MoveToward(0.0, da, cfg_.ramp.dir_rate_limit_rad_s * dt);
+    if (direction_limited_)
+      da = MoveToward(0.0, da, cfg_.ramp.dir_rate_limit_rad_s * dt);
     const double new_mag = MoveToward(cur_mag, cmd_mag, a_dt);
     cur_.vx = new_mag * std::cos(a0 + da);
     cur_.vy = new_mag * std::sin(a0 + da);
@@ -51,7 +58,8 @@ void ChassisServo::AllocateTick(double dt) {
 
     MotorCmd sc;  // 舵位置 PD + 速率前馈(混合律;电机模型 1kHz 连续作用)
     sc.q = cc[i].steer_target - cfg_.odom.steer_offset_rad[i];
-    sc.dq = std::clamp(steer_rate, -8.0, 8.0);  // 舵速率前馈(实机 slew 8 rad/s)
+    sc.dq = feedforward_limited_ ? std::clamp(steer_rate, -8.0, 8.0)
+                                : steer_rate;  // 舵速率前馈,非实际舵速硬限制
     sc.kp = cfg_.servo.steer_kp;
     sc.kd = cfg_.servo.steer_kd;
     hw_->set_axis_cmd(AxisSteer(i), sc);

@@ -12,7 +12,9 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <dlfcn.h>
 #include <map>
+#include <stdexcept>
 #include <vector>
 
 #include <casadi/casadi.hpp>
@@ -43,7 +45,6 @@ constexpr double kAddBaseVxThreshold = 28.0;
 // 冻结窗:剩余击球时间>1s 且被冻关节静止(|v|<0.05)→ 首步控制块 {5,6}
 // (dω4,dω5)零增量。速度门必须:lbx=ubx=0 的语义是"速度指令增量为 0"=
 // 维持当前速度,只有当前速度本来就 0 才等于"不动"(原注,带速度冻会漂)
-constexpr double kFreezeWindowSec = 1.0;
 constexpr int kMaxFreezeSteps = 1;
 constexpr int kFreezeCtrl[] = {5, 6};
 constexpr int kFreezeCtrlCount = 2;
@@ -92,7 +93,7 @@ void EndPos(const double th[14], bool add_base_vx, double out[7]) {
 
 struct LegacyNmpc::Impl {
   LegacyNmpcConfig cfg;
-  casadi::Function actuator_rollout;
+  casadi::Function actuator_rollout, chassis_rollout;
   casadi::Function solver;
   double racket_len = 0.85;
   bool sim_joint23_limits = false;
@@ -138,6 +139,19 @@ struct LegacyNmpc::Impl {
 };
 
 LegacyNmpc::LegacyNmpc(const LegacyNmpcConfig& cfg) {
+  if (!std::isfinite(cfg.freeze_window_s) || cfg.freeze_window_s < 0)
+    throw std::runtime_error("nmpc6 freeze_window_s must be finite and nonnegative");
+  if (cfg.allow_nonuniform_dt) {
+    void* library = dlopen(cfg.nlp_so.c_str(), RTLD_LAZY | RTLD_LOCAL);
+    if (!library)
+      throw std::runtime_error("cannot inspect nonuniform nmpc6 library: " + cfg.nlp_so);
+    using SchemaFunction = int (*)();
+    const auto schema_function = reinterpret_cast<SchemaFunction>(dlsym(library, "sckd_time_grid_schema"));
+    const int schema = schema_function ? schema_function() : -1;
+    dlclose(library);
+    if (schema != 1)
+      throw std::runtime_error("nonuniform nmpc6 requires sckd_time_grid_schema=1: " + cfg.nlp_so);
+  }
   impl_ = new Impl;
   impl_->cfg=cfg;
   impl_->racket_len = cfg.racket_len;
@@ -168,6 +182,7 @@ LegacyNmpc::LegacyNmpc(const LegacyNmpcConfig& cfg) {
   // nlpsol 从 .so 动态加载生成码(等价原 set_my_nmpc_solver_dll 的
   // casadi::nlpsol("nlpsol","ipopt","nlp.so",opts))
   impl_->solver = casadi::nlpsol("nmpc6", "ipopt", cfg.nlp_so, opts);
+  if(cfg.chassis_prediction)impl_->chassis_rollout=casadi::external("chassis_rollout","third_party/nmpc6/chassis_rollout.so");
   if(cfg.actuator_prediction)impl_->actuator_rollout=casadi::external("actuator_rollout","third_party/nmpc6/actuator_rollout.so");
 }
 
@@ -186,6 +201,18 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
   Impl& im = *impl_;
   const auto t0 = std::chrono::steady_clock::now();
   *out = LegacyNmpcResult{};
+
+  // 旧生成库动力学只读dt[0]；不得悄悄向其传非均匀网格。
+  // 执行器/底盘预测候选内部也仍为均匀子步，本轮不开放非均匀时间。
+  bool valid_dt = true;
+  for (double h : req.dt) valid_dt = valid_dt && std::isfinite(h) && h > 0;
+  const bool nonuniform = req.dt[0] != req.dt[1] || req.dt[1] != req.dt[2];
+  if (!valid_dt || (nonuniform && (!im.cfg.allow_nonuniform_dt ||
+                                  im.cfg.actuator_prediction || im.cfg.chassis_prediction))) {
+    out->status = LegacyNmpcStatus::kInputInvalid;
+    ++rejects;
+    return false;
+  }
 
   if(im.cfg.enforce_feasibility) {
     bool valid=true;for(double x:req.state)valid=valid&&std::isfinite(x);
@@ -258,7 +285,7 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
   for (int c = 0; c < kNu; ++c)
     for (int k = 0; k < kNp; ++k) { lbx.push_back(ulo[c]); ubx.push_back(uhi[c]); }
 
-  // ---- 冻结窗:剩余>1s 且被冻关节静止 → 首步 dω4/dω5 零增量 ----
+  // ---- 冻结窗:剩余>配置窗且被冻关节静止 → 首步 dω4/dω5 零增量 ----
   // (速度门必须:lbx=ubx=0 是"增量 0"=维持当前速度,非"不动" —— 原注)
   {
     bool freeze_allowed = true;
@@ -267,13 +294,16 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
         freeze_allowed = false;
         break;
       }
+    out->freeze_speed_gate = freeze_allowed;
     if (freeze_allowed) {
       double t_remain = 0.0;
       for (int k = 0; k < kNp && k < 3; ++k) t_remain += req.dt[k];
       for (int k = 0; k < kNp; ++k) {
-        const bool frozen = (k < kMaxFreezeSteps && t_remain > kFreezeWindowSec);
+        const bool frozen = im.cfg.freeze_window_s > 0 &&
+                            k < kMaxFreezeSteps && t_remain > im.cfg.freeze_window_s;
         if (k < 3) t_remain -= req.dt[k];
         if (!frozen) continue;
+        out->freeze_active = true;
         for (int ci = 0; ci < kFreezeCtrlCount; ++ci) {
           const int idx = kFreezeCtrl[ci] * kNp + k;   // 块布局
           lbx[idx] = 0.0;
@@ -336,6 +366,7 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
     lbg.push_back(0.0); ubg.push_back(casadi::inf);
   }
 
+  if(im.cfg.chassis_prediction)for(int i=0;i<6;++i){lbg.push_back(-2.1);ubg.push_back(2.1);}
   // ---- 参数向量(27 元,布局与生成码 PPPPP 一致;nlp.so 由
   // third_party/nmpc6/gen_nlp.cc 从 HEAD 源码重生成,2026-10-09 工程师
   // 确认源码即真源) ----
@@ -353,6 +384,7 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
   p.push_back(tgt[2] < 0.99 ? 10.0 : 0.0);  // 低球 vy 目标偏置(速度误差权重)
 
   if(im.cfg.actuator_prediction){for(double x:req.effective_q)p.push_back(x);for(double x:req.effective_dq)p.push_back(x);}
+  if(im.cfg.chassis_prediction)for(double x:req.chassis_state)p.push_back(x);
   // ---- 求解 ----
   bool solver_ok = false;
   std::vector<double> res_control_all;
@@ -370,15 +402,28 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
     res_control_all = std::vector<double>(res.at("x"));
     casadi::Dict stats = im.solver.stats();
     const std::string st = static_cast<std::string>(stats.at("return_status"));
+    out->ipopt_status=st;
+    if(stats.count("iter_count")) out->ipopt_iterations=static_cast<int>(stats.at("iter_count"));
     solver_ok = (st == "Solve_Succeeded" || st == "Solved_To_Acceptable_Level");
     const auto gv=std::vector<double>(res.at("g"));
     double violation=0;
-    for(size_t i=0;i<gv.size();++i)violation=std::max(violation,std::max(lbg[i]-gv[i],gv[i]-ubg[i]));
-    for(size_t i=0;i<res_control_all.size();++i) {
-      if(!std::isfinite(res_control_all[i]))violation=1e9;
-      violation=std::max(violation,std::max(lbx[i]-res_control_all[i],res_control_all[i]-ubx[i]));
-    }
-    for(double g:gv)if(!std::isfinite(g))violation=1e9;
+    auto label=[](int i)->std::string {
+      const char* axes[]={"base_x","base_y","J1","J2","J3","J4","J5"};
+      if(i<42)return std::string(i<21?"braking_position/":"endpoint_position/")+axes[i%21%7]+"/node"+std::to_string((i%21)/7+1);
+      if(i<48)return std::string("base_velocity/")+((i-42)%2?"y":"x")+"/node"+std::to_string((i-42)/2+1);
+      if(i<63)return "joint_velocity/J"+std::to_string((i-48)%5+1)+"/node"+std::to_string((i-48)/5+1);
+      if(i<84)return "acceleration_margin/"+std::string(axes[(i-63)%7])+"/node"+std::to_string((i-63)/7+1);
+      if(i<87)return "racket_height/node"+std::to_string(i-84+1);
+      return std::string("command_velocity/")+((i-87)%2?"y":"x")+"/node"+std::to_string((i-87)/2+1);
+    };
+    auto inspect=[&](double value,double lo,double hi,int index,const std::string& name) {
+      double v=std::isfinite(value)?std::max(0.0,std::max(lo-value,value-hi)):1e9;
+      if(v>violation){violation=v;out->worst_index=index;out->worst_constraint=name;out->worst_value=value;out->worst_lower=lo;out->worst_upper=hi;out->worst_side=!std::isfinite(value)?"nonfinite":value<lo?"lower":"upper";}
+    };
+    for(size_t i=0;i<gv.size();++i)inspect(gv[i],lbg[i],ubg[i],i,label(i));
+    for(size_t i=0;i<res_control_all.size();++i)inspect(res_control_all[i],lbx[i],ubx[i],i,"control_increment/"+std::to_string(i/3)+"/node"+std::to_string(i%3+1));
+    out->diagnostic_g=gv;out->diagnostic_lbg=lbg;out->diagnostic_ubg=ubg;
+    out->diagnostic_u=res_control_all;out->diagnostic_lbx=lbx;out->diagnostic_ubx=ubx;
     out->max_constraint_violation=violation;
     out->solver_ok=solver_ok;
     if(im.cfg.enforce_feasibility&&(!solver_ok||violation>im.cfg.constraint_tolerance)) {
@@ -387,9 +432,10 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
       ++rejects;return false;
     }
     if (getenv("NMPC6_DEBUG")) {
-      std::fprintf(stderr, "[nmpc6] status=%s target=(%.3f,%.3f,%.3f) T=%.3f q=(%.3f,%.3f,%.3f,%.3f,%.3f)\n", st.c_str(), tgt[0],tgt[1],tgt[2],req.dt[0]*3,cs_in[2],cs_in[3],cs_in[4],cs_in[5],cs_in[6]);
+      std::fprintf(stderr, "[nmpc6] status=%s target=(%.3f,%.3f,%.3f) T=%.3f q=(%.3f,%.3f,%.3f,%.3f,%.3f)\n", st.c_str(), tgt[0],tgt[1],tgt[2],req.dt[0]+req.dt[1]+req.dt[2],cs_in[2],cs_in[3],cs_in[4],cs_in[5],cs_in[6]);
     }
   } catch (const std::exception& e) {
+    out->solver_exception=e.what();out->ipopt_status="exception";
     out->status = LegacyNmpcStatus::kSolverFail;
     out->solve_ms = std::chrono::duration<double>(
                         std::chrono::steady_clock::now() - t0).count() * 1e3;
@@ -470,6 +516,8 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
     }
   }
 
+  std::vector<double> chassis_nodes,chassis_trace;
+  if(im.cfg.chassis_prediction){auto pred=im.chassis_rollout(std::vector<casadi::DM>{casadi::DM(res_control_all),casadi::DM(p)});chassis_nodes=std::vector<double>(pred[0]);chassis_trace=std::vector<double>(pred[1]);for(int c:{0,1,7,8})cs[c]=chassis_nodes[3*kNs+c];}
   // ---- 首解捕获触球底盘速度(后续重解不覆盖;下游调 hit_spd 用) ----
   if (!im.pred_valid) {
     im.pred_vx = cs[7];
@@ -613,6 +661,12 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
         out->plan_pos[c * (total_ms + 1) + i] = pos[c];
         out->plan_vel[c * (total_ms + 1) + i] = vel[c];
       }
+    }
+  }
+  if(im.cfg.chassis_prediction){
+    const int width=out->plan_ms+1;double h=(req.dt[0]+req.dt[1]+req.dt[2])/36;
+    for(int i=0;i<=out->plan_ms;++i){double idx=std::clamp(i*.001/h,0.0,36.0);int lo=std::min(35,static_cast<int>(idx));double f=idx-lo;
+      for(int c=0;c<2;++c)out->plan_pos[c*width+i]=(1-f)*chassis_trace[4*lo+c]+f*chassis_trace[4*(lo+1)+c];
     }
   }
   std::memcpy(im.guess, res_control_all.data(), sizeof(double) * kNp * kNu);

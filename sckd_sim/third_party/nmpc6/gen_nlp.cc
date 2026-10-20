@@ -17,6 +17,7 @@
 #include <cstdio>
 #include <string>
 #include <fstream>
+#include <stdexcept>
 #include <nlohmann/json.hpp>
 #include <vector>
 
@@ -28,8 +29,21 @@ using casadi::SX;
 using casadi::Slice;
 
 int main(int argc,char**argv) {
-  const bool servo=argc>1;
-  nlohmann::json identification;if(servo){std::ifstream f(argv[1]);f>>identification;}
+  // 默认保留旧库单dt动力学。只有独立时间搜索显式开启逐节点dt，
+  // 不允许误把均匀子步的servo/chassis预测库标作支持非均匀。
+  bool nonuniform_time = false;
+  std::vector<std::string> positional;
+  for (int i = 1; i < argc; ++i) {
+    if (std::string(argv[i]) == "--nonuniform-time") nonuniform_time = true;
+    else positional.emplace_back(argv[i]);
+  }
+  const bool chassis=positional.size()>1 && positional[1]=="chassis";
+  const bool servo=!positional.empty() && !chassis;
+  if (nonuniform_time && (servo || chassis)) {
+    std::fprintf(stderr, "--nonuniform-time supports only baseline generation without identification JSON\n");
+    return 2;
+  }
+  nlohmann::json identification;if(servo||chassis){std::ifstream f(positional[0]);f>>identification;}
   const int n_states = 14, n_controls = 7, m_predict_step = 3;
 
   // ---- sim(x4_tennis)精确 FK(2026-10-09 替换旧灵足 X1 解析式:旧式拍长
@@ -78,7 +92,7 @@ int main(int argc,char**argv) {
 
   SX U = SX::sym("U", n_controls, m_predict_step);
   SX X = SX::sym("X", n_states, m_predict_step + 1);
-  SX PPPPP = SX::sym("PPPPP", n_states + 13+(servo?10:0));       // servo adds effective command q/dq
+  SX PPPPP = SX::sym("PPPPP", n_states + 13+(servo?10:chassis?11:0));       // servo adds effective command q/dq
   SX opt_var = SX::reshape(U.T(), -1, 1);
   X(Slice(), 0) = PPPPP(Slice(0, n_states, 1));
 
@@ -92,7 +106,7 @@ int main(int argc,char**argv) {
   };
 
   for (int i = 0; i < m_predict_step; ++i) {
-    SX dt = PPPPP(n_states + 3);                     // 动力学:单一 dt(原样)
+    SX dt = PPPPP(n_states + 3 + (nonuniform_time ? i : 0));
     X(0, i+1) = (X(7,i)+U(0,i))*dt - (U(0,i)*sqrt(U(0,i)*U(0,i)+eps))/2.0*ACC(0,0) + X(0,i);
     X(1, i+1) = (X(8,i)+U(1,i))*dt - (U(1,i)*sqrt(U(1,i)*U(1,i)+eps))/2.0*ACC(1,0) + X(1,i);
     X(2, i+1) = (X(9,i)+U(2,i))*dt - (U(2,i)*sqrt(U(2,i)*U(2,i)+eps))/2.0*ACC(2,0) + X(2,i);
@@ -149,6 +163,54 @@ int main(int argc,char**argv) {
     state_rollout.generate("actuator_rollout.c");
   }
 
+  if(chassis) {
+    // 执行端降阶模型：同方向率/幅值斜坡、舵角投影、轮目标斜坡，
+    // 实际平移响应由独立激励拟合；不声称复制轮胎/电机全动力学。
+    const double tau_v=identification["motion_tau_s"],tau_s=identification["steer_tau_s"];
+    const double accel=identification["config"]["ramp"]["accel_limit_mps2"];
+    const double turn=identification["config"]["ramp"]["dir_rate_limit_rad_s"];
+    const double wheel_acc=identification["config"]["servo"]["wheel_accel_mps2"];
+    auto clip=[](const SX&x,const SX&lim){return fmin(fmax(x,-lim),lim);};
+    auto angle=[](const SX&x){return atan2(sin(x),cos(x));};
+    SX rx=PPPPP(27),ry=PPPPP(28),theta[4],wheel[4],psi=PPPPP(37);
+    for(int j=0;j<4;++j){theta[j]=PPPPP(29+j);wheel[j]=PPPPP(33+j);}
+    SX bvx=cos(psi)*X(7,0)+sin(psi)*X(8,0),bvy=-sin(psi)*X(7,0)+cos(psi)*X(8,0),px=X(0,0),py=X(1,0);
+    SX trace=SX::zeros(4,37);trace(0,0)=px;trace(1,0)=py;trace(2,0)=X(7,0);trace(3,0)=X(8,0);
+    SX h=PPPPP(17)/12;std::vector<SX> wxhist,wyhist;
+    SX wx0=0,wy0=0;for(int j=0;j<4;++j){wx0+=wheel[j]*cos(theta[j])*.25;wy0+=wheel[j]*sin(theta[j])*.25;}
+    wxhist.push_back(wx0);wyhist.push_back(wy0);
+    for(int seg=0;seg<3;++seg){
+      for(int step=1;step<=12;++step){
+        SX local=step*h,vcx=X(7,seg)+clip(U(0,seg),8*local),vcy=X(8,seg)+clip(U(1,seg),8*local);
+        SX cx=cos(psi)*vcx+sin(psi)*vcy,cy=-sin(psi)*vcx+cos(psi)*vcy;
+        SX rm=sqrt(rx*rx+ry*ry+1e-12),cm=sqrt(cx*cx+cy*cy+1e-12);
+        SX a0=atan2(ry,rx+1e-9),a1=atan2(cy,cx+1e-9),da=clip(angle(a1-a0),turn*h),mag=rm+clip(cm-rm,accel*h);
+        SX nx=mag*cos(a0+da),ny=mag*sin(a0+da);
+        rx=if_else(rm>1e-5 && cm>1e-5,nx,rx+clip(cx-rx,accel*h));
+        ry=if_else(rm>1e-5 && cm>1e-5,ny,ry+clip(cy-ry,accel*h));
+        SX direction=atan2(ry,rx+1e-9),speed=sqrt(rx*rx+ry*ry+1e-12),wx=0,wy=0;
+        for(int j=0;j<4;++j){
+          SX err=angle(direction-theta[j]),reverse=fabs(err)>M_PI/2;
+          SX folded=if_else(reverse,angle(err+M_PI),err);
+          SX target=if_else(speed>.001,if_else(reverse,-speed,speed)*fmax(cos(folded),SX(0)),SX(0));
+          wheel[j]+=clip(target-wheel[j],wheel_acc*h);
+          theta[j]+=if_else(speed>.001,clip(folded*(1-exp(-h/tau_s)),8*h),SX(0));
+          wx+=wheel[j]*cos(theta[j])*.25;wy+=wheel[j]*sin(theta[j])*.25;
+        }
+        wxhist.push_back(wx);wyhist.push_back(wy);
+        int index=seg*12+step;SX query=index*h-.009,delaywx=wx0,delaywy=wy0;
+        for(int n=1;n<=index;++n){SX alpha=fmin(fmax((query-(n-1)*h)/h,SX(0)),SX(1));delaywx+=(wxhist[n]-wxhist[n-1])*alpha;delaywy+=(wyhist[n]-wyhist[n-1])*alpha;}
+        SX oldx=bvx,oldy=bvy;double gain=identification.value("motion_gain",1.0);
+        bvx+=(gain*delaywx-bvx)*(1-exp(-h/tau_v));bvy+=(gain*delaywy-bvy)*(1-exp(-h/tau_v));
+        SX vx=cos(psi)*bvx-sin(psi)*bvy,vy=sin(psi)*bvx+cos(psi)*bvy;
+        px+=.5*h*(vx+cos(psi)*oldx-sin(psi)*oldy);py+=.5*h*(vy+sin(psi)*oldx+cos(psi)*oldy);
+        trace(0,index)=px;trace(1,index)=py;trace(2,index)=vx;trace(3,index)=vy;
+      }
+      Y(0,seg+1)=px;Y(1,seg+1)=py;Y(7,seg+1)=trace(2,(seg+1)*12);Y(8,seg+1)=trace(3,(seg+1)*12);
+    }
+    casadi::Function rollout("chassis_rollout",{opt_var,PPPPP},{Y,trace});rollout.generate("chassis_rollout.c");
+  }
+
   // ---- 代价(终端唯一) ----
   SX cost_fun = SX::sym("cost_fun");
   cost_fun = 0;
@@ -181,19 +243,20 @@ int main(int argc,char**argv) {
   // ---- 约束 G(87 行:刹车位置 3×7 + 位置 3×7 + 底盘速 3×2 + 关节速 3×5
   //      + 加速度 3×7 + 自碰 z 3×1) ----
   SX G;
+  SX Z=chassis?Y:X;
   for (int i = 0; i < m_predict_step; ++i) {
-    SX A = smooth_sign(X(Slice(7,14,1), i) * (X(Slice(7,14,1), i) + U(Slice(0,7,1), i)));
-    SX M1 = X(Slice(0,7,1), i+1) - X(Slice(0,7,1), i);
-    SX Fv = smooth_sign(X(Slice(7,14,1), i));
-    SX M2 = 0.5*ACC*X(Slice(7,14,1), i)*X(Slice(7,14,1), i);
-    G = SX::vertcat({G, X(Slice(0,7,1), i)
+    SX A = smooth_sign(Z(Slice(7,14,1), i) * (Z(Slice(7,14,1), i) + U(Slice(0,7,1), i)));
+    SX M1 = Z(Slice(0,7,1), i+1) - Z(Slice(0,7,1), i);
+    SX Fv = smooth_sign(Z(Slice(7,14,1), i));
+    SX M2 = 0.5*ACC*Z(Slice(7,14,1), i)*Z(Slice(7,14,1), i);
+    G = SX::vertcat({G, Z(Slice(0,7,1), i)
                         + smooth_fmin(SX(1)+A, SX(1))*M1
                         + smooth_fmax(-A, SX(0))*Fv*M2});
   }
   for (int i = 0; i < m_predict_step; ++i)
     G = SX::vertcat({G, Y(Slice(0,7,1), i+1)});
   for (int i = 0; i < m_predict_step; ++i)
-    G = SX::vertcat({G, X(Slice(7,9,1), i+1)});
+    G = SX::vertcat({G, (chassis?Y:X)(Slice(7,9,1), i+1)});
   for (int i = 0; i < m_predict_step; ++i)
     G = SX::vertcat({G, Y(Slice(9,14,1), i+1)});
   for (int i = 0; i < m_predict_step; ++i)
@@ -205,6 +268,16 @@ int main(int argc,char**argv) {
     G = SX::vertcat({G, end_pos_i(2,3) - 0.35});
   }
 
+  if(chassis)for(int i=0;i<3;++i)G=SX::vertcat({G,X(Slice(7,9,1),i+1)}); // 命令速度也保持原逐轴上限
+  if (!servo && !chassis) {
+    // 独立验收入口：不用求解器便可对照任意控制/时间下的状态、约束和代价。
+    // 与nlp.c分开编译保存，可同时比较默认旧公式和逐段公式，禁止覆盖默认库。
+    casadi::Function probe("time_grid_probe", {opt_var, PPPPP},
+                           {X, G, cost_fun, SX(nonuniform_time ? 1 : 0)},
+                           {"controls", "parameters"},
+                           {"states", "constraints", "cost", "per_stage_time"});
+    probe.generate("time_grid_probe.c");
+  }
   casadi::SXDict nlp_prob = {{"f", cost_fun}, {"x", opt_var}, {"p", PPPPP}, {"g", G}};
   casadi::Dict opts;
   opts["ipopt.linear_solver"] = "mumps";   // 重生成版默认 mumps(免 HSL)
@@ -213,9 +286,18 @@ int main(int argc,char**argv) {
   opts["print_time"] = 0;
   casadi::Function solver = casadi::nlpsol("nlpsol", "ipopt", nlp_prob, opts);
   // 生成文件名不得含目录成分(CodeGenerator 以其为 C 入口名,斜杠非法)
-  solver.generate_dependencies(servo?"nlp_servo.c":"nlp.c");
-  std::printf("generated: nx=%lld np=%lld ng=%lld\n",
+  const char* generated_path = chassis ? "nlp_chassis.c" : servo ? "nlp_servo.c" : "nlp.c";
+  solver.generate_dependencies(generated_path);
+  // 编入生成库的能力标记；运行驱动校验实际加载的.so，不信任配置布尔值。
+  std::ofstream generated(generated_path, std::ios::app);
+  if (!generated) throw std::runtime_error("cannot append time-grid schema to generated C");
+  generated << "\n#ifdef __cplusplus\nextern \"C\" {\n#endif\n"
+            << "int sckd_time_grid_schema(void) { return " << (nonuniform_time ? 1 : 0) << "; }\n"
+            << "#ifdef __cplusplus\n}\n#endif\n";
+  generated.close();
+  if (!generated) throw std::runtime_error("cannot save time-grid schema to generated C");
+  std::printf("generated: nx=%lld np=%lld ng=%lld nonuniform_time=%d\n",
               solver.size_in(0).first, solver.size_in(1).first,
-              solver.size_out("g").first);
+              solver.size_out("g").first, static_cast<int>(nonuniform_time));
   return 0;
 }

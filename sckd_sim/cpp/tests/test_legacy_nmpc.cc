@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <stdexcept>
 
 #include "control/legacy_nmpc.h"
 
@@ -49,6 +50,28 @@ const char* StatusName(LegacyNmpcStatus s) {
 }
 
 }  // namespace
+
+TEST_CASE("nonuniform capability cannot be enabled for the default legacy generated library") {
+  LegacyNmpcConfig config;
+  config.allow_nonuniform_dt = true;
+  CHECK_THROWS_AS(LegacyNmpc{config}, std::runtime_error);
+}
+
+TEST_CASE("legacy single-dt generated library rejects nonuniform or invalid time requests") {
+  LegacyNmpc nmpc;
+  auto request = MakeReq();
+  request.dt[1] *= .5;
+  LegacyNmpcResult result;
+  CHECK_FALSE(nmpc.Solve(request, &result));
+  CHECK(result.status == LegacyNmpcStatus::kInputInvalid);
+  CHECK(result.ipopt_status == "not_called");
+  CHECK(result.plan_ms == 0);
+  request = MakeReq();
+  request.dt[2] = 0;
+  CHECK_FALSE(nmpc.Solve(request, &result));
+  CHECK(result.status == LegacyNmpcStatus::kInputInvalid);
+  CHECK(result.ipopt_status == "not_called");
+}
 
 TEST_CASE("legacy_nmpc: 实机日志参数回归(调通门槛)") {
   LegacyNmpc nmpc;
