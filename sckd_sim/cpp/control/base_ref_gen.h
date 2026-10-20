@@ -1,0 +1,113 @@
+#pragma once
+// 底盘 MPC 参考轨迹生成(MPC 上场,2026-10-07):击球计划 → 2s 视界到位参考。
+// 【绝对时间锚定】参考在初规划时刻起锚(位置/时刻),之后每次重解按绝对时刻取值
+// r(t_now + k·dt)—— 若每拍从当前位置重建,smoothstep 起点速度为 0,参考每拍
+// "重新开始且不动",MPC 追着不动参考爬行(实测锁止偏差 0.5m,2026-10-07);
+// 绝对时刻参考落后时会拉着机器人赶上(m1_mpc_tracking 同哲学)。
+// 位置:smoothstep(锚点 → base_target,T_arrive 内),到位后保持;
+//      终点 tx,ty 可随 RefineAt 精化更新(小跳变,起锚位置/时刻不变)。
+// 速度:smoothstep 析出导数 6s(1−s)/T·(target−anchor),世界系 → 车体系
+//      (MPC 模型 vx,vy 为车体系,m1_mpc_tracking 契约)。
+// 航向:目标 0(臂 IK 按 yaw=0 解,hit_planner 契约);k=0 钳 ±0.2 防初始违反航向窗。
+#include <algorithm>
+#include <array>
+#include <cmath>
+
+#include "control/chassis_mpc.h"
+
+namespace sckd {
+
+class BaseRefGen {
+ public:
+  using Ref = std::array<double, ChassisMpc::kNx * (ChassisMpc::kN + 1)>;
+  static constexpr double kDt = 0.020;   // 与 MPC 视界步长一致
+
+  struct Schedule {
+    double t0 = 0;          // 起锚时刻(初规划时刻,绝对仿真时刻)
+    double ax = 0, ay = 0;  // 起锚位置(世界系)
+    double tx = 0, ty = 0;  // 终点(RefineAt 可更新)
+    double t_arrive = 0.8;  // 到位时长(自 t0 起)
+    // 方案 B′ fly-through(2026-10-07):v_fly>0 = 到达 t0+Ta 时不停,沿接近方向
+    // 以 v_fly 通过目标(触球时刻底盘在动,拍速获得底盘贡献),之后 t_dec 内刹停。
+    // v_fly=0 = 原梯形到位即停(M2 定点口径,不变)。
+    double v_fly = 0;       // 终端速度(m/s,沿锚点→终点方向,世界系)
+    double t_dec = 0.40;    // 过靶后刹停时长(s;越程 = 0.5·v_fly·t_dec)
+  };
+
+  // x0=[px,py,ψ,vx,vy,wz](vx,vy 车体系;t0 已按绝对时刻取值)
+  // v_fly=0 速度剖面:梯形(0.15s 爬升 / 巡航 / 0.25s 收敛)—— smoothstep 起步慢,
+  // 早期位置误差≈0 无驱动力,MPC 系统性落后参考速度 30-40%(2026-10-07 实测);
+  // 梯形早发力,到位即停。
+  // v_fly>0(fly-through):三次 Hermite(0,v0=0)→(1,w)(w=v_fly·Ta/D 归一终端
+  // 速度)+ 过靶后线性减速 v_fly→0(t_dec 内)。单调性要求 w<3(dp=τ[(6−2w)+
+  // τ(3w−6)],w<3 时两端点为正、线性中段为正;规划器按 w≤2.2 截 v_base*)。
+  // 起步加速度 (6−2w)·D/Ta² ≠0(对比 smoothstep 的 0),无"慢起步"病。
+  // EvalAt(2026-10-09 增):任意绝对时刻的世界系位置/速度(wbmpc 底盘走廊
+  // 代价用;与 Build 同一剖面源,梯形支线 tau<0→(0,0)/tau≥1→(1,0) 与原
+  // clamp 语义一致)。
+  static void EvalAt(const Schedule& sc, double t_abs, double* wx, double* wy,
+                     double* vwx, double* vwy) {
+    const double dx = sc.tx - sc.ax, dy = sc.ty - sc.ay;
+    const double Ta = std::max(sc.t_arrive, 1e-3);
+    const bool fly = sc.v_fly > 0.01 && std::hypot(dx, dy) > 1e-3;
+    const double w = fly
+        ? std::clamp(sc.v_fly * Ta / std::max(std::hypot(dx, dy), 1e-9), 0.0, 2.5)
+        : 0.0;
+    const double dtn = std::max(sc.t_dec / Ta, 1e-3);
+    const double a = std::min(0.15 / Ta, 0.45), b = std::min(0.25 / Ta, 0.45);
+    const double vp = 1.0 / (1.0 - (a + b) / 2.0);
+    const double tau = (t_abs - sc.t0) / Ta;
+    double p, dp;
+    if (fly) {
+      if (tau <= 1.0) {
+        const double t2 = tau * tau, t3 = t2 * tau;
+        p = (3.0 * t2 - 2.0 * t3) + w * (t3 - t2);
+        dp = (6.0 * tau - 6.0 * t2) + w * (3.0 * t2 - 2.0 * tau);
+      } else {
+        // 过靶减速:s = (t−t_arrive)/t_dec ∈[0,1],越程 e = v_fly·s·t_dec·(1−s/2)
+        const double s = std::clamp((tau - 1.0) / dtn, 0.0, 1.0);
+        p = 1.0 + w * dtn * s * (1.0 - 0.5 * s);
+        dp = w * (1.0 - s);
+      }
+    } else {
+      const double tc = std::clamp(tau, 0.0, 1.0);
+      if (tc < a) { p = 0.5 * vp * tc * tc / a; dp = vp * tc / a; }
+      else if (tc <= 1.0 - b) { p = vp * (tc - 0.5 * a); dp = vp; }
+      else {
+        const double s = (1.0 - tc) / b;
+        p = 1.0 - 0.5 * vp * b * s * s;
+        dp = vp * s;
+      }
+    }
+    dp /= Ta;                                            // dτ/dt = 1/Ta
+    *wx = sc.ax + dx * p;
+    *wy = sc.ay + dy * p;
+    *vwx = dx * dp;
+    *vwy = dy * dp;
+  }
+
+  static void Build(const Schedule& sc, double t_now, const double x0[6],
+                    Ref& ref, double cs2[2 * ChassisMpc::kN]) {
+    constexpr int N = ChassisMpc::kN, NX = ChassisMpc::kNx;
+    for (int k = 0; k <= N; ++k) {
+      double wx, wy, vwx, vwy;
+      EvalAt(sc, t_now + k * kDt, &wx, &wy, &vwx, &vwy);
+      double* r = &ref[k * NX];
+      double psi = 0.0;
+      if (k == 0) psi = std::clamp(psi, x0[2] - 0.2, x0[2] + 0.2);
+      r[0] = wx;
+      r[1] = wy;
+      r[2] = psi;
+      const double c = std::cos(psi), sn = std::sin(psi);
+      r[3] =  c * vwx + sn * vwy;                        // 世界系 → 车体系
+      r[4] = -sn * vwx + c * vwy;
+      r[5] = 0.0;
+    }
+    for (int k = 0; k < N; ++k) {
+      cs2[2 * k] = std::cos(ref[(k + 1) * NX + 2]);
+      cs2[2 * k + 1] = std::sin(ref[(k + 1) * NX + 2]);
+    }
+  }
+};
+
+}  // namespace sckd

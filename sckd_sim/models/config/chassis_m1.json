@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "geometry": {
+    "corner_xy_m": [
+      [
+        0.475,
+        0.475
+      ],
+      [
+        0.475,
+        -0.475
+      ],
+      [
+        -0.475,
+        0.475
+      ],
+      [
+        -0.475,
+        -0.475
+      ]
+    ],
+    "wheel_radius_m": 0.0828,
+    "dual_wheel_offset_m": 0.055,
+    "drives_per_corner": 2,
+    "note_corner_order": "契约角序 FL,FR,RL,RR(参考工程 ini 为 FR,FL,RL,RR,数值已按契约重排)",
+    "wheel_sign": [
+      1,
+      -1,
+      1,
+      -1,
+      1,
+      -1,
+      1,
+      -1
+    ],
+    "note_wheel_sign": "契约序 8 驱动轮 线速度->关节速度符号:wheel_L 轴+y(+1)/wheel_R 轴−y(−1)(URDF 镜像轴);与参考工程 ini wheel_sign 同源(其为电机接线序)",
+    "robot_mass_kg": 51.26
+  },
+  "coordination": {
+    "enable_cos_projection": true,
+    "cos_deadband_rad": 0.1,
+    "cos_floor": 0.0,
+    "reverse_threshold_rad": 1.5708,
+    "reverse_hysteresis_rad": 0.2,
+    "zero_speed_mps": 0.001
+  },
+  "ramp": {
+    "accel_limit_mps2": 8.0,
+    "ang_accel_limit_rad_s2": 20.0,
+    "dir_rate_limit_rad_s": 3.0
+  },
+  "servo": {
+    "period_ms": 4,
+    "steer_kp": 25.0,
+    "steer_kd": 2.2,
+    "wheel_kp": 0.6,
+    "wheel_ki": 1.0,
+    "note": "伺服重构(2026-10-05):分配 250Hz,轮速 PI 1kHz(目标加速度限幅 8 m/s²);舵 kp25/kd2.2+速率前馈(地面耦合下提高带宽;9ms 延迟界内),轮 kp0.1/ki2.0(打滑时惯量骤降,小 kp 大 ki)",
+    "wheel_int_max_rad": 8.0,
+    "wheel_accel_mps2": 8.0
+  },
+  "odom": {
+    "steer_offset_rad": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "wheel_speed_noise_rad_s": 0.01,
+    "imu_rate_hz": 500.0,
+    "imu_latency_ms": 2.0,
+    "gyro_bias_rad_s": 0.002,
+    "gyro_noise_rad_s": 0.002,
+    "acc_noise_mps2": 0.05,
+    "gyro_fallback_ms": 300.0,
+    "note": "IMU=HiPNUC,/dev/ttyUSB0@460800,500Hz 实机验证 2026-09-19(0 误码);带宽 89% 偏满,备用 400Hz;steer_offset 实机 x4-04 约 ±45°;陀螺龄期 300ms 回退"
+  },
+  "sources": [
+    "参考 /home/ubuntu/research/sckd-robot config/robot_8w4s.ini(实机标定:轮半径/加速限/方向角率/迟滞)",
+    "协同策略参考其 ADR-0009(cos 投影/最近角/迟滞反转);速度环方案(ADR-0012)按用户指示不采用"
+  ]
+}

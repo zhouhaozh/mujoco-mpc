@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "parameter_frame": "gearbox_output_joint_side (72V 版本,2026-10-06 用户确认)",
+  "torque_profile": "peak",
+  "command_delay_ms": 9.0,
+  "control_dt_s": 0.001,
+  "encoder_bits": 14,
+  "calibrated": false,
+  "sources": [
+    "docs/motors/RS04使用说明书260713.pdf",
+    "docs/motors/RS06使用说明书260713.pdf",
+    "T-N 包络为手册曲线图手工读点(趋势级),calibrated=false;实测标定后替换(设计文档 §9-2)",
+    "命令延迟 9 ms 沿用实测值(旧工程);编码器位数占位待实机确认",
+    "docs/羽机尺寸电机参数示意.pdf(2026-10-06):电机型号/速度双电压版本交叉校核,与现配置一致;网球机 J5=RS06(用户更正,文档误写 RS05)",
+    "72V 切换(2026-10-06 用户确认):空载/限速按电压比例缩放(RS04 20.944→36,RS06 50.265→75 rad/s),力矩列不变(电压不改堵转力矩,拐点外移);底盘文档口径 66 rad/s 与臂 75 差异待 F3 标定(疑减速/测量口径)"
+  ],
+  "motors": {
+    "RS04": {
+      "peak_torque_nm": 120.0,
+      "continuous_torque_nm": 40.0,
+      "braking_torque_nm": 120.0,
+      "no_load_speed_rad_s": 36.0,
+      "hybrid_speed_limit_rad_s": 36.0,
+      "hybrid_position_limit_rad": 12.57,
+      "kp_range": [
+        0.0,
+        5000.0
+      ],
+      "kd_range": [
+        0.0,
+        100.0
+      ],
+      "motoring_points_rad_s_nm": [
+        [
+          0.0,
+          120.0
+        ],
+        [
+          17.099,
+          120.0
+        ],
+        [
+          19.8,
+          110.0
+        ],
+        [
+          23.401,
+          95.0
+        ],
+        [
+          27.0,
+          78.0
+        ],
+        [
+          28.8,
+          60.0
+        ],
+        [
+          30.599,
+          52.0
+        ],
+        [
+          32.401,
+          44.0
+        ],
+        [
+          33.661,
+          32.0
+        ],
+        [
+          34.2,
+          10.0
+        ],
+        [
+          36.0,
+          0.0
+        ]
+      ],
+      "speed_72v_rad_s": 36.0,
+      "speed_48v_rad_s": 15.0
+    },
+    "RS06": {
+      "peak_torque_nm": 36.0,
+      "continuous_torque_nm": 11.0,
+      "braking_torque_nm": 36.0,
+      "no_load_speed_rad_s": 75.0,
+      "hybrid_speed_limit_rad_s": 75.0,
+      "hybrid_position_limit_rad": 12.57,
+      "kp_range": [
+        0.0,
+        5000.0
+      ],
+      "kd_range": [
+        0.0,
+        100.0
+      ],
+      "motoring_points_rad_s_nm": [
+        [
+          0.0,
+          36.0
+        ],
+        [
+          43.751,
+          36.0
+        ],
+        [
+          46.876,
+          33.0
+        ],
+        [
+          50.0,
+          30.0
+        ],
+        [
+          54.688,
+          26.0
+        ],
+        [
+          58.594,
+          22.0
+        ],
+        [
+          62.501,
+          18.0
+        ],
+        [
+          65.625,
+          12.0
+        ],
+        [
+          66.876,
+          10.0
+        ],
+        [
+          67.187,
+          5.0
+        ],
+        [
+          75.0,
+          0.0
+        ]
+      ],
+      "speed_72v_rad_s": 75.0,
+      "speed_48v_rad_s": 50.0
+    }
+  }
+}
