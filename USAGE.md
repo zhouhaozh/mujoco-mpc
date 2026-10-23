@@ -160,3 +160,35 @@ python3 python/tools/mit_ff_err.py eval/reports/mit_ff_err.png eval/reports \
 kd[0,100],τ 槽 ±120 为 T 位假设);T-N 包络=motors.json;增益=rob
 robot_sim.ini [Arm] J2 track。ki/ti_max/τ 槽为假设档,待供应商固件
 确认(交接文档 §1.3「臂执行帧」行)。
+
+## 9. 5 关节臂前馈参数辨识——仿真先行验证(2026-10-20)
+
+`mit_arm_id_sim`(MuJoCo 5 关节耦合真值,直链 mujoco 不链 sckd_core)+
+`mit_arm_id.py`(系统 python 辨识管线):把真机标定规程(poses 重力/
+constvel 摩擦/chirp 惯量/swing 闭环验收)在仿真里跑通并验证无偏。
+B 积分变体已删——供应商将提供标准 MIT 固件(含 τ 前馈槽、无积分项)。
+**真机操作规程见 `docs/真机臂前馈辨识操作手册.md`**(含现场校核项/验收三道关)。
+
+```bash
+cmake --build build --target mit_arm_id_sim
+D=eval/reports/mitarm && mkdir -p $D
+./build/mit_arm_id_sim poses    $D poses_n=64   # ~10s:64 姿位双向趋近
+./build/mit_arm_id_sim constvel $D              # 恒速双向斜坡(0.3/0.6/1.0 rad/s)
+./build/mit_arm_id_sim chirp    $D              # 40s 多正弦(幅度按 T-N 调度)
+./build/mit_arm_id_sim swing    $D              # 先跑一遍出参考列(无 C_id)
+python3 python/tools/mit_arm_id.py $D --stage all --pose-counts 8,16,32,64 --misalign
+./build/mit_arm_id_sim swing    $D ff_file=$D/ff_swing.csv   # C_id 闭环重跑
+python3 python/tools/mit_arm_id.py $D --stage report
+# 单阶段重跑(参数持久化在 $D/mitarm_id_params.npz):
+#   --stage fk|grav|fric|inert|ff|report|plots;科氏项关节选择:MITARM_CORIOLIS=1
+# 常用覆盖:poses_n= chirp_T= vnoise=0.002 seed=1(带噪方差复验)、
+#   b1..b5= tc1..t5= arm1..5=(摩擦/转子反射惯量真值)、hold_kp1..= mv_kp1..=
+python3 python/tools/mit_arm_id.py $D --stage plots   # 3 张图
+```
+
+注意:①管道会吞 python 偶发段错误(本机 numpy 环境性 flake)的退出码,
+  `--stage ff` 后确认 `ff_swing.csv` 行数非 0 再重跑 swing;②标称数据目录
+  `eval/reports/mitarm` 勿被扰动档覆盖(同单关节 fferr 惯例)。
+CSV 契约(真机日志同构,`mit_arm_id.py` 可直接吃真机数据):命令回显
+p/v/kp/kd/tff_cmd + 遥测 q/dq(250Hz ZOH)+ 真值诊断 tau/grav/Mii(真机无,
+缺失时自动跳过验证段);manifest 首行组 `# k=v`。

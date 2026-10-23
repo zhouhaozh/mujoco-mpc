@@ -8,3 +8,7 @@ WARNING Mon Oct  5 20:29:37 2026: Could not find decoder for resource '/home/ubu
 
 WARNING Mon Oct  5 22:43:34 2026: Nan, Inf or huge value in QACC at DOF 3. The simulation is unstable. Time = 0.0150.
 
+WARNING Thu Oct  8 18:13:27 2026: Model missing header ID
+
+WARNING Thu Oct  8 18:13:27 2026: Model missing header ID
+

@@ -52,6 +52,13 @@ endforeach()
 # 复现真机臂执行链(4×16bit 量化帧/1kHz 驱动器/9ms 延迟/RS04 T-N 包络)
 add_executable(mit_motor_sim cpp/apps/mit_motor_sim.cpp)
 
+# 5关节臂 MIT 前馈辨识仿真(2026-10-20):直链 MuJoCo(耦合真值对象),
+# 不链 sckd_core(免 Eigen/OSQP);量化帧/延迟/T-N 执行链与 mit_motor_sim 同构
+add_executable(mit_arm_id_sim cpp/apps/mit_arm_id_sim.cpp)
+target_include_directories(mit_arm_id_sim PRIVATE ${MUJOCO_DIR}/include)
+target_link_directories(mit_arm_id_sim PRIVATE ${MUJOCO_DIR}/lib)
+target_link_libraries(mit_arm_id_sim PRIVATE mujoco Threads::Threads)
+
 # m2_intercept:argv[6]="nmpc6" 模式(旧仓库实机 NMPC A/B 接线,2026-10-09)
 target_link_libraries(m2_intercept PRIVATE sckd_nmpc6)
 
