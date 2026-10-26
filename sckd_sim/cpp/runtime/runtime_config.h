@@ -55,6 +55,7 @@ struct RuntimeValues {
   std::string fly_mode;  // 只有 xb/v2 有特殊含义；不新增旧位置参数校验。
   std::string control_variant = "baseline";
   std::string steer_rate_mode;  // 未显式设置时按最终 variant/base_mode 推导。
+  std::string arm_feedforward = "preserve";  // zero 仅用于显式关闭臂力矩前馈的对照。
 
   // nullopt=未指定；空字符串=明确指定空路径。diagnostics/video 的空路径
   // 在原 main 仍会尝试 fopen，socket/replay 的空路径则不启用对应模块。
@@ -63,6 +64,7 @@ struct RuntimeValues {
   std::optional<std::string> control_diagnostics_path;
   std::optional<std::string> video_trace_path;
   std::optional<std::string> timing_path;
+  std::optional<std::string> robot_io_log_prefix;  // nullopt/空字符串均不记录。
   bool viewer_enabled = false;
   bool deduplicate_ball_observations = false;
   bool legacy_nmpc6_limits = false;
@@ -173,6 +175,7 @@ class ResolvedConfig {
       {"init_delay_s", v.init_delay_s}, {"seed", v.seed}, {"base_mode", v.base_mode},
       {"serve_family", v.serve_family}, {"fly_mode", v.fly_mode},
       {"control_variant", v.control_variant}, {"steer_rate_mode", v.steer_rate_mode},
+      {"arm_feedforward", v.arm_feedforward},
       {"viewer_enabled", v.viewer_enabled},
       {"deduplicate_ball_observations", v.deduplicate_ball_observations},
       {"legacy_nmpc6_limits", v.legacy_nmpc6_limits},
@@ -191,6 +194,7 @@ class ResolvedConfig {
     path("control_diagnostics_path", v.control_diagnostics_path);
     path("video_trace_path", v.video_trace_path);
     path("timing_path", v.timing_path);
+    path("robot_io_log_prefix", v.robot_io_log_prefix);
     path("time_windows_path", v.time_windows_path);
     const auto& m = modes_;
     Json modes = {
@@ -229,9 +233,9 @@ class ResolvedConfig {
   void SetDefaultSources() {
     for (const char* key : {
       "scene_path", "trials", "swing_mode", "init_delay_s", "seed", "base_mode",
-      "serve_family", "fly_mode", "control_variant", "steer_rate_mode",
+      "serve_family", "fly_mode", "control_variant", "steer_rate_mode", "arm_feedforward",
       "measured_replay_path", "predictor_socket_path", "control_diagnostics_path",
-      "video_trace_path", "timing_path", "viewer_enabled", "deduplicate_ball_observations",
+      "video_trace_path", "timing_path", "robot_io_log_prefix", "viewer_enabled", "deduplicate_ball_observations",
       "legacy_nmpc6_limits", "nmpc6_speed_factor", "nmpc6_trace", "wb_chassis_trace",
       "motors_path", "robot_variant_path", "chassis_path", "servo_identification_path",
       "nmpc6_nlp_path", "viewer_state_path", "viewer_lock_path", "time_windows_path", "time_windows"}) sources_[key] = "default";
@@ -240,6 +244,7 @@ class ResolvedConfig {
   void CaptureEnvironment(const Environment& env) {
     for (const char* key : {
       "M2_CONFIG_PATH", "M2_CONTROL_VARIANT", "M2_STEER_RATE_MODE", "M2_MEASURED_REPLAY",
+      "M2_ARM_FEEDFORWARD", "M2_ROBOT_IO_LOG_PREFIX",
       "BALL_PREDICTOR_SOCKET", "M2_CONTROL_DIAGNOSTICS", "M2_VIDEO_TRACE", "M2_TIMING_PATH",
       "M2_VIEW", "BALL_DEDUP", "NMPC6_LEGACY_LIMITS", "N6_SPD", "N6_TRACE", "WB_CHASSIS",
       "M2_SERVO_IDENTIFICATION", "M2_TIME_WINDOWS_PATH", "M2_NMPC6_NLP",
@@ -318,10 +323,12 @@ class ResolvedConfig {
       int_field("seed", v.seed); string_field("base_mode", v.base_mode);
       string_field("serve_family", v.serve_family); string_field("fly_mode", v.fly_mode);
       string_field("control_variant", v.control_variant); string_field("steer_rate_mode", v.steer_rate_mode);
+      string_field("arm_feedforward", v.arm_feedforward);
       path_field("measured_replay_path", v.measured_replay_path);
       path_field("predictor_socket_path", v.predictor_socket_path);
       path_field("control_diagnostics_path", v.control_diagnostics_path);
       path_field("video_trace_path", v.video_trace_path); path_field("timing_path", v.timing_path);
+      path_field("robot_io_log_prefix", v.robot_io_log_prefix);
       bool_field("viewer_enabled", v.viewer_enabled);
       bool_field("deduplicate_ball_observations", v.deduplicate_ball_observations);
       bool_field("legacy_nmpc6_limits", v.legacy_nmpc6_limits);
@@ -354,6 +361,7 @@ class ResolvedConfig {
     };
     string_field("M2_CONTROL_VARIANT", "control_variant", v.control_variant);
     string_field("M2_STEER_RATE_MODE", "steer_rate_mode", v.steer_rate_mode);
+    string_field("M2_ARM_FEEDFORWARD", "arm_feedforward", v.arm_feedforward);
     string_field("M2_SERVO_IDENTIFICATION", "servo_identification_path", v.servo_identification_path);
     string_field("M2_NMPC6_NLP", "nmpc6_nlp_path", v.nmpc6_nlp_path);
     path_field("M2_TIME_WINDOWS_PATH", "time_windows_path", v.time_windows_path);
@@ -362,6 +370,7 @@ class ResolvedConfig {
     path_field("M2_CONTROL_DIAGNOSTICS", "control_diagnostics_path", v.control_diagnostics_path);
     path_field("M2_VIDEO_TRACE", "video_trace_path", v.video_trace_path);
     path_field("M2_TIMING_PATH", "timing_path", v.timing_path);
+    path_field("M2_ROBOT_IO_LOG_PREFIX", "robot_io_log_prefix", v.robot_io_log_prefix);
     presence_flag("M2_VIEW", "viewer_enabled", v.viewer_enabled);
     presence_flag("BALL_DEDUP", "deduplicate_ball_observations", v.deduplicate_ball_observations);
     presence_flag("NMPC6_LEGACY_LIMITS", "legacy_nmpc6_limits", v.legacy_nmpc6_limits);
@@ -392,6 +401,8 @@ class ResolvedConfig {
   void ResolveModes() {
     auto& v = values_;
     auto& m = modes_;
+    if (v.arm_feedforward != "preserve" && v.arm_feedforward != "zero")
+      throw std::runtime_error("arm_feedforward must be preserve or zero");
     m.use_qp = v.swing_mode == "qp";
     m.measured_replay = v.measured_replay_path && !v.measured_replay_path->empty();
     if (m.measured_replay && v.trials != 1)

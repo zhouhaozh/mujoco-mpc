@@ -1,0 +1,35 @@
+{
+  "schema": "X4_SDK_MUJOCO_DISPLAY_MAPPING/1",
+  "permutation": [1, 2, 3, 4, 5],
+  "sign": [-1, -1, 1, 1, 1],
+  "offset_rad": [0, 0, 0, 1.5707963267948966, 0],
+  "label": "SDK FK ORIENTATION MATCHED | CAD POSITION DIFF | PHYSICAL CHECK PENDING",
+  "source_model": "sckd_sim/models/generated/x4_tennis_demo.mjcf",
+  "source_model_sha256": "1f8812d703f2cbafc4c66f3bebf974981841b2a8abf49dc8d8eefd27fb965e01",
+  "source_sdk_commit": "f261527a432dc143bc281ea0aa764dd660518457",
+  "source_sdk_libarm_sha256": "6299ffadea03dade7624b21d4bec98229ae7ec9edc38cc6f3dfd52aea7847d02",
+  "input_domain": "SDK model joint angles, after SDK motor sign and offset conversion",
+  "output_domain": "MuJoCo Joint1..Joint5 qpos; display only",
+  "orientation_relation": "R_sdk = R_mujoco_racket_center * sdk_tool_frame_rotation",
+  "sdk_tool_frame_rotation": [[0, 0, 1], [1, 0, 0], [0, 1, 0]],
+  "position_comparison_frame": "Relative to each chain's J2 shoulder origin, with the same xyz axes",
+  "sdk_dimensions_d1_a2_d4_d5_m": [0.685, 0.705, -0.1705, -0.5],
+  "validation": {
+    "date": "2026-10-23",
+    "platform": "Ubuntu 172.20.0.11",
+    "sample_count": 133,
+    "orientation_matrix_max_abs_error": 1.5470383318838543e-7,
+    "same_shoulder_position_error_min_m": 0.0540540898705396,
+    "same_shoulder_position_error_max_m": 0.1115566424130718,
+    "same_shoulder_position_error_rms_m": 0.08614328919801545,
+    "physical_calibration_complete": false,
+    "model_geometry_calibrated": false,
+    "hardware_started": false
+  },
+  "notes_zh": [
+    "只转换查看器的关节角，不转换SDK命令，也不能再叠加电机joint_sign/joint_offset。",
+    "姿态关系通过权威SDK纯Forward与MuJoCo的133组离线姿态对照；不是实物零位标定。",
+    "CAD拍心偏移0.606m与SDK拍长0.5m不同，另有腕部和侧向偏移；拍心位置仍差约5.4至11.2cm。",
+    "不得把此显示映射直接作为MPC到真机的位置或动力学标定结果。"
+  ]
+}
