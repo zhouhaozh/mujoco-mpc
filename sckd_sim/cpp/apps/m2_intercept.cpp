@@ -1,6 +1,8 @@
 #include "runtime/intercept_modules.h"
 #include "runtime/controller_adapters.h"
 #include "runtime/synchronous_schedule.h"
+#include "runtime/mujoco_robot_backend.h"
+#include "runtime/robot_io_log.h"
 #include "core/stage_profile.h"
 #include "estimation/socket_ball_predictor.h"
 #include "estimation/measured_ball_replay.h"
@@ -20,9 +22,11 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <random>
 #include <thread>
+#include <stdexcept>
 #include <vector>
 
 #include <signal.h>
@@ -54,6 +58,12 @@ using sckd_nmpc6::SimArmPos;
 int main(int argc, char** argv) {
   const auto resolved=runtime::ResolvedConfig::Load(argc,argv);
   const auto& cfg=resolved.values(); const auto& modes=resolved.modes();
+  const std::string io_log_prefix = cfg.robot_io_log_prefix.value_or("");
+  const auto& arm_feedforward = cfg.arm_feedforward;
+  const bool zero_arm_feedforward = arm_feedforward == "zero";
+  if (!io_log_prefix.empty() || zero_arm_feedforward)
+    std::printf("[robot IO] arm_feedforward=%s log_prefix=%s (simulation only)\n",
+                arm_feedforward.c_str(), io_log_prefix.c_str());
   StageProfile::Get().Configure(cfg.timing_path.value_or(""));
   ControlTrace trace(cfg.control_diagnostics_path);
   trace.RecordConfig(resolved.ToJson());
@@ -194,6 +204,9 @@ int main(int argc, char** argv) {
     be.hold_arm(60.0, 1.5);
     servo = ChassisServo(be.chassis_config(), &be);
     servo.set_steering_rate_limits(direction_limited,feedforward_limited);
+    Twist issued_body_twist{};
+    io::MujocoRobotBackend recording_backend(be, servo);  // 只Read，原执行路径不重复Write。
+    std::unique_ptr<io::CommandLog> robot_io_log;
     std::unique_ptr<MeasuredBallReplay> measured;
     if(measured_replay)measured=std::make_unique<MeasuredBallReplay>(replay_path);
     BallPredictor legacy_predictor(aero, 0.030, bp);
@@ -360,6 +373,31 @@ int main(int argc, char** argv) {
       RecordVideoTrace(video_context, time_s);
     };
     record_video(0.0);
+    if (!io_log_prefix.empty()) {
+      std::vector<double> initial_act;
+      if (m->na > 0) initial_act.assign(d->act, d->act + m->na);
+      const nlohmann::json initial_state = {
+        {"qpos", std::vector<double>(d->qpos, d->qpos + m->nq)},
+        {"qvel", std::vector<double>(d->qvel, d->qvel + m->nv)},
+        {"act", initial_act}, {"time", d->time},
+        {"purpose", "replay_initialization_only_not_controller_input"}};
+      const nlohmann::json metadata = {
+        {"backend", "mujoco"}, {"frame_id", "mpc_model"},
+        {"arm_feedforward", arm_feedforward}, {"command_clock", "simulation"},
+        {"trial", trial}, {"seed", cfg.seed}, {"base_mode", base_mode},
+        {"control_variant", variant}, {"steer_rate_mode", steer_rate_mode},
+        {"direction_limited", direction_limited}, {"feedforward_limited", feedforward_limited},
+        {"initial_motor_hold", {{"kp", 60.0}, {"kd", 1.5}}},
+        {"scene_path", scene}, {"motors_path", cfg.motors_path},
+        {"robot_variant_path", cfg.robot_variant_path}, {"chassis_path", cfg.chassis_path},
+        {"step_s", SynchronousSchedule::kTickSeconds}, {"physics_step_s", m->opt.timestep},
+        {"resolved_config", resolved.ToJson()}, {"mujoco_initial_state", initial_state},
+        {"observation_phase", "after_command_before_physics"},
+        {"joint_torque_source", "simulation_motor_applied_torque"},
+        {"joint_temperature_available", false}, {"plan_id_tracking", "unavailable_zero"}};
+      robot_io_log = std::make_unique<io::CommandLog>(
+          io_log_prefix + "_trial_" + std::to_string(trial) + ".jsonl", metadata);
+    }
 
     HitPlan locked_plan;
     double previous_dq_command[5]={0};bool have_dq_command=false;
@@ -525,6 +563,8 @@ int main(int argc, char** argv) {
       /* q_cur */ q_cur,
       /* mpc_cs2 */ mpc_cs2,
       /* previous_dq_command */ previous_dq_command,
+      /* issued_body_twist */ issued_body_twist,
+      /* zero_arm_feedforward */ zero_arm_feedforward,
     };
 
     StateTraceContext state_trace_context{
@@ -669,6 +709,10 @@ int main(int argc, char** argv) {
         }
       }
       const auto execution_frame=ExecuteTrajectory(execution_context, t, ts);
+      if (robot_io_log)
+        robot_io_log->Write(execution_frame.command,
+                            recording_backend.Read({ts, io::Clock::kSimulation}),
+                            {true, "submitted_to_mujoco"});
       RecordControlState(state_trace_context, execution_frame, t, ts);
       AdvanceSimulation(physics_context, ts);
       // 接触检测:球速方向改变(-x → +x)

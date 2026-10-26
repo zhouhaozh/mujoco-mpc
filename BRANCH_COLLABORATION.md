@@ -1,5 +1,16 @@
 # GitLab分支与团队协作
 
+## 2026-10-26 X4惯量整合分支
+
+- 分支：`codex/x4-inertia-integration-20261026`。
+- 首父基线：最新GitLab `main/868a9d9`；合入本地接口及逐轴工具提交 `b1943e0`，保留两侧历史，无force push。
+- Ubuntu工作区：`/home/ubuntu/Zhaohui/sim-x4-inertia-20261026`；原两个工作区保留。
+- 机械臂接口仍以原SDK目录为准；新仿真辨识参数没有直接用于真机控制。
+- GitLab已使用Ubuntu专用SSH认证，SSH服务端口2222。密钥及认证文件不入库。
+- 验证、适用范围及后续校准步骤见[惯量整合报告](docs/X4_INERTIA_INTEGRATION_20261026.md)。
+
+下文为2026-10-20首次导入时的历史分支说明。
+
 日期：2026-10-20；代码唯一来源：Ubuntu /home/ubuntu/Zhaohui/sim。
 
 仓库：http://172.20.0.32/LZH/mpc （私有）。

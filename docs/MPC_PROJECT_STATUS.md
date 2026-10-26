@@ -1,3 +1,5 @@
+> 2026-10-26：以GitLab最新main `868a9d9` 建立 `codex/x4-inertia-integration-20261026`，合入X4接口/五轴30°工具 `b1943e0`，无文本冲突。相关编译、6组CTest和77项Python检查通过；上游惯量数据属于仿真辨识，未直接替换物理参数，未运行真机。来源、J2重力下垂量级分析和复现见[惯量整合报告](X4_INERTIA_INTEGRATION_20261026.md)。
+
 > 2026-10-20 GitLab协作整理：保留原73个提交、原团队与预测分支；当前Ubuntu源码形成模块化分支提交，初次上传快照单独归档并关联到默认main。操作范围为版本管理，未重跑控制验收；见[分支协作](../BRANCH_COLLABORATION.md)。
 
 > 2026-10-19 团队主线：分支 `codex/pipeline-modularization` 已实施首轮同步模块化，10/10 CTest、9次端到端运行通过；最终旧新控制对照17/18一致，wbmpc有60ms墙钟守门差异，未验收异步/实时性。完整记录见[实施记录](PIPELINE_IMPLEMENTATION_20261019.md)。下文保留历史阶段说明。

@@ -44,6 +44,8 @@ TEST_CASE("runtime defaults retain the old main entry point") {
   CHECK(v.base_mode.empty());
   CHECK(v.control_variant == "baseline");
   CHECK(v.steer_rate_mode == "limited");
+  CHECK(v.arm_feedforward == "preserve");
+  CHECK_FALSE(v.robot_io_log_prefix.has_value());
   CHECK(v.nmpc6_speed_factor == doctest::Approx(.8));
   CHECK(v.nmpc6_nlp_path == "third_party/nmpc6/nlp.so");
   CHECK_FALSE(m.use_qp);
@@ -56,6 +58,8 @@ TEST_CASE("runtime defaults retain the old main entry point") {
   CHECK(m.feedforward_limited);
   CHECK_FALSE(v.control_diagnostics_path.has_value());
   CHECK(config.sources().at("scene_path") == "default");
+  CHECK(config.sources().at("arm_feedforward") == "default");
+  CHECK(config.ToJson().at("values").at("robot_io_log_prefix").is_null());
   // 配置对象通过const访问器暴露字段，集成处无需散落可变bool。
   static_assert(std::is_same<decltype(config.values()), const RuntimeValues&>::value, "values must be immutable to callers");
 }
@@ -166,13 +170,68 @@ TEST_CASE("environment selected JSON can opt in while absent configuration is le
 
 TEST_CASE("resolved JSON can replay final values without replaying captured environment") {
   const auto original = ResolvedConfig::Resolve(Args("nmpc6"), Env({
-    {"M2_CONTROL_VARIANT", "servo_mpc"}, {"M2_VIEW", "1"}, {"BALL_DEDUP", "1"}}));
+    {"M2_CONTROL_VARIANT", "servo_mpc"}, {"M2_VIEW", "1"}, {"BALL_DEDUP", "1"},
+    {"M2_ARM_FEEDFORWARD", "zero"}, {"M2_ROBOT_IO_LOG_PREFIX", "run/commands"}}));
   const auto document = original.ToJson();
   const auto replayed = ResolvedConfig::Resolve({"m2_intercept", "--config=resolved.json"}, Env(), Document(document));
   CHECK(replayed.ToJson().at("values") == document.at("values"));
   CHECK(replayed.ToJson().at("derived") == document.at("derived"));
   CHECK(replayed.ToJson().at("environment").empty());
   CHECK(replayed.values().nmpc6_nlp_path == "third_party/nmpc6/nlp_servo.so");
+  CHECK(replayed.values().arm_feedforward == "zero");
+  CHECK(replayed.values().robot_io_log_prefix == "run/commands");
+}
+
+TEST_CASE("robot IO settings use JSON then environment and retain provenance") {
+  const Json document = {{"values", {{"arm_feedforward", "zero"},
+    {"robot_io_log_prefix", "json/commands"}}}};
+  const std::vector<std::string> args{"m2_intercept", "--config=runtime.json"};
+  const auto from_json = ResolvedConfig::Resolve(args, Env(), Document(document));
+  CHECK(from_json.values().arm_feedforward == "zero");
+  CHECK(from_json.values().robot_io_log_prefix == "json/commands");
+  CHECK(from_json.sources().at("arm_feedforward") == "json:runtime.json#values.arm_feedforward");
+  CHECK(from_json.sources().at("robot_io_log_prefix") == "json:runtime.json#values.robot_io_log_prefix");
+  // 空日志前缀是显式关闭；空前馈模式不是默认值，另一个用例要求拒绝。
+  const auto overridden = ResolvedConfig::Resolve(args, Env({
+    {"M2_ARM_FEEDFORWARD", "preserve"}, {"M2_ROBOT_IO_LOG_PREFIX", ""}}), Document(document));
+  CHECK(overridden.values().arm_feedforward == "preserve");
+  REQUIRE(overridden.values().robot_io_log_prefix.has_value());
+  CHECK(overridden.values().robot_io_log_prefix->empty());
+  CHECK(overridden.sources().at("arm_feedforward") == "env:M2_ARM_FEEDFORWARD");
+  CHECK(overridden.sources().at("robot_io_log_prefix") == "env:M2_ROBOT_IO_LOG_PREFIX");
+  CHECK(overridden.ToJson().at("environment").at("M2_ARM_FEEDFORWARD") == "preserve");
+  CHECK(overridden.ToJson().at("environment").at("M2_ROBOT_IO_LOG_PREFIX") == "");
+}
+
+TEST_CASE("feedforward mode is explicit and changes resolved experiment values") {
+  const auto baseline = ResolvedConfig::Resolve(Args(), Env());
+  const auto zero = ResolvedConfig::Resolve(Args(), Env({{"M2_ARM_FEEDFORWARD", "zero"}}));
+  auto expected = baseline.ToJson().at("values");
+  expected["arm_feedforward"] = "zero";
+  CHECK(zero.ToJson().at("values") == expected);
+  CHECK(zero.ToJson().at("values") != baseline.ToJson().at("values"));
+  CHECK(zero.ToJson().at("derived") == baseline.ToJson().at("derived"));
+  const auto logged = ResolvedConfig::Resolve(Args(), Env({{"M2_ROBOT_IO_LOG_PREFIX", "run/commands"}}));
+  expected = baseline.ToJson().at("values");
+  expected["robot_io_log_prefix"] = "run/commands";
+  CHECK(logged.ToJson().at("values") == expected);
+}
+
+TEST_CASE("robot IO configuration rejects ambiguous modes and invalid types") {
+  for (const std::string mode : {"", "ZERO", "disabled", "zero "}) {
+    CHECK_THROWS_AS(ResolvedConfig::Resolve(Args(), Env({{"M2_ARM_FEEDFORWARD", mode}})), std::runtime_error);
+    const Json document = {{"values", {{"arm_feedforward", mode}}}};
+    CHECK_THROWS_AS(ResolvedConfig::Resolve({"m2_intercept", "--config=bad.json"}, Env(), Document(document)), std::runtime_error);
+  }
+  for (const Json document : {
+      Json{{"values", {{"arm_feedforward", nullptr}}}},
+      Json{{"values", {{"arm_feedforward", true}}}},
+      Json{{"values", {{"robot_io_log_prefix", 42}}}}}) {
+    CHECK_THROWS_AS(ResolvedConfig::Resolve({"m2_intercept", "--config=bad.json"}, Env(), Document(document)), std::runtime_error);
+  }
+  const Json no_log = {{"values", {{"robot_io_log_prefix", nullptr}}}};
+  const auto config = ResolvedConfig::Resolve({"m2_intercept", "--config=runtime.json"}, Env(), Document(no_log));
+  CHECK_FALSE(config.values().robot_io_log_prefix.has_value());
 }
 
 TEST_CASE("chassis candidates and variants preserve derived capabilities") {

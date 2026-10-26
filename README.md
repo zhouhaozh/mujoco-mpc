@@ -1,5 +1,7 @@
 # 网球机器人仿真与MPC
 
+2026-10-26：以GitLab最新main `868a9d9` 建立 `codex/x4-inertia-integration-20261026`，合入X4接口/五轴30°工具 `b1943e0`，无文本冲突。相关编译、6组CTest和77项Python检查通过；上游惯量数据属于仿真辨识，未直接替换物理参数，未运行真机。来源、J2重力下垂量级分析和复现见[惯量整合报告](docs/X4_INERTIA_INTEGRATION_20261026.md)。
+
 代码来源：Ubuntu /home/ubuntu/Zhaohui/sim；本次没有使用Mac项目副本。
 
 2026-10-20恢复原团队73个提交及分支关系，并将Ubuntu当前已保存的预测、同步模块化、时间窗口实验工具与文档提交到 codex/pipeline-modularization。

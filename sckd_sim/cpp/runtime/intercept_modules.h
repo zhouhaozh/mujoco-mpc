@@ -5,6 +5,7 @@
 #include <mujoco/mujoco.h>
 #include "runtime/runtime_config.h"
 #include "runtime/contracts.h"
+#include "runtime/robot_io.h"
 #include "runtime/control_trace.h"
 #include "core/stage_profile.h"
 #include "control/arm_ik.h"
@@ -28,6 +29,7 @@ struct ExecutionFrame {
   double wb_q[5]={},wb_dq[5]={},wb_ddq[5]={},wb_base[2]={},wb_vbase[2]={};
   double n6_q[5]={},n6_dq[5]={},n6_base[2]={},n6_vbase[2]={};
   ArmHybridCmd arm;
+  io::Command command;  // 实际交给servo/arm的语义命令；不冒充电机已生效。
 };
 struct InputSnapshot {
   BallObservation ball;
@@ -149,6 +151,8 @@ struct ExecutionContext {
   double (&q_cur)[5];
   double (&mpc_cs2)[2 * ChassisMpc::kN];
   double (&previous_dq_command)[5];
+  Twist& issued_body_twist;  // 未重算的拍保留上次下发值，不用斜坡后的值替代。
+  bool zero_arm_feedforward = false;
 };
 struct StateTraceContext {
   SimBackend& be;

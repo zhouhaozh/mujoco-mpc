@@ -120,6 +120,10 @@ target_link_libraries(m1_arm_identification PRIVATE sckd_core)
 
 add_executable(m1_chassis_identification cpp/apps/m1_chassis_identification.cpp)
 target_link_libraries(m1_chassis_identification PRIVATE sckd_core)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cpp/apps/m1_chassis_step.cpp")
+  add_executable(m1_chassis_step cpp/apps/m1_chassis_step.cpp)
+  target_link_libraries(m1_chassis_step PRIVATE sckd_core)
+endif()
 
 add_executable(test_steer_rate_limits cpp/tests/test_steer_rate_limits.cc)
 target_include_directories(test_steer_rate_limits PRIVATE third_party/doctest)
@@ -156,3 +160,41 @@ add_executable(test_runtime_supervision cpp/tests/test_runtime_supervision.cc)
 target_include_directories(test_runtime_supervision PRIVATE third_party/doctest)
 target_link_libraries(test_runtime_supervision PRIVATE sckd_runtime_contracts)
 add_test(NAME runtime_supervision COMMAND test_runtime_supervision)
+
+# X4接入第一阶段：接口与日志无SDK依赖；SDK头仅进入独立翻译单元。
+add_library(sckd_mujoco_robot_io STATIC cpp/runtime/mujoco_robot_backend.cpp)
+target_link_libraries(sckd_mujoco_robot_io PUBLIC sckd_core sckd_runtime_contracts)
+target_link_libraries(m2_intercept PRIVATE sckd_mujoco_robot_io)
+
+add_executable(test_robot_io cpp/tests/test_robot_io.cc)
+target_include_directories(test_robot_io PRIVATE cpp third_party/doctest)
+add_test(NAME robot_io COMMAND test_robot_io)
+
+add_executable(test_mujoco_robot_io cpp/tests/test_mujoco_robot_io.cc)
+target_include_directories(test_mujoco_robot_io PRIVATE third_party/doctest)
+target_link_libraries(test_mujoco_robot_io PRIVATE sckd_mujoco_robot_io)
+add_test(NAME mujoco_robot_io COMMAND test_mujoco_robot_io WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+add_executable(robot_io_replay cpp/apps/robot_io_replay.cpp)
+target_link_libraries(robot_io_replay PRIVATE sckd_mujoco_robot_io)
+
+set(X4_SDK_ROOT "" CACHE PATH "Optional X4 SDK release directory (headers and prebuilt libraries)")
+if(X4_SDK_ROOT)
+  foreach(component sdk chassis arm hal core)
+    find_library(X4_${component}_LIB NAMES ${component} PATHS "${X4_SDK_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
+  endforeach()
+  add_library(sckd_x4_robot_io STATIC cpp/runtime/x4_sdk_backend.cpp)
+  # 两工程都有core/config.h，SDK编译必须优先选自身头；不向其他目标传播。
+  target_include_directories(sckd_x4_robot_io BEFORE PRIVATE "${X4_SDK_ROOT}/include")
+  target_include_directories(sckd_x4_robot_io PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/cpp")
+  target_link_libraries(sckd_x4_robot_io PRIVATE Eigen3::Eigen Threads::Threads
+    ${X4_sdk_LIB} ${X4_chassis_LIB} ${X4_arm_LIB} ${X4_hal_LIB} ${X4_core_LIB})
+  target_link_libraries(robot_io_replay PRIVATE sckd_x4_robot_io)
+  target_compile_definitions(robot_io_replay PRIVATE SCKD_WITH_X4_SDK=1)
+  set_property(TARGET robot_io_replay APPEND PROPERTY BUILD_RPATH "${X4_SDK_ROOT}/lib")
+  add_executable(test_x4_sdk_backend cpp/tests/test_x4_sdk_backend.cc)
+  target_include_directories(test_x4_sdk_backend PRIVATE third_party/doctest)
+  target_link_libraries(test_x4_sdk_backend PRIVATE sckd_x4_robot_io)
+  set_property(TARGET test_x4_sdk_backend APPEND PROPERTY BUILD_RPATH "${X4_SDK_ROOT}/lib")
+  add_test(NAME x4_sdk_backend COMMAND test_x4_sdk_backend)
+endif()

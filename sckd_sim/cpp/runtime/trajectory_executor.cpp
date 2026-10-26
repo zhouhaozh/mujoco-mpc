@@ -86,6 +86,10 @@ ExecutionFrame ExecuteTrajectory(ExecutionContext c, int t, double ts) {
   auto& q_cur = c.q_cur;
   auto& mpc_cs2 = c.mpc_cs2;
   auto& previous_dq_command = c.previous_dq_command;
+  auto set_twist = [&](const Twist& command) {
+    servo.set_twist(command);
+    c.issued_body_twist = command;
+  };
   // wbmpc 执行采样(绝对时刻;一次采样底盘/臂两用)。τ̂ 闭环滞后补偿
   // (ArmSwing 同法):实测对指令的最小二乘时间移位 + 固定前移 20ms,
   // 播放时钟前移 —— 拍在 t_hit 实际抵达(伺服滞后下高速挥拍不补会
@@ -166,13 +170,13 @@ ExecutionFrame ExecuteTrajectory(ExecutionContext c, int t, double ts) {
       const double c = std::cos(bs.yaw), sn = std::sin(bs.yaw);
       double vx=n6_vbase[0],vy=n6_vbase[1];
       if(variant=="base_feedback") {vx+=2.5*(n6_base[0]-bs.x);vy+=2.5*(n6_base[1]-bs.y);double speed=std::hypot(vx,vy);if(speed>2.1){vx*=2.1/speed;vy*=2.1/speed;}}
-      servo.set_twist(Twist{c*vx+sn*vy,-sn*vx+c*vy,0});
+      set_twist(Twist{c*vx+sn*vy,-sn*vx+c*vy,0});
     } else if (wb_exec) {
       // wbmpc:P+ff 跟踪优化底盘段(pfly 同增益同口径,参考=WmPlan 轨迹)
       const double c = std::cos(bs.yaw), sn = std::sin(bs.yaw);
       const double cx = wb_vbase[0] + 2.5 * (wb_base[0] - bs.x);
       const double cy = wb_vbase[1] + 2.5 * (wb_base[1] - bs.y);
-      servo.set_twist(Twist{std::clamp(c * cx + sn * cy, -1.5, 1.5),
+      set_twist(Twist{std::clamp(c * cx + sn * cy, -1.5, 1.5),
                             std::clamp(-sn * cx + c * cy, -1.5, 1.5), 0});
       if (cfg.wb_chassis_trace && (t % 100 == 0))
         std::printf("  [wbC] t=%.2f base=(%.2f,%.2f) ref=(%.2f,%.2f) vref=(%.2f,%.2f) tau=%.3f planT0=%.2f h=%.3f term=(%.2f,%.2f)\n",
@@ -191,7 +195,7 @@ ExecutionFrame ExecuteTrajectory(ExecutionContext c, int t, double ts) {
       const double vwx = c*r0[3] - sn*r0[4], vwy = sn*r0[3] + c*r0[4];
       const double cx = vwx + 2.5*(r0[0]-bs.x);   // 世界系命令
       const double cy = vwy + 2.5*(r0[1]-bs.y);
-      servo.set_twist(Twist{std::clamp(c*cx + sn*cy, -1.5, 1.5),
+      set_twist(Twist{std::clamp(c*cx + sn*cy, -1.5, 1.5),
                             std::clamp(-sn*cx + c*cy, -1.5, 1.5), 0});
     } else if (use_mpc && SynchronousSchedule::Replan(t)) {
       double x0[6] = {bs.x, bs.y, bs.yaw, bs.vx, bs.vy,
@@ -213,7 +217,7 @@ ExecutionFrame ExecuteTrajectory(ExecutionContext c, int t, double ts) {
       if (ok) {
         double vx, vy, wz;
         mpc.NextTwist(&vx, &vy, &wz);
-        servo.set_twist(Twist{vx, vy, wz});
+        set_twist(Twist{vx, vy, wz});
         mpc_applied = true;
       } else {
         ++mpc_fails;
@@ -225,7 +229,7 @@ ExecutionFrame ExecuteTrajectory(ExecutionContext c, int t, double ts) {
     if (!use_mpc && !fly) {
       const double ex = plan.base_target[0] - bs.x;
       const double ey = plan.base_target[1] - bs.y;
-      servo.set_twist(Twist{std::clamp(2.5*ex, -1.5, 1.5),
+      set_twist(Twist{std::clamp(2.5*ex, -1.5, 1.5),
                             std::clamp(2.5*ey, -1.5, 1.5), 0});
     }
   }
@@ -293,8 +297,21 @@ ExecutionFrame ExecuteTrajectory(ExecutionContext c, int t, double ts) {
     const auto& gains=identified_gains_config;
     for(int j=0;j<5;++j){ac.kp[j]=gains["kp"][j];ac.kd[j]=gains["kd"][j];}
   }
+  // 显式SDK兼容实验：默认保留原前馈，只在M2_ARM_FEEDFORWARD=zero时清零。
+  if (c.zero_arm_feedforward) std::fill(std::begin(ac.tau_ff), std::end(ac.tau_ff), 0.0);
   for(int j=0;j<5;++j)previous_dq_command[j]=ac.dq[j];have_dq_command=true;
   StageProfile::Measure("actuator_write", [&]{be.set_arm_hybrid(ac);});
+  auto& command = out.command;
+  command.sequence = static_cast<std::uint64_t>(t);
+  command.plan_id = 0;  // 当前执行器尚未统一跟踪plan_id，不能以target版本冒充。
+  command.issued = {ts, io::Clock::kSimulation};
+  command.expires = {ts + .004, io::Clock::kSimulation};
+  command.frame_id = "mpc_model";
+  command.body_twist = {c.issued_body_twist.vx, c.issued_body_twist.vy, c.issued_body_twist.wz};
+  for (int j = 0; j < 5; ++j) {
+    command.q[j] = ac.q[j]; command.dq[j] = ac.dq[j];
+    command.kp[j] = ac.kp[j]; command.kd[j] = ac.kd[j]; command.tau_ff[j] = ac.tau_ff[j];
+  }
   if(wb_exec) StageProfile::Get().Count("wbmpc_execution_ticks");
   if(n6_exec) StageProfile::Get().Count("nmpc6_execution_ticks");
 
