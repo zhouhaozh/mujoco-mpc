@@ -8,9 +8,37 @@
 #include <algorithm>
 namespace sckd::runtime {
 
+namespace {
+nlohmann::json BuiltinForecast(const BallPredictionInterface& predictor,
+                               double time_s) {
+  if (!predictor.initialized()) return nullptr;
+
+  constexpr double kStepSeconds = 0.02;
+  constexpr double kHorizonSeconds = 2.5;
+  const double start = std::max(time_s, predictor.t_last());
+  const double bounce = predictor.NextBounceTime();
+  nlohmann::json grid = nlohmann::json::array();
+  nlohmann::json state_grid = nlohmann::json::array();
+  for (double t = start; t <= start + kHorizonSeconds + 1e-12;
+       t += kStepSeconds) {
+    double p[3], v[3];
+    if (!predictor.PredictFull(t, p, v)) break;
+    const bool bounced = bounce >= 0.0 && t >= bounce;
+    grid.push_back({t, p[0], p[1], p[2], v[2], bounced});
+    state_grid.push_back(
+        {t, p[0], p[1], p[2], v[0], v[1], v[2], bounced});
+  }
+  return {{"seq", static_cast<long long>(
+                      std::llround(predictor.t_last() * 1e9))},
+          {"grid", std::move(grid)},
+          {"state_grid", std::move(state_grid)}};
+}
+}  // namespace
+
 void RecordVideoTrace(VideoTraceContext c, double time_s) {
   auto& plan = c.plan;
   auto& measured = c.measured;
+  auto& predictor = c.predictor;
   auto& remote_predictor = c.remote_predictor;
   auto& m = c.m;
   auto& d = c.d;
@@ -32,8 +60,12 @@ void RecordVideoTrace(VideoTraceContext c, double time_s) {
     {"ball",{d->qpos[ball_qadr],d->qpos[ball_qadr+1],d->qpos[ball_qadr+2]}},
     {"ground_contacts",video_ground_contacts},{"hit",ball_hit},{"fallback",(wb_mode&&wb_dead)||(n6_mode&&n6_dead)},
     {"target",plan.feasible ? nlohmann::json{plan.p_hit[0],plan.p_hit[1],plan.p_hit[2]} : nlohmann::json(nullptr)}};
-  row["forecast"]=remote_predictor ? remote_predictor->CachedVisualization() : nlohmann::json(nullptr);
-  std::fprintf(video_trace, "%s\n",row.dump().c_str());
+  row["forecast"] = remote_predictor
+      ? remote_predictor->CachedVisualization()
+      : BuiltinForecast(predictor, time_s);
+  if (std::fprintf(video_trace, "%s\n", row.dump().c_str()) < 0 ||
+      std::fflush(video_trace) != 0)
+    throw std::runtime_error("cannot write video trace");
 
 }
 }

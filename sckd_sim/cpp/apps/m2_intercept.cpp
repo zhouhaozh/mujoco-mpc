@@ -173,7 +173,7 @@ int main(int argc, char** argv) {
       sh = fopen(cfg.viewer_state_path.c_str(), "wb");
     }
   }
-  // 可选离线录像证据；读取真实状态用于画面，预测只读取已有缓存。
+  // 可选离线录像证据；外部预测读已有缓存，内置预测从当前观测状态采样。
   std::unique_ptr<FILE, decltype(&fclose)> video_trace(nullptr, &fclose);
   if (cfg.video_trace_path) {
     const char* path=cfg.video_trace_path->c_str();
@@ -341,6 +341,7 @@ int main(int argc, char** argv) {
     VideoTraceContext video_context{
       /* plan */ plan,
       /* measured */ measured,
+      /* predictor */ predictor,
       /* remote_predictor */ remote_predictor,
       /* m */ m,
       /* d */ d,

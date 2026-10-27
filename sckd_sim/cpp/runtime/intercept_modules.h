@@ -224,6 +224,7 @@ struct PhysicsContext {
 struct VideoTraceContext {
   HitPlan& plan;
   std::unique_ptr<MeasuredBallReplay>& measured;
+  BallPredictionInterface& predictor;
   std::unique_ptr<SocketBallPredictor>& remote_predictor;
   const mjModel* m;
   mjData* d;

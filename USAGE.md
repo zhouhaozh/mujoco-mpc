@@ -68,6 +68,24 @@ tools/run_mujoco_demo.sh
 tools/run_mujoco_demo.sh nmpc6 3
 ```
 
+**轨迹 CSV 实时预测与挥拍**：从工程根目录运行，先打开 MuJoCo 窗口，
+再启动仿真。窗口同步显示机器人动作、橙色未来预测、粉色规划击球点
+和青色已发生轨迹；可以用鼠标调整视角。每轮重新执行预测和控制，
+默认循环运行，关闭窗口或 Ctrl+C 结束并清理本次仿真进程。
+
+```bash
+# 使用仓库附带的合成单球轨迹（先完成环境安装和构建）
+bash tools/run_trajectory_live.sh
+# 使用自己的轨迹 CSV
+bash tools/run_trajectory_live.sh --trajectory /绝对路径/trajectory.csv
+# 切换策略；只运行一轮后保持最后画面
+bash tools/run_trajectory_live.sh --trajectory /绝对路径/trajectory.csv --strategy nmpc6 --once
+```
+
+CSV 表头为 `t_s,x_m,y_m,z_m`，时间从 0 开始、严格递增，位置为世界系米制。
+该入口实时读取运行中产生的状态，直接渲染到 MuJoCo 窗口，不生成或播放 MP4。
+CSV 参考回放保留原有的无击球冲量语义，不能把几何接近当作物理出球命中。
+
 需要分开控制两个进程时,在`sckd_sim/`目录执行:
 
 ```bash
