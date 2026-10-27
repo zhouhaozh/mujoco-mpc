@@ -23,6 +23,7 @@ deps/
 *.o
 *.dylib
 .DS_Store
+._*
 
 # 运行日志和视频；不要整体忽略 artifacts 或必要模型权重
 *.log
@@ -47,3 +48,12 @@ credentials*.json
 client_secret*.json
 .claude/
 .vscode/
+.omx/
+
+# 实验输出保留在历史提交中，不进入当前源码版本
+sckd_sim/eval/reports/
+sckd_sim/models/source/x4_tennis/tmp*.urdf
+
+# 当前 Linux x86_64 构建和运行需要的预编译依赖
+!sckd_sim/third_party/osqp/libosqp.a
+!sckd_sim/third_party/nmpc6/nlp.so

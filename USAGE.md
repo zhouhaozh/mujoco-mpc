@@ -1,15 +1,17 @@
 # 操作手册(速查)
 
 仿真仓库日常操作指令。研究记录见 `PROGRESS.md`,本文件只放"怎么跑"。
-所有命令默认在 `sckd_sim/` 目录下执行;python 为 conda env `sim`
-(`/home/ubuntu/miniconda3/envs/sim/bin/python`)。
+所有命令默认在 `sckd_sim/` 目录下执行;Python 使用工程根目录
+`.venv/bin/python`(在本目录下为`../.venv/bin/python`)。CMake 默认从工程根目录
+`deps/mujoco`与`deps/casadi`加载头文件和库,也可用`-DMUJOCO_DIR=`、
+`-DCASADI_DIR=`覆盖。
 
 ## 1. 构建与测试
 
 ```bash
-cd /home/ubuntu/sckd/sim/sckd_sim
+cd sckd_sim                    # 从工程根目录执行
 cmake --build build -j8          # 增量构建
-ctest --test-dir build           # 全量单测(6 项)
+ctest --test-dir build           # 全量单测(10 项)
 ctest --test-dir build -R legacy_nmpc   # 只跑旧机 NMPC 回归
 ```
 
@@ -57,9 +59,18 @@ ctest --test-dir build -R legacy_nmpc   # 只跑旧机 NMPC 回归
 
 ## 3. GUI 可视化(看仿真效果)
 
+从工程根目录可直接启动 viewer 和默认3球`pfly`演示;也可传入策略和球数:
+
+```bash
+tools/run_mujoco_demo.sh
+tools/run_mujoco_demo.sh nmpc6 3
+```
+
+需要分开控制两个进程时,在`sckd_sim/`目录执行:
+
 ```bash
 # 终端①:启动 viewer(DISPLAY 按实际 X server;无显示环境跳过本步)
-cd /home/ubuntu/sckd/sim/sckd_sim && DISPLAY=:1 python python/tools/demo_viewer.py
+DISPLAY=:1 ../.venv/bin/python python/tools/demo_viewer.py
 # 终端②:任一策略加 M2_VIEW=1 即可视化(实时节拍 + 60Hz 状态同步)
 M2_VIEW=1 ./build/m2_intercept models/generated/x4_tennis_demo.mjcf 3 qp 0.25 2026 nmpc6
 M2_VIEW=1 ./build/m2_intercept models/generated/x4_tennis_demo.mjcf 3 qp 0.25 2026 wbmpc
@@ -75,8 +86,8 @@ M2_VIEW=1 ./build/m2_intercept models/generated/x4_tennis_demo.mjcf 3 qp 0.25 20
 (640×480@60,固定全场机位;待机段不产帧;关 viewer 或 Ctrl+C 时落盘):
 
 ```bash
-REC=1 DISPLAY=:1 python python/tools/demo_viewer.py            # → /tmp/sckd_demo.mp4
-REC=/home/ubuntu/demo.mp4 DISPLAY=:1 python python/tools/demo_viewer.py
+REC=1 DISPLAY=:1 ../.venv/bin/python python/tools/demo_viewer.py  # → /tmp/sckd_demo.mp4
+REC=/path/to/demo.mp4 DISPLAY=:1 ../.venv/bin/python python/tools/demo_viewer.py
 ```
 
 协议:m2_intercept/m2_demo 60Hz 写 `/tmp/sckd_demo_state.bin`
@@ -116,8 +127,8 @@ N6_TRACE=1 ./build/m2_intercept ... nmpc6 | grep n6+ # 看末段终端退化
 
 ```bash
 cd sckd_sim/
-g++ -O2 -std=c++17 -I /home/ubuntu/deps/casadi/include -I third_party/nmpc6 \
-    -L /home/ubuntu/deps/casadi/lib -Wl,-rpath,/home/ubuntu/deps/casadi/lib \
+g++ -O2 -std=c++17 -I ../deps/casadi/include -I third_party/nmpc6 \
+    -L ../deps/casadi/lib -Wl,-rpath,../deps/casadi/lib \
     third_party/nmpc6/gen_nlp.cc -o /tmp/gen_nlp -lcasadi && /tmp/gen_nlp
 gcc -fPIC -shared -Ofast nlp.c -o third_party/nmpc6/nlp.so -lm
 mv nlp.c third_party/nmpc6/nlp.c
@@ -135,7 +146,7 @@ ctest --test-dir build -R wbmpc   # 全身 MPC 单测
 
 ## 7. 旧仓库(nmpc6 来源)
 
-`/home/ubuntu/sckd/badminton-mpc-6.0`(只读参考)。移植版在
+原 `badminton-mpc-6.0` 仓库不随本项目分发，仅作为历史参考。移植版在
 `sckd_sim/cpp/control/legacy_nmpc.{h,cpp}` + `third_party/nmpc6/`,
 差异与考古记录见 `sckd_sim/third_party/nmpc6/README.md`。
 

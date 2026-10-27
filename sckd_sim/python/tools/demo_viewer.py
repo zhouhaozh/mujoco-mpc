@@ -3,10 +3,13 @@
 用法: DISPLAY=:1 python demo_viewer.py   (先启动本程序,再运行 ./build/demo_hit)
 """
 import os, struct, subprocess, sys, time
+from pathlib import Path
+
 import mujoco
 import mujoco.viewer
 
-MODEL = "/home/ubuntu/sckd/sim/sckd_sim/models/generated/x4_tennis_demo.xml"
+MODEL = str(Path(__file__).resolve().parents[2] /
+            "models/generated/x4_tennis_demo.xml")
 STATE = "/tmp/sckd_demo_state.bin"
 
 def main():
@@ -64,6 +67,10 @@ def main():
     last = -1
     live = False
     with mujoco.viewer.launch_passive(m, d) as v:
+        v.cam.lookat[:] = [1.6, 0.0, 0.8]
+        v.cam.distance = 7.5
+        v.cam.elevation = -18.0
+        v.cam.azimuth = 90.0
         show_standby()
         while v.is_running():
             fresh = False

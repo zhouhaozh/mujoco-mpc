@@ -4,7 +4,7 @@
 # 输出: eval/reports/m0_report.txt   退出码 = 失败项数
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-PY="${SCKD_PY:-/home/ubuntu/miniconda3/envs/sim/bin/python}"
+PY="${SCKD_PY:-$ROOT/../.venv/bin/python}"
 BUILD="$ROOT/build"
 CFG="$ROOT/models/config"
 GEN="$ROOT/models/generated"

@@ -1,30 +1,59 @@
-# 网球机器人仿真与MPC
+# 网球机器人 MuJoCo 仿真与 MPC
 
-代码来源：Ubuntu /home/ubuntu/Zhaohui/sim；本次没有使用Mac项目副本。
+本仓库包含网球机器人整机 MuJoCo 仿真、`pfly` / `nmpc6` / `wbmpc`
+控制策略、网球轨迹预测、同步运行时、机器人描述和实验工具。
 
-2026-10-20恢复原团队73个提交及分支关系，并将Ubuntu当前已保存的预测、同步模块化、时间窗口实验工具与文档提交到 codex/pipeline-modularization。
-GitLab首次源码快照单独保留，默认main通过一次合并同时保留原团队历史和该快照。见[分支协作说明](BRANCH_COLLABORATION.md)。
+## Ubuntu 快速开始
 
-## 入口
+支持 Linux x86_64。先安装系统依赖：
 
-- sckd_sim：MuJoCo团队仿真、pfly/nmpc6/wbmpc、同步runtime模块、机器人描述和配置。
-- prediction/tennis_calibration：预测源码及测试。
-- tools、tests：实验编排、几何评估、缓存生产、时间窗口搜索和审计。
-- [当前状态](docs/MPC_PROJECT_STATUS.md)、[模块化实施](docs/PIPELINE_IMPLEMENTATION_20261019.md)、[时间窗口搜索](docs/TIME_WINDOW_SEARCH_20261019.md)。
-- USAGE.md、PREDICTOR_INTEGRATION.md、sckd_sim/README.md：既有使用说明。
+```bash
+sudo apt update
+sudo apt install -y build-essential gcc-13 g++-13 cmake python3-venv \
+  libeigen3-dev nlohmann-json3-dev libglfw3 libgl1-mesa-dev
+```
 
-## 资源与运行边界
+在仓库根目录创建项目环境、安装 MuJoCo 3.14.0 与 CasADi 3.8.0、编译并运行测试：
 
-Ubuntu为唯一计算和结果存储端。必要URDF、MJCF/XML、STL、静态配置及求解器生成源码随代码保留。
-本次新增提交不加入本机环境、deps、编译输出、原始数据、模型训练结果、实验日志或视频。
-原历史已经跟踪的少量库、报告、模型与历史日志保留原blob，不改写历史，也不提交它们的新运行改动。
-必要预测模型与资源仍在Ubuntu完整工程；选定模型包和运行环境位于 /home/ubuntu/Zhaohui/mpc_sim。
-.gitignore不整体排除artifacts或NPZ/JSON模型，后续必要资源须按明确清单审查。
+```bash
+python3 tools/setup_predictor_ubuntu.py --build-dir sckd_sim/build
+```
 
-部分构建入口仍依赖Ubuntu既有路径，克隆后需要配置依赖及外部模型资源。
-本次只做Git历史、内容和合并关系验证，未重新运行仿真、训练或控制性能测试；300Hz完整MPC未验收，默认算法未因上传切换。
+无图形环境可直接运行三球 `pfly` 仿真：
 
-## 来源审计
+```bash
+cd sckd_sim
+./build/m2_intercept models/generated/x4_tennis_demo.mjcf 3 qp 0.25 2026 pfly
+```
 
-SOURCE_SNAPSHOT.json记录本次选中工作树源码及文档的相对路径、字节数和SHA256。
-初次独立快照及其原始清单保留在 archive/source-snapshot-20261020 分支。
+桌面环境下从仓库根目录启动 MuJoCo viewer：
+
+```bash
+tools/run_mujoco_demo.sh
+# 或指定策略和球数
+tools/run_mujoco_demo.sh nmpc6 3
+```
+
+更多命令见 [操作手册](USAGE.md) 和 [sckd_sim 说明](sckd_sim/README.md)。
+
+## 目录
+
+- `sckd_sim`：C++17 仿真、控制、运行时、MJCF/URDF/STL 与配置。
+- `prediction/tennis_calibration`：预测与校准源码及测试。
+- `tools`、`tests`：实验编排、评估、缓存和时间窗口工具。
+- `docs`：设计、接口、阶段结论和真机交接资料。
+
+## 资源边界
+
+- 当前构建保留了 Linux x86_64 所需的 `libosqp.a` 和 `nlp.so`；它们不可直接用于其他平台。
+- MuJoCo、CasADi、Python 虚拟环境和编译输出由安装脚本在本地生成，不纳入仓库。
+- 大型实验报告、视频和原始运行数据不在当前分支快照；旧报告仍可从保留的历史提交查看。
+- 外部 GP/MLP 预测模型和实测数据不随仓库分发；默认仿真可使用内置预测链运行。
+
+## 历史
+
+本仓库保留原团队完整提交历史及六个分支，当前 `main` 在历史之上整理为可独立克隆的快照。
+旧 GitLab 地址、历史报告和旧机器路径可能出现在过去的提交中；当前分支的构建和运行不依赖这些地址。
+分支关系见 [历史与分支说明](BRANCH_COLLABORATION.md)。
+
+本次整理范围和验证结果见 [GitHub 整理记录](GITHUB_PREPARATION.md)。

@@ -7,13 +7,12 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(MUJOCO_DIR "/home/ubuntu/research/sim/deps/mujoco-3.14.0" CACHE PATH
+set(MUJOCO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../deps/mujoco" CACHE PATH
     "MuJoCo release root containing include/ and lib/")
 
-# 旧仓库实机 NMPC 模块(legacy_nmpc):CasADi 3.7 运行库(nlpsol/ipopt/
-# mumps 全套;实机部署指向 badminton-mpc-6.0/deps/casadi_portable 即可)
-set(CASADI_DIR "/home/ubuntu/deps/casadi" CACHE PATH
-    "CasADi 3.7 root containing include/ and lib/")
+# 旧仓库实机 NMPC 模块(legacy_nmpc):CasADi 运行库(nlpsol/ipopt/mumps)。
+set(CASADI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../deps/casadi" CACHE PATH
+    "CasADi root containing include/ and lib/")
 
 find_package(Threads REQUIRED)
 find_package(Eigen3 REQUIRED)
