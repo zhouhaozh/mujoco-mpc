@@ -19,7 +19,7 @@
 
 #include <casadi/casadi.hpp>
 
-#include "sim_fk.h"   // sim(x4_tennis) 精确 FK(与生成码 gen_nlp.cc 同源)
+#include "robot_fk.h"  // 与生成器共用显式机器人几何选择
 
 namespace sckd {
 namespace {
@@ -57,24 +57,24 @@ double WrapYaw90(double deg) {
   return w - 90.0;
 }
 
-// sim(x4_tennis)精确末端评价(2026-10-09 替换旧灵足 X1 解析式,见 sim_fk.h
-// 头注)。out=[px,py,pz,pitch°,vx,vy,vz];速度 = 数值 J(中心差分)·ω +
+// 按机器人选择末端几何(与生成器共用 robot_fk.h)。
+// out=[px,py,pz,pitch°,vx,vy,vz];速度 = 数值 J(中心差分)·ω +
 // add_base_vx·(底盘 vx,vy)—— 与生成码(符号 jacobian)同口径(旧手写
 // J 丢 ω2/ω5 项已消;旧版 plat 开关漏 vy,此处与生成码一致补上)
-void EndPos(const double th[14], bool add_base_vx, double out[7]) {
+void EndPos(sckd_nmpc6::RobotGeometry robot, const double th[14], bool add_base_vx, double out[7]) {
   const double base[2] = {th[0], th[1]};
   const double q[5] = {th[2], th[3], th[4], th[5], th[6]};
   double p[3], n[3];
-  sckd_nmpc6::SimArmPos(base, q, p);
-  sckd_nmpc6::SimArmNormal(q, n);
+  sckd_nmpc6::RobotArmPos(robot, base, q, p);
+  sckd_nmpc6::RobotArmNormal(robot, q, n);
   double J[3][5];
   for (int j = 0; j < 5; ++j) {
     double qp[5], qm[5];
     for (int i = 0; i < 5; ++i) { qp[i] = q[i]; qm[i] = q[i]; }
     qp[j] += 1e-6; qm[j] -= 1e-6;
     double pp[3], pm[3];
-    sckd_nmpc6::SimArmPos(base, qp, pp);
-    sckd_nmpc6::SimArmPos(base, qm, pm);
+    sckd_nmpc6::RobotArmPos(robot, base, qp, pp);
+    sckd_nmpc6::RobotArmPos(robot, base, qm, pm);
     for (int i = 0; i < 3; ++i) J[i][j] = (pp[i] - pm[i]) / 2e-6;
   }
   const double w[5] = {th[9], th[10], th[11], th[12], th[13]};
@@ -93,6 +93,7 @@ void EndPos(const double th[14], bool add_base_vx, double out[7]) {
 
 struct LegacyNmpc::Impl {
   LegacyNmpcConfig cfg;
+  sckd_nmpc6::RobotGeometry robot;
   casadi::Function actuator_rollout, chassis_rollout;
   casadi::Function solver;
   double racket_len = 0.85;
@@ -139,6 +140,9 @@ struct LegacyNmpc::Impl {
 };
 
 LegacyNmpc::LegacyNmpc(const LegacyNmpcConfig& cfg) {
+  const auto robot = sckd_nmpc6::ParseRobotGeometry(cfg.robot_geometry);
+  if (robot == sckd_nmpc6::RobotGeometry::kX4950)
+    throw std::runtime_error("X4_950 geometry only: confirmed motion limits and execution parameters required; NMPC disabled");
   if (!std::isfinite(cfg.freeze_window_s) || cfg.freeze_window_s < 0)
     throw std::runtime_error("nmpc6 freeze_window_s must be finite and nonnegative");
   if (cfg.allow_nonuniform_dt) {
@@ -153,6 +157,7 @@ LegacyNmpc::LegacyNmpc(const LegacyNmpcConfig& cfg) {
       throw std::runtime_error("nonuniform nmpc6 requires sckd_time_grid_schema=1: " + cfg.nlp_so);
   }
   impl_ = new Impl;
+  impl_->robot = robot;
   impl_->cfg=cfg;
   impl_->racket_len = cfg.racket_len;
   impl_->sim_joint23_limits = cfg.sim_joint23_limits;
@@ -502,7 +507,7 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
         double th1ms[kNs] = {0};
         for (int c = 0; c < 7; ++c) { th1ms[c] = pos[c]; th1ms[7 + c] = vel[c]; }
         double ep[7];
-        EndPos(th1ms, use_plat_vx, ep);
+        EndPos(im.robot, th1ms, use_plat_vx, ep);
         if (ep[2] < 0.35) { is_hit = true; break; }
       }
     }
@@ -529,7 +534,7 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
 
   // ---- 末端评价 + 误差补偿推理(下一拍生效;剩余≤50ms 锁存) ----
   double ep[7];
-  EndPos(cs, use_plat_vx, ep);
+  EndPos(im.robot, cs, use_plat_vx, ep);
   for (int i = 0; i < 7; ++i) out->end_pos[i] = ep[i];
   {
     const double dt_ms = (req.dt[0] + req.dt[1] + req.dt[2]) * 1000.0;
@@ -585,7 +590,7 @@ bool LegacyNmpc::Solve(const LegacyNmpcRequest& req, LegacyNmpcResult* out) {
   //      但 solve_number/跳变锚/m5 收紧只在 严格+solver_ok 时推进 ----
   if(im.cfg.actuator_prediction) {
     auto predicted=std::vector<double>(im.actuator_rollout(std::vector<casadi::DM>{casadi::DM(res_control_all),casadi::DM(p)}).at(0));
-    EndPos(predicted.data(),use_plat_vx,ep);
+    EndPos(im.robot,predicted.data(),use_plat_vx,ep);
   }
   const double ex = std::fabs(ep[0] - tgt[0]);
   const double ey = std::fabs(ep[1] - tgt[1]);

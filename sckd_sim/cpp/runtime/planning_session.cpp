@@ -2,13 +2,13 @@
 #include "runtime/controller_adapters.h"
 #include "runtime/plan_supervisor.h"
 #include "runtime/synchronous_schedule.h"
-#include "sim_fk.h"
+#include "robot_fk.h"
 #include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <algorithm>
 namespace sckd::runtime {
-using sckd_nmpc6::SimArmPos;
+using sckd_nmpc6::RobotArmPos;
 
 void UpdatePlanning(PlanningContext c, int t, double ts) {
   auto& be = c.be;
@@ -296,7 +296,7 @@ void UpdatePlanning(PlanningContext c, int t, double ts) {
             const int w=n6_ms+1,idx=std::clamp(static_cast<int>(std::lround((ts-n6_t0)*1000)),0,n6_ms);
             double br[2]={n6_pos[idx],n6_pos[w+idx]},ba[2]={rq.state[0],rq.state[1]},qr[5],qa[5],pr[3],pb[3],pa[3];
             for(int j=0;j<5;++j){qr[j]=n6_pos[(2+j)*w+idx];qa[j]=rq.state[2+j];}
-            SimArmPos(br,qr,pr);SimArmPos(ba,qr,pb);SimArmPos(ba,qa,pa);
+            RobotArmPos(sckd_nmpc6::ParseRobotGeometry(m->names),br,qr,pr);RobotArmPos(sckd_nmpc6::ParseRobotGeometry(m->names),ba,qr,pb);RobotArmPos(sckd_nmpc6::ParseRobotGeometry(m->names),ba,qa,pa);
             e["base_xy_tracking_m"]=std::hypot(ba[0]-br[0],ba[1]-br[1]);
             e["joint_tracking_rad"]=nlohmann::json::array();for(int j=0;j<5;++j)e["joint_tracking_rad"].push_back(qa[j]-qr[j]);
             e["base_tracking_vector"]=Vec(pb,3);e["arm_tracking_vector"]=Vec(pa,3);
@@ -305,7 +305,7 @@ void UpdatePlanning(PlanningContext c, int t, double ts) {
             e["target_time_vs_accepted_s"]=ts+T6-diagnostic_goal_time;
             e["plan_age_s"]=ts-n6_t0;
           }
-          if(n6_accepted && r6.plan_ms>0){int w=r6.plan_ms+1;double b[2]={r6.plan_pos[r6.plan_ms],r6.plan_pos[w+r6.plan_ms]},q[5],ep[3];for(int j=0;j<5;++j)q[j]=r6.plan_pos[(2+j)*w+r6.plan_ms];SimArmPos(b,q,ep);e["dense_endpoint_fk"]=Vec(ep,3);}
+          if(n6_accepted && r6.plan_ms>0){int w=r6.plan_ms+1;double b[2]={r6.plan_pos[r6.plan_ms],r6.plan_pos[w+r6.plan_ms]},q[5],ep[3];for(int j=0;j<5;++j)q[j]=r6.plan_pos[(2+j)*w+r6.plan_ms];RobotArmPos(sckd_nmpc6::ParseRobotGeometry(m->names),b,q,ep);e["dense_endpoint_fk"]=Vec(ep,3);}
           trace.Emit(e);
         }
         if (n6_accepted) {

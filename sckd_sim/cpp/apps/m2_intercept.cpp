@@ -4,7 +4,7 @@
 #include "core/stage_profile.h"
 #include "estimation/socket_ball_predictor.h"
 #include "estimation/measured_ball_replay.h"
-#include "sim_fk.h"
+#include "robot_fk.h"
 #include <memory>
 #include <fstream>
 // M2 验收:定点喂球拦截闭环(集成验收,≥80% 命中)。
@@ -48,7 +48,6 @@
 
 using namespace sckd;
 using namespace sckd::runtime;
-using sckd_nmpc6::SimArmPos;
 
 
 int main(int argc, char** argv) {
@@ -90,6 +89,9 @@ int main(int argc, char** argv) {
   SimBackend be(scene,cfg.motors_path,cfg.robot_variant_path,cfg.chassis_path);
   if (!be.ok()) { std::printf("[FAIL] init\n"); return 1; }
   const mjModel* m = be.model();
+  // 几何预览模型不能进入球状态索引、接触或控制初始化。
+  if (sckd_nmpc6::ParseRobotGeometry(m->names) == sckd_nmpc6::RobotGeometry::kX4950)
+    throw std::runtime_error("X4_950 geometry only: motion, actuator and badminton parameters are unconfirmed");
   mjData* d = be.data_mut();
   const int ball_qadr = m->jnt_qposadr[mj_name2id(m, mjOBJ_JOINT, "ball_free")];
   const int ball_vadr = m->jnt_dofadr[mj_name2id(m, mjOBJ_JOINT, "ball_free")];
@@ -242,6 +244,7 @@ int main(int argc, char** argv) {
     // nmpc6 每 trial 状态:旧机 NMPC 实例(回合态隔离;首解全零 guess 自触发
     // 新回合)+ 最后接受的 1ms 执行轨迹(Plans 式拷贝,绝对时刻采样)
     LegacyNmpcConfig n6_config;n6_config.enforce_feasibility=corrected;
+    n6_config.robot_geometry=m->names;
     n6_config.freeze_window_s=cfg.time_windows.nmpc6.freeze_window_s;
     n6_config.allow_nonuniform_dt=cfg.time_windows.nmpc6.allow_nonuniform_dt;
     n6_config.actuator_prediction=variant=="servo_mpc";n6_config.chassis_prediction=chassis_model;
@@ -749,10 +752,9 @@ int main(int argc, char** argv) {
                                      d->qpos[ball_qadr+2]-sp2[2]-x[2]);
         if (dd < min_ball_dist) {
           min_ball_dist = dd; t_min_dist = ts;
-          // 分解:球-拍心偏差在拍面系(法向=盒薄轴 y_local)
-          const int rb = m->site_bodyid[site_id];
-          double nrm[3] = {0, 1, 0}, nrm_w[3];
-          mju_rotVecQuat(nrm_w, nrm, d->xquat + rb * 4);
+          // 与接触接口共用 geom 薄轴及完整安装旋转。
+          const auto face = ReadRacketFaceGeometry(m, d, face_gid);
+          const double* nrm_w = face.normal;
           const double dvec[3] = {d->qpos[ball_qadr]-(sp2[0]+x[0]),
                                   d->qpos[ball_qadr+1]-(sp2[1]+x[1]),
                                   d->qpos[ball_qadr+2]-(sp2[2]+x[2])};

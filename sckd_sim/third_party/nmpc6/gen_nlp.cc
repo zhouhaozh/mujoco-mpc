@@ -23,7 +23,7 @@
 
 #include <casadi/casadi.hpp>
 
-#include "sim_fk.h"
+#include "robot_fk.h"
 
 using casadi::SX;
 using casadi::Slice;
@@ -32,11 +32,24 @@ int main(int argc,char**argv) {
   // 默认保留旧库单dt动力学。只有独立时间搜索显式开启逐节点dt，
   // 不允许误把均匀子步的servo/chassis预测库标作支持非均匀。
   bool nonuniform_time = false;
+  bool geometry_only = false;
+  auto robot = sckd_nmpc6::RobotGeometry::kTennis;
   std::vector<std::string> positional;
   for (int i = 1; i < argc; ++i) {
     if (std::string(argv[i]) == "--nonuniform-time") nonuniform_time = true;
+    else if (std::string(argv[i]) == "--geometry-only") geometry_only = true;
+    else if (std::string(argv[i]) == "--robot") {
+      if (++i >= argc) throw std::invalid_argument("--robot requires x4_tennis or x4_950");
+      robot = sckd_nmpc6::ParseRobotGeometry(argv[i]);
+    }
     else positional.emplace_back(argv[i]);
   }
+  if (robot == sckd_nmpc6::RobotGeometry::kX4950 && !geometry_only) {
+    std::fprintf(stderr, "X4_950 geometry only: joint/chassis limits and execution parameters are unconfirmed; NLP generation disabled\n");
+    return 2;
+  }
+  if (geometry_only && !positional.empty())
+    throw std::invalid_argument("geometry-only must not load servo/chassis identification");
   const bool chassis=positional.size()>1 && positional[1]=="chassis";
   const bool servo=!positional.empty() && !chassis;
   if (nonuniform_time && (servo || chassis)) {
@@ -46,8 +59,7 @@ int main(int argc,char**argv) {
   nlohmann::json identification;if(servo||chassis){std::ifstream f(positional[0]);f>>identification;}
   const int n_states = 14, n_controls = 7, m_predict_step = 3;
 
-  // ---- sim(x4_tennis)精确 FK(2026-10-09 替换旧灵足 X1 解析式:旧式拍长
-  // d5=0.85 为羽毛球拍,本机腕滚半径 0.584)。位置/法向出自 sim_fk.h;
+  // ---- 位置/法向出自 robot_fk.h 选定分支;默认网球公式保持不变。
   // 速度 = jacobian(p,q)·ω + plat·(vx,vy,0) —— 符号精确导数,消掉旧手写
   // J 丢 ω2/ω5 项的近似;plat 开关下 vx,vy 都计入(旧版漏 vy,留档修正)
   auto GetEndPos = [&](SX thetas, SX add_base_vx) {
@@ -55,8 +67,8 @@ int main(int argc,char**argv) {
                 thetas(6, 0)};
     SX base[2] = {thetas(0, 0), thetas(1, 0)};
     SX p[3], n[3];
-    sckd_nmpc6::SimArmPos(base, qv, p);
-    sckd_nmpc6::SimArmNormal(qv, n);
+    sckd_nmpc6::RobotArmPos(robot, base, qv, p);
+    sckd_nmpc6::RobotArmNormal(robot, qv, n);
     SX pvec = SX::vertcat({p[0], p[1], p[2]});
     SX qvec = SX::vertcat({qv[0], qv[1], qv[2], qv[3], qv[4]});
     SX wvec = SX::vertcat({thetas(9, 0), thetas(10, 0), thetas(11, 0),
@@ -80,6 +92,15 @@ int main(int argc,char**argv) {
   SX endpos = GetEndPos(thetas, add_base_vx);
   casadi::Function fk_solver("fk_solver", {thetas, add_base_vx}, {endpos},
                              {"thetas", "add_base_vx"}, {"endpos"});
+
+  if (geometry_only) {
+    const SX J = SX::jacobian(endpos(Slice(0,3), 3), thetas);
+    casadi::Function geometry("robot_geometry", {thetas, add_base_vx},
+                             {endpos, J(Slice(), Slice(2,7))});
+    geometry.generate(robot == sckd_nmpc6::RobotGeometry::kX4950
+                      ? "x4_950_geometry.c" : "x4_tennis_geometry.c");
+    return 0;  // 不构造 nlpsol,不读取或生成硬件约束。
+  }
 
   SX ACC = SX::sym("ACC", 7, 1);
   ACC(0,0)=1.0/8.0;   // vx_acc

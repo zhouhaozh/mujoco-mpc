@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "variant": "x4_950",
+  "purpose": "geometry_only_no_actuators",
+  "source_urdf": "source/x4_950/X4_950.urdf",
+  "collision_reference": "source/x4_950/X4_950_collision.urdf",
+  "wheel_collision": {
+    "radius_m": 0.0825,
+    "half_width_m": 0.0225,
+    "center_in_wheel_frame": {
+      "left": [0.0, -0.0805, 0.0],
+      "right": [0.0, 0.0805, 0.0]
+    },
+    "note": "来自 collision_reference 的轮子圆柱；轴旋转用精确 pi/2 对齐 URDF 轮轴，代替参考文件近似值 1.57。摩擦未标定，不指定硬件摩擦参数。"
+  },
+  "keyframe_home": {
+    "base_z_m": 0.0,
+    "note": "轮心 z=0.2514-0.1689=0.0825，减去轮半径 0.0825 后为地面；关节零位仅用于几何检查。"
+  },
+  "missing_hardware_parameters": {
+    "Joint2_position_range_rad": null,
+    "Joint3_position_range_rad": null,
+    "arm_velocity_limits_rad_s": null,
+    "arm_acceleration_limits_rad_s2": null,
+    "chassis_velocity_and_acceleration_limits": null,
+    "continuous_joint_cable_travel_limits": null,
+    "motor_types_and_torque_speed_limits": null,
+    "servo_gains_and_command_delay": null,
+    "joint_friction_and_reflected_inertia": null,
+    "wheel_ground_friction": null
+  },
+  "missing_badminton_parameters": {
+    "shuttle_mass_kg": null,
+    "shuttle_collision_shape_and_dimensions": null,
+    "shuttle_aerodynamic_model_and_coefficients": null,
+    "effective_racket_restitution": null,
+    "contact_closing_threshold_m_s": null,
+    "contact_depth_tolerance_m": null
+  },
+  "missing_geometry_constraints": {
+    "collision_clearance_and_workspace": null
+  },
+  "notes": [
+    "不读取网球 motors.json，不生成执行器；不能作为现有 M0/M1/M2 控制程序的可执行模型。",
+    "源 URDF 的 J2/J3 limit 全为零，MuJoCo 3.14 导入后为不限位；不是已确认的实际行程。",
+    "保留源质量和惯量（MJCF 导出存在数值舍入），未进行硬件辨识。",
+    "原网格仅视觉，碰撞只保留八个轮子和 Link6 原有拍面；车体、臂及自碰撞不在本阶段验证范围。",
+    "Link6 原点是拍心；racket_face 保留源旋转和尺寸，薄轴为 geom 局部 Z，接近 Link6 局部 X。",
+    "NMPC 仅提供五轴 FK/法向/Jacobian 几何分支，保持 yaw=0；完整 NLP 生成、求解器初始化及拍球冲量被代码阻止，填写本清单不会自动启用。",
+    "不套用旧 z>=0.35 避碰阈值、网球回弹/气动参数或速度折减；未来最小羽毛球场景按落地结束，不使用网球反弹。"
+  ]
+}

@@ -2,13 +2,13 @@
 #include "runtime/controller_adapters.h"
 #include "runtime/plan_supervisor.h"
 #include "runtime/synchronous_schedule.h"
-#include "sim_fk.h"
+#include "robot_fk.h"
 #include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <algorithm>
 namespace sckd::runtime {
-using sckd_nmpc6::SimArmPos;
+using sckd_nmpc6::RobotArmPos;
 
 void RecordControlState(StateTraceContext c, const ExecutionFrame& frame, int t, double ts) {
   const auto& wb_exec=frame.wb_exec;
@@ -62,7 +62,7 @@ void RecordControlState(StateTraceContext c, const ExecutionFrame& frame, int t,
     else if(wb_exec){for(int j=0;j<2;++j){ref_b[j]=wb_base[j];ref_v[j]=wb_vbase[j];}}
     else if(planned&&ref_built){ref_b[0]=mpc_ref[0];ref_b[1]=mpc_ref[1];double c=cos(ds.yaw),sn=sin(ds.yaw);ref_v[0]=c*mpc_ref[3]-sn*mpc_ref[4];ref_v[1]=sn*mpc_ref[3]+c*mpc_ref[4];}
     double p_ref[3],p_base_actual[3],p_nominal_actual[3],actual_b[2]={ds.x,ds.y};
-    SimArmPos(ref_b,ac.q,p_ref);SimArmPos(actual_b,ac.q,p_base_actual);SimArmPos(actual_b,actual_q,p_nominal_actual);
+    RobotArmPos(sckd_nmpc6::ParseRobotGeometry(m->names),ref_b,ac.q,p_ref);RobotArmPos(sckd_nmpc6::ParseRobotGeometry(m->names),actual_b,ac.q,p_base_actual);RobotArmPos(sckd_nmpc6::ParseRobotGeometry(m->names),actual_b,actual_q,p_nominal_actual);
     mj_kinematics(m,d);double p_world[3],rot[3]={0,0,0};mju_rotVecQuat(rot,m->site_pos+3*site_id,d->xquat+4*m->site_bodyid[site_id]);for(int j=0;j<3;++j)p_world[j]=d->xpos[3*m->site_bodyid[site_id]+j]+rot[j];
     nlohmann::json motors=nlohmann::json::array();
     for(int a=0;a<kNumAxes;++a){auto r=be.joint(a);auto issued=be.motor_issued(a),eff=be.motor_effective(a);const bool wheel=a<12&&a%3!=0;motors.push_back({{"axis",a},{"name",kAxisJointName[a]},{"q",r.q},{"dq",r.dq},{"q_target",issued.q},{"wire_dq_target",issued.dq},{"dq_target",wheel?servo.wheel_velocity_reference(a):issued.dq},{"wheel_external_pi",wheel},{"kp",issued.kp},{"kd",issued.kd},{"tau_ff",issued.tau_ff},{"q_effective",eff.q},{"dq_effective",eff.dq},{"kp_effective",eff.kp},{"kd_effective",eff.kd},{"tau_ff_effective",eff.tau_ff},{"raw",be.motor_raw(a)},{"applied",r.tau_cmd},{"cap",be.motor_cap(a)}});}

@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -237,20 +238,19 @@ void TermResidual(ArmIk& ik, const double base[2], const double vbase[2],
 
 WholebodyMpc::WholebodyMpc(ArmIk& ik, const mjModel* m, const WmLimits& lim)
     : ik_(ik), lim_(lim) {
-  const int site_id = mj_name2id(m, mjOBJ_SITE, "racket_center");
-  int b = m->site_bodyid[site_id];
-  int i = 4;
-  while (b >= 0 && mj_id2name(m, mjOBJ_BODY, b) &&
-         std::string(mj_id2name(m, mjOBJ_BODY, b)) != "base_link") {
-    const int j = m->body_jntadr[b];
+  // 按控制轴名取活动关节,不把固定 Link6 当成第六个关节。
+  for (int i = 0; i < 5; ++i) {
+    const int j = mj_name2id(m, mjOBJ_JOINT, kAxisJointName[AxisArm(i)]);
+    if (j < 0 || m->jnt_type[j] != mjJNT_HINGE)
+      throw std::invalid_argument("WholebodyMpc requires Joint1..Joint5 hinges");
+    if ((i == 1 || i == 2) && !m->jnt_limited[j])
+      throw std::invalid_argument("WholebodyMpc requires confirmed Joint2/Joint3 position limits");
     if (m->jnt_limited[j]) {
       lim_.q_lo[i] = m->jnt_range[2 * j];
       lim_.q_hi[i] = m->jnt_range[2 * j + 1];
     } else {
       lim_.q_lo[i] = -3.5; lim_.q_hi[i] = 3.5;
     }
-    b = m->body_parentid[b];
-    --i;
   }
 }
 

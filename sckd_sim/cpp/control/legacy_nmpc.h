@@ -37,6 +37,7 @@
 namespace sckd {
 
 struct LegacyNmpcConfig {
+  std::string robot_geometry = "x4_tennis";  // x4_950 目前仅开放独立几何接口
   std::string nlp_so = "third_party/nmpc6/nlp.so";  // 生成码(相对路径按
                                                     // 进程工作目录解析)
   double racket_len = 0.85;                         // d5=−racket_len(X1 机型)

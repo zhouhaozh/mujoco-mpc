@@ -1,7 +1,7 @@
 #include "runtime/controller_adapters.h"
-#include "sim_fk.h"
+#include "robot_fk.h"
 namespace sckd::runtime {
-using sckd_nmpc6::SimArmPos;
+using sckd_nmpc6::RobotArmPos;
 // v2 triage(2026-10-08):预测实际底盘位姿@t_hit,ArmSwing 终值 IK/J/J5 对准
 // 按它解——fly-through 底盘滞后 0.1-0.2m,按规划 base_target 解则拍随基座
 // 平移、无人补偿(面内 miss 0.16-0.47,抽球族定位)。
@@ -140,7 +140,7 @@ bool RunWbmpc(WholebodyMpc& wb, const HitPlan& plan, SimBackend& be,
   const bool ok=StageProfile::Measure("wbmpc_solver", [&]{return wb.Solve(req, out);});
   if(trace.enabled()){
     nlohmann::json e={{"kind","solve"},{"mode","wbmpc"},{"t",ts},{"target",Vec(req.p_hit,3)},{"target_time",plan.t_hit},{"contact_time",req.t_now+req.k_contact*((req.t_hit-req.t_now)/WholebodyMpc::kN)},{"accepted",ok},{"reason",wb.last_reason},{"ms",wb.last_ms},{"pos_res",wb.last_pos_res}};
-    if(ok){double p[3];SimArmPos(out->term_base,out->term_q,p);e["endpoint_fk"]=Vec(p,3);e["n_dot"]=out->n_dot;}
+    if(ok){double p[3];RobotArmPos(sckd_nmpc6::ParseRobotGeometry(be.model()->names),out->term_base,out->term_q,p);e["endpoint_fk"]=Vec(p,3);e["n_dot"]=out->n_dot;}
     trace.Emit(e);
   }
   return ok;

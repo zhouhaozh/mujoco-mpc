@@ -86,10 +86,10 @@ def solve_ocp(fk, h_base, scen, v_base_fix=None, pin_base=None):
     T = scen['T']
     h = T / N
 
-    f_pos, f_R = fk['f_pos'], fk['f_R']
+    f_pos = fk['f_pos']
     qS = fk['q']
     J_sym = ca.jacobian(f_pos(qS), qS)             # 3×5(yaw=0,平移不进 J)
-    n_sym = f_R(qS) @ ca.SX([0, 1, 0])             # 拍面法向(m2 同约定)
+    n_sym = fk['f_normal'](qS)                   # 使用拍面 geom 的正薄轴
     Fk_pos = ca.Function('Fp', [qS], [f_pos(qS)])
     Fk_J = ca.Function('FJ', [qS], [J_sym])
     Fk_n = ca.Function('Fn', [qS], [n_sym])
@@ -182,24 +182,24 @@ def solve_ocp(fk, h_base, scen, v_base_fix=None, pin_base=None):
     return r, v_star, n_star
 
 
+def joint_limits(m, joint_names):
+    """按活动关节名取限位;固定 Link6 不占槽位,缺失 J2/J3 限位时拒绝求解。"""
+    q_lo, q_hi = np.zeros(5), np.zeros(5)
+    for i, name in enumerate(joint_names):
+        j = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, name)
+        if name in ('Joint2', 'Joint3') and not m.jnt_limited[j]:
+            raise ValueError(f'{name} position limits are unconfirmed; geometry only')
+        # 保留网球连续关节的旧求解区间,不是 X4_950 的硬件限位。
+        q_lo[i], q_hi[i] = m.jnt_range[j] if m.jnt_limited[j] else (-3.5, 3.5)
+    return q_lo, q_hi
+
+
 def main():
     path = sys.argv[1] if len(sys.argv) > 1 else 'models/generated/x4_tennis_demo.mjcf'
     fk = build(path)
     h_base = float(base_height(path)[2])
     m = mujoco.MjModel.from_xml_path(path)
-    q_lo, q_hi = np.zeros(5), np.zeros(5)      # 关节限位(MJCF,链序)
-    b = m.site_bodyid[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, 'racket_center')]
-    i = 4
-    while mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b) != 'base_link':
-        j = m.body_jntadr[b]
-        # 无限位关节(jnt_limited=0)jnt_range 读出 [0,0] 是垃圾值 → 取 ±3.5
-        # (ArmSwing QP 系数盒 [3,3,3,3,6] 同为宽松口径;线缆行程未确认,§3.2)
-        if m.jnt_limited[j]:
-            q_lo[i], q_hi[i] = m.jnt_range[j]
-        else:
-            q_lo[i], q_hi[i] = -3.5, 3.5
-        b = m.body_parentid[b]
-        i -= 1
+    q_lo, q_hi = joint_limits(m, fk['jnt_names'])
 
     print(f'== 方案 B v0 整机 OCP(N={N},IPOPT/mumps;终端:拍心/p*、拍速/v* '
           f'等式+松弛,法向软对准)==')
@@ -242,14 +242,7 @@ def sweep():
     fk = build('models/generated/x4_tennis_demo.mjcf')
     h_base = float(base_height('models/generated/x4_tennis_demo.mjcf')[2])
     m = mujoco.MjModel.from_xml_path('models/generated/x4_tennis_demo.mjcf')
-    q_lo, q_hi = np.zeros(5), np.zeros(5)
-    b = m.site_bodyid[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, 'racket_center')]
-    i = 4
-    while mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b) != 'base_link':
-        j = m.body_jntadr[b]
-        q_lo[i], q_hi[i] = m.jnt_range[j] if m.jnt_limited[j] else (-3.5, 3.5)
-        b = m.body_parentid[b]
-        i -= 1
+    q_lo, q_hi = joint_limits(m, fk['jnt_names'])
     v_out = V_OUT_SPEED * np.array([
         np.cos(np.radians(V_OUT_ELEV)), 0.0, np.sin(np.radians(V_OUT_ELEV))])
     print('  θ(°)   D0    T   |v_opt| ang_opt  |v_heur| ang_heur  D0/T  v_opt/(D0/T)  '
@@ -291,14 +284,7 @@ def v2():
     fk = build('models/generated/x4_tennis_demo.mjcf')
     h_base = float(base_height('models/generated/x4_tennis_demo.mjcf')[2])
     m = mujoco.MjModel.from_xml_path('models/generated/x4_tennis_demo.mjcf')
-    q_lo, q_hi = np.zeros(5), np.zeros(5)
-    b = m.site_bodyid[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, 'racket_center')]
-    i = 4
-    while mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b) != 'base_link':
-        j = m.body_jntadr[b]
-        q_lo[i], q_hi[i] = m.jnt_range[j] if m.jnt_limited[j] else (-3.5, 3.5)
-        b = m.body_parentid[b]
-        i -= 1
+    q_lo, q_hi = joint_limits(m, fk['jnt_names'])
 
     print('== 方案 B v2 原型:终端底盘位置自由 vs 钉死(抽球族工况,起点=滞后底盘) ==\n')
     for name, scen0 in V2_SCENARIOS.items():
@@ -351,14 +337,7 @@ def v2sweep():
     fk = build('models/generated/x4_tennis_demo.mjcf')
     h_base = float(base_height('models/generated/x4_tennis_demo.mjcf')[2])
     m = mujoco.MjModel.from_xml_path('models/generated/x4_tennis_demo.mjcf')
-    q_lo, q_hi = np.zeros(5), np.zeros(5)
-    b = m.site_bodyid[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, 'racket_center')]
-    i = 4
-    while mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b) != 'base_link':
-        j = m.body_jntadr[b]
-        q_lo[i], q_hi[i] = m.jnt_range[j] if m.jnt_limited[j] else (-3.5, 3.5)
-        b = m.body_parentid[b]
-        i -= 1
+    q_lo, q_hi = joint_limits(m, fk['jnt_names'])
 
     print('== v2 sweep:back*(击球高 z;θ=0 正前,r=1.05,T=0.9,起点(0,0)v=(0.6,0)) ==')
     print('   z*   back*  |sp|@0.8  |sp|@0.45  n·n*@free  peak|dq|  cost比(0.8/free)')
