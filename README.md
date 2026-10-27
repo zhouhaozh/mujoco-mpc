@@ -3,21 +3,20 @@
 本仓库包含网球机器人整机 MuJoCo 仿真、`pfly` / `nmpc6` / `wbmpc`
 控制策略、网球轨迹预测、同步运行时、机器人描述和实验工具。
 
+> 新机器请从 [中文环境安装与部署手册](docs/环境安装与部署.md) 开始；手册包含一键安装、
+> 无头验收、GUI/SSH 运行和常见故障处理。
+
 ## Ubuntu 快速开始
 
-支持 Linux x86_64。先安装系统依赖：
+一键安装支持 Ubuntu 24.04 x86_64。在仓库根目录执行：
 
 ```bash
-sudo apt update
-sudo apt install -y build-essential gcc-13 g++-13 cmake python3-venv \
-  libeigen3-dev nlohmann-json3-dev libglfw3 libgl1-mesa-dev
+bash tools/install_ubuntu.sh
 ```
 
-在仓库根目录创建项目环境、安装 MuJoCo 3.14.0 与 CasADi 3.8.0、编译并运行测试：
-
-```bash
-python3 tools/setup_predictor_ubuntu.py --build-dir sckd_sim/build
-```
+脚本准备系统依赖，创建项目环境，安装固定版本的 MuJoCo、CasADi 等依赖，
+编译工程、运行 CTest 并执行三球无头仿真。系统包已准备好时可加
+`--skip-system-deps`；低内存机器可加 `--jobs 1`。
 
 无图形环境可直接运行三球 `pfly` 仿真：
 

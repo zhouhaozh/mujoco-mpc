@@ -1,5 +1,7 @@
 # sckd_sim — 网球/羽毛球对打机器人仿真系统(C++17 核心 + MuJoCo)
 
+首次部署请先按 [环境安装与部署](../docs/环境安装与部署.md) 执行一键安装和验收。
+
 设计文档: [`docs/SIM_SYSTEM_DESIGN.md`](../docs/SIM_SYSTEM_DESIGN.md)(契约与决策的唯一来源)。
 当前里程碑:**M0 内核**——模型管线、电机模型、HAL in-process、确定性、四项验收。
 
@@ -12,8 +14,8 @@
 ## 快速开始
 
 ```bash
-# 从工程根目录安装依赖、编译并运行 CTest
-python3 tools/setup_predictor_ubuntu.py --build-dir sckd_sim/build
+# 从工程根目录安装依赖、编译并运行 CTest 和三球无头仿真
+bash tools/install_ubuntu.sh
 
 # 进入仿真目录运行 M0 验收
 cd sckd_sim

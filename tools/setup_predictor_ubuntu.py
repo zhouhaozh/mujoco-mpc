@@ -23,6 +23,16 @@ def project_path(path):
     return path if path.is_absolute() else ROOT / path
 
 
+def positive_integer(value):
+    try:
+        number = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("必须是正整数") from error
+    if number <= 0:
+        raise argparse.ArgumentTypeError("必须是正整数")
+    return number
+
+
 def link_package(name, python):
     package = Path(
         subprocess.check_output(
@@ -68,22 +78,55 @@ def restore_osqp(lib, archive):
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="创建项目 Python 环境、编译仿真程序并运行 CTest。"
+    )
     parser.add_argument(
         "--archive",
         type=Path,
-        help="original team archive; needed only if the bundled OSQP library is missing",
+        help="原团队归档；仅在仓库内缺少 OSQP 静态库时需要",
     )
     parser.add_argument(
         "--build-dir",
         type=Path,
         default=Path("sckd_sim/build-predictor"),
-        help="build directory relative to the project root (default: %(default)s)",
+        help="相对项目根目录的构建目录（默认：%(default)s）",
+    )
+    parser.add_argument(
+        "--jobs",
+        type=positive_integer,
+        default=2,
+        help="并行编译任务数（默认：%(default)s）",
+    )
+    parser.add_argument(
+        "--index-url",
+        default="https://pypi.org/simple",
+        help="Python 包索引地址（默认：%(default)s）",
     )
     args = parser.parse_args()
 
+    if not args.index_url:
+        parser.error("--index-url 不能为空")
+
     if platform.system() != "Linux" or platform.machine() != "x86_64":
-        raise SystemExit("requires Linux x86_64; bundled third-party libraries are platform-specific")
+        raise SystemExit("仅支持 Linux x86_64；仓库内第三方二进制库与平台相关")
+
+    source = ROOT / "sckd_sim"
+    lib = source / "third_party/osqp/libosqp.a"
+    restore_osqp(lib, args.archive)
+    if hashlib.sha256(lib.read_bytes()).hexdigest() != OSQP_SHA256:
+        raise RuntimeError("OSQP hash mismatch")
+
+    compiler = shutil.which("g++-13") or shutil.which("g++")
+    if compiler is None:
+        raise SystemExit("找不到 C++ 编译器；请安装 g++-13 或其他 C++17 编译器")
+    for command in ("gcc", "cmake", "ctest"):
+        if shutil.which(command) is None:
+            raise SystemExit(f"找不到构建工具 {command}；请先安装系统依赖")
+
+    requirements = ROOT / "requirements-sim.txt"
+    if not requirements.is_file():
+        raise SystemExit(f"缺少 Python 依赖锁定文件：{requirements}")
 
     environment = ROOT / ".venv"
     if not (environment / "bin/python").exists():
@@ -95,27 +138,18 @@ def main():
         "pip",
         "install",
         "--index-url",
-        "https://pypi.org/simple",
-        "mujoco==3.14.0",
-        "casadi==3.8.0",
-        "numpy",
+        args.index_url,
+        "--requirement",
+        requirements,
     )
+    run(python, "-m", "pip", "check")
     for name in ("mujoco", "casadi"):
         link_package(name, python)
-
-    source = ROOT / "sckd_sim"
-    lib = source / "third_party/osqp/libosqp.a"
-    restore_osqp(lib, args.archive)
-    if hashlib.sha256(lib.read_bytes()).hexdigest() != OSQP_SHA256:
-        raise RuntimeError("OSQP hash mismatch")
 
     nlp = source / "third_party/nmpc6/nlp.so"
     if not nlp.exists():
         run("gcc", "-fPIC", "-shared", "-O3", source / "third_party/nmpc6/nlp.c", "-o", nlp, "-lm")
 
-    compiler = shutil.which("g++-13") or shutil.which("g++")
-    if compiler is None:
-        raise SystemExit("no C++ compiler found; install g++-13 or another C++17 compiler")
     build = project_path(args.build_dir)
     run(
         "cmake",
@@ -128,7 +162,7 @@ def main():
         f"-DCASADI_DIR={ROOT / 'deps/casadi'}",
         "-DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=1",
     )
-    run("cmake", "--build", build, "-j8")
+    run("cmake", "--build", build, f"-j{args.jobs}")
     run("ctest", "--test-dir", build, "--output-on-failure")
 
 
