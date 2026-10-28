@@ -5,6 +5,10 @@
   "source_urdf": "source/x4_950/X4_950.urdf",
   "collision_reference": "source/x4_950/X4_950_collision.urdf",
   "motor_config": "config/motors_x4_950.json",
+  "racket_geometry": {
+    "effective_length_m": 0.865,
+    "note": "与原生MPC racket_len统一；Link5相对Link4的Y偏置为-0.065m，因此Link6相对Link5的Y距离为0.930m。仅覆盖生成模型，归档源URDF不改。"
+  },
   "confirmed_joint_position_limits_rad": {
     "Joint2": [
       -3.14,

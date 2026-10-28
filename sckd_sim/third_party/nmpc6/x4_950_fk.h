@@ -1,6 +1,6 @@
 #pragma once
 // X4_950.urdf / x4_950_scene.mjcf 几何;五轴,yaw=0,底座 z=0。
-// Link6 固定在 Link5 的 (0,.915,0),不增加状态或控制维数。
+// 有效拍长 .865；加上 Link5 的 -.065 Y 偏置补偿，Link6 位于 (0,.930,0)。
 #include <cmath>
 
 namespace sckd_nmpc6 {
@@ -25,7 +25,7 @@ void X4950ArmPos(const T base[2], const T q[5], T p[3]) {
   constexpr double offsets[5][3] = {
     {0, 0, .7954}, {0, -.0105, .105}, {.705, .0445, 0},
     {.000035678, -.034015, .0685}, {0, -.065, .102}};
-  p[0] = T(0); p[1] = T(.915); p[2] = T(0);
+  p[0] = T(0); p[1] = T(.865 + .065); p[2] = T(0);
   for (int j = 4; j >= 0; --j) {
     X4950RotateJoint(j, q[j], p);
     for (int r = 0; r < 3; ++r) p[r] += T(offsets[j][r]);

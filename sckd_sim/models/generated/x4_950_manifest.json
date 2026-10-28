@@ -10,7 +10,7 @@
     "collision_reference": "source/x4_950/X4_950_collision.urdf",
     "collision_reference_sha256": "f42ecd1d16d6364a94b50f1cc2bb9aa3a439a74c3a16b74df21fbfa428266cc2",
     "config": "config/x4_950.json",
-    "config_sha256": "a877c845382f5663523a049a5769d0b604e6b020e19abbd8c28bfcd92e048925",
+    "config_sha256": "dc7fa495fda59a0548be6f8ab58335418f73c084f3896a22ef604d5ad6c9e450",
     "mujoco_version": "3.14.0"
   },
   "edits": [
@@ -45,12 +45,23 @@
       "reason": "36 个网格 geom 仅视觉;轮用圆柱 r=0.0825 half=0.0225(X4_950_collision.urdf);质量 0 不改 URDF 惯量"
     },
     {
+      "edit": "set_effective_racket_length",
+      "effective_length_m": 0.865,
+      "original_link6_y_m": 0.915,
+      "link6_y_m": 0.9299999999999999,
+      "reason": "用户确认有效拍长0.865m，与原生MPC一致；同步移动拍面和拍心，保留归档URDF"
+    },
+    {
       "edit": "name_link6_racket_face_and_center",
       "reason": "保留固定 Link6 与原拍面旋转/尺寸；site 位于 Link6 原点，未添加主动拍腕"
     },
     {
       "edit": "floor_plane_and_light",
       "reason": "几何预览地面；接触参数使用 MuJoCo 默认值，未作动力学验证"
+    },
+    {
+      "edit": "add_standard_badminton_court",
+      "reason": "13.40×6.10 m；单打宽5.18 m；40 mm标线；网位x=6.70 m；网中央高1.524 m、两端高1.55 m；场地仅视觉，不改变接触契约"
     },
     {
       "edit": "add_actuators_17",
@@ -255,7 +266,7 @@
     "nq": 24,
     "nv": 23,
     "nu": 17,
-    "nmesh": 18,
+    "nmesh": 22,
     "source_mass_kg": 51.1636362,
     "compiled_mass_kg": 51.163677,
     "wheel_bottom_z_m": [
@@ -270,7 +281,7 @@
     ],
     "racket_center_world_m": [
       0.705035678,
-      0.849985,
+      0.864985,
       1.0709
     ],
     "racket_face_normal_world": [
@@ -284,6 +295,7 @@
       0.005
     ],
     "link6_fixed": true,
+    "effective_racket_length_m": 0.865,
     "contact_geom_count": 10,
     "joint_ranges_rad": {
       "Joint2": [

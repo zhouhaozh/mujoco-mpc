@@ -47,6 +47,32 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
 图形演示可从工程根目录运行`tools/run_mujoco_demo.sh [策略] [球数]`;
 默认策略为`pfly`,默认运行3球。
 
+## 羽毛球场景地图
+
+场地定义集中在 `models/badminton_court.py`。`models/patch_demo.py` 原先的
+`court_xml()` 网球场已替换：旧入口 `models/generated/x4_tennis_demo.{mjcf,xml}`
+保留文件名兼容现有程序；X4_950 场景及其回放也使用相同羽毛球场。
+尺寸依据 [BWF Laws of Badminton 第1节及 Diagram A](https://extranet.bwf.sport/docs/document-system/81/1466/1470/Section%204.1%20-%20Laws%20of%20Badminton%20-%2026%20April%202025%20V5.0%20%282%29%20.pdf)。
+
+场地长 13.40 m，双打宽 6.10 m，单打宽 5.18 m；白线宽 0.04 m，尺寸包含标线。
+本方底线外缘 `x=0`，对方底线外缘 `x=13.40`，球网 `x=6.70`，宽度中心 `y=0`。
+短发球线靠网外缘距网 1.98 m；双打后发球线靠底线外缘距底线外缘 0.76 m。
+场地包括两组边线、前后发球线及两半场各自的中线。
+网中央高 1.524 m、两端高 1.55 m、网深 0.76 m，上沿白带宽 0.075 m。
+网使用两片刚性几何近似下垂；四周各 2 m 的色块仅作视觉围区。
+
+在工程根目录重新生成：
+
+```bash
+.venv/bin/python sckd_sim/models/build_model.py --variant x4_950
+.venv/bin/python sckd_sim/models/build_x4_replay.py
+.venv/bin/python sckd_sim/models/patch_demo.py
+.venv/bin/python -m mujoco.viewer --mjcf=sckd_sim/models/generated/x4_950_scene.xml
+```
+
+X4_950 的场地和球网仅作视觉参考，保持原接触契约；旧演示保留球网/立柱碰撞。
+本次更换地图不转换旧演示的网球飞行、回弹及发球参数，因此旧程序仍不是完整羽毛球动力学仿真。
+
 ## X4_950 独立模型（含执行器，控制器仍阻断）
 
 在工程根目录运行：

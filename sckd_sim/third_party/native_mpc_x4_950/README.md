@@ -47,8 +47,11 @@ Reset destroys and reconstructs the controller. Use one controller serially;
 the binary contains process-global state.
 
 Geometry verified: d1=.90, a2=.706, d4=-.1705, racket_len=.865 (metres).
-The current MJCF still has about .850 m effective racket length, leaving roughly
-15 mm position mismatch; no geometry compensation is applied here.
+The X4_950 model now uses the same .865 m effective racket length, configured in
+`models/config/x4_950.json`. Its Link6 Y offset is .930 m because Link5 contributes
+-.065 m. The builder moves the face and center together; archived URDFs retain
+their original dimensions. The remaining sub-millimetre/millimetre FK differences
+come from the shoulder height and other link dimensions, not racket length.
 
 ## Verification
 

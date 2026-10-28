@@ -22,6 +22,8 @@ from pathlib import Path
 
 import mujoco
 
+from badminton_court import add_badminton_court
+
 MODELS = Path(__file__).resolve().parents[1] / "models"
 GENERATED = MODELS / "generated"
 CONTRACT_JOINTS = [  # 契约轴序(§4.2),与 cpp/core/types.h kAxisJointName 一致
@@ -155,6 +157,19 @@ def build(variant: str) -> int:
 
     if is_x4_950:
         # 原始 X4_950.urdf 已有唯一 Link6 拍面，不再另加碰撞盒。
+        effective_length = cfg["racket_geometry"]["effective_length_m"]
+        if not math.isfinite(effective_length) or effective_length <= 0:
+            raise ValueError("X4_950 effective racket length must be positive and finite")
+        link5_y = float(bodies["Link5"].get("pos").split()[1])
+        link6_pos = [float(v) for v in bodies["Link6"].get("pos").split()]
+        original_link6_y = link6_pos[1]
+        link6_pos[1] = effective_length - link5_y
+        bodies["Link6"].set("pos", " ".join(f"{v:.12g}" for v in link6_pos))
+        edits.append({"edit": "set_effective_racket_length",
+                      "effective_length_m": effective_length,
+                      "original_link6_y_m": original_link6_y,
+                      "link6_y_m": link6_pos[1],
+                      "reason": "用户确认有效拍长0.865m，与原生MPC一致；同步移动拍面和拍心，保留归档URDF"})
         face = bodies["Link6"].find("geom")
         face.set("name", "racket_face")
         face.set("mass", "0")
@@ -179,6 +194,12 @@ def build(variant: str) -> int:
     edits.append({"edit": "floor_plane_and_light",
                   "reason": "几何预览地面；接触参数使用 MuJoCo 默认值，未作动力学验证" if is_x4_950
                   else "M0 平地;μ=1 名义值(F1),F3 轮地标定后替换(§9-3)"})
+
+    if is_x4_950:
+        add_badminton_court(root)
+        edits.append({"edit": "add_standard_badminton_court",
+                      "reason": "13.40×6.10 m；单打宽5.18 m；40 mm标线；网位x=6.70 m；"
+                                "网中央高1.524 m、两端高1.55 m；场地仅视觉，不改变接触契约"})
 
     # 3d) 执行器:17 电机，与契约轴序一致；输出端力矩，gear=1。
     jc = {j["joint"]: j for j in cfg["joints"]}
@@ -264,6 +285,8 @@ def build(variant: str) -> int:
             "racket_face_normal_world": data.geom_xmat[face_id].reshape(3, 3)[:, 2].tolist(),
             "racket_face_half_size_m": model.geom_size[face_id].tolist(),
             "link6_fixed": int(model.body_jntnum[link6]) == 0,
+            "effective_racket_length_m": float(model.body_pos[model.body("Link5").id, 1]
+                                                + model.body_pos[link6, 1]),
             "contact_geom_count": int(((model.geom_contype != 0) | (model.geom_conaffinity != 0)).sum()),
             "joint_ranges_rad": actual_ranges, "joint_limits_ok": bool(limits_ok),
             "actuator_mapping_and_ranges_ok": bool(actuators_ok),
@@ -272,6 +295,7 @@ def build(variant: str) -> int:
         ok = (model.nu == 17 and limits_ok and actuators_ok and model.nq == 24 and model.nv == 23 and model.nmesh > 0
               and min(joint_ids) >= 0 and len(set(joint_ids)) == 17 and model.njnt == 18
               and check["link6_fixed"] and check["contact_geom_count"] == 10
+              and abs(check["effective_racket_length_m"] - effective_length) < 1e-12
               and abs(check["compiled_mass_kg"] - source_mass) < 1e-4
               and max(abs(z) for z in wheel_bottoms) < 1e-4
               and model.site_bodyid[site_id] == link6 and model.geom_bodyid[face_id] == link6

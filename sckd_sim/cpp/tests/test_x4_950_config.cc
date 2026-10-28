@@ -3,8 +3,40 @@
 #include <doctest.h>
 #include "hal/sim_backend.h"
 #include "runtime/runtime_config.h"
+#include "../../third_party/nmpc6/x4_950_fk.h"
 
 using namespace sckd;
+
+TEST_CASE("X4 racket effective length and analytical FK match the generated model") {
+  SimBackend be("models/generated/x4_950_scene.mjcf", "models/config/motors_x4_950.json",
+                "models/config/x4_950.json", "models/config/chassis_x4_950.json");
+  REQUIRE(be.ok());
+  REQUIRE(be.reset());
+  const auto* m = be.model();
+  auto* d = be.data_mut();
+  const int link5 = mj_name2id(m, mjOBJ_BODY, "Link5");
+  const int link6 = mj_name2id(m, mjOBJ_BODY, "Link6");
+  CHECK(m->body_pos[3*link5+1]+m->body_pos[3*link6+1] == doctest::Approx(.865));
+  CHECK(m->body_pos[3*link6+1] == doctest::Approx(.930));
+  const int site = mj_name2id(m, mjOBJ_SITE, "racket_center");
+  const int face = mj_name2id(m, mjOBJ_GEOM, "racket_face");
+  const double poses[][5] = {{0,0,0,0,0}, {0,-.5,-.5,0,0},
+                             {.3,-1,-.2,.4,.7}, {0,0,-.5,0,0}};
+  const double base[2] = {0,0};
+  for (const auto& q : poses) {
+    for (int j=0;j<5;++j) {
+      const int joint = mj_name2id(m, mjOBJ_JOINT, ("Joint"+std::to_string(j+1)).c_str());
+      d->qpos[m->jnt_qposadr[joint]] = q[j];
+    }
+    mj_forward(m,d);
+    double expected[3];
+    sckd_nmpc6::X4950ArmPos(base,q,expected);
+    for (int axis=0;axis<3;++axis) {
+      CHECK(d->site_xpos[3*site+axis] == doctest::Approx(expected[axis]).epsilon(1e-9));
+      CHECK(d->geom_xpos[3*face+axis] == doctest::Approx(expected[axis]).epsilon(1e-9));
+    }
+  }
+}
 
 TEST_CASE("X4 runtime loads independent configs with truth feedback and dynamic caps") {
   const auto cfg = runtime::ResolvedConfig::Resolve(

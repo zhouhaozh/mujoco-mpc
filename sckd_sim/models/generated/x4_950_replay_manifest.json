@@ -1,0 +1,32 @@
+{
+  "variant": "x4_950_replay",
+  "purpose": "reference_only_ball_trajectory_replay",
+  "source_scene": "models/generated/x4_950_scene.mjcf",
+  "ball": {
+    "body": "ball",
+    "joint": "ball_free",
+    "geom": "ball_geom",
+    "shape": "sphere_proxy",
+    "radius_m": 0.015,
+    "mass_kg_placeholder": 0.005,
+    "collision_enabled": false,
+    "gravity_compensation": true,
+    "note": "Replay app writes qpos/qvel each frame; mass is not a flight-physics claim."
+  },
+  "dimensions": {
+    "nq": 31,
+    "nv": 29,
+    "nu": 17,
+    "robot_qpos": 24,
+    "ball_qpos": 7,
+    "robot_qvel": 23,
+    "ball_qvel": 6
+  },
+  "static_check": {
+    "reset_keyframe": 0,
+    "forward_called": true,
+    "mj_step_called": false,
+    "ball_joint_id": 18,
+    "ball_geom_id": 66
+  }
+}

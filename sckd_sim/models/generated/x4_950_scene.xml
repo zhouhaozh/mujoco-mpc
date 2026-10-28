@@ -20,6 +20,10 @@
     <mesh name="Link3" file="meshes/Link3.STL" />
     <mesh name="Link4" file="meshes/Link4.STL" />
     <mesh name="Link5" file="meshes/Link5.STL" />
+    <mesh name="ct_net_l" vertex="-0.0025 -3.05 0.79 -0.0025 -3.05 1.55 -0.0025 0 0.764 -0.0025 0 1.524 0.0025 -3.05 0.79 0.0025 -3.05 1.55 0.0025 0 0.764 0.0025 0 1.524" />
+    <mesh name="ct_tape_l" vertex="-0.003 -3.05 1.475 -0.003 -3.05 1.55 -0.003 0 1.449 -0.003 0 1.524 0.003 -3.05 1.475 0.003 -3.05 1.55 0.003 0 1.449 0.003 0 1.524" />
+    <mesh name="ct_net_r" vertex="-0.0025 0 0.764 -0.0025 0 1.524 -0.0025 3.05 0.79 -0.0025 3.05 1.55 0.0025 0 0.764 0.0025 0 1.524 0.0025 3.05 0.79 0.0025 3.05 1.55" />
+    <mesh name="ct_tape_r" vertex="-0.003 0 1.449 -0.003 0 1.524 -0.003 3.05 1.475 -0.003 3.05 1.55 0.003 0 1.449 0.003 0 1.524 0.003 3.05 1.475 0.003 3.05 1.55" />
   </asset>
   <worldbody>
     <body name="base_link" pos="0 0 0.0">
@@ -131,7 +135,7 @@
                 <joint name="Joint5" axis="0 -1 0" />
                 <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="Link5" />
                 <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="Link5" contype="0" conaffinity="0" />
-                <body name="Link6" pos="0 0.915 0">
+                <body name="Link6" pos="0 0.93 0">
                   <inertial pos="0 0 0" quat="0.000281656 0.706825 -0.000281432 0.707388" mass="0.0005" diaginertia="4.17e-06 2.51e-06 1.67e-06" />
                   <geom name="racket_face" size="0.1225 0.1 0.005" quat="0.500398 0.5 0.499602 0.5" type="box" mass="0" />
                   <site name="racket_center" pos="0 0 0" />
@@ -145,6 +149,28 @@
     </body>
     <geom name="floor" type="plane" size="30 30 0.1" contype="1" conaffinity="1" />
     <light pos="0 0 4" dir="0 0 -1" directional="true" />
+    <body name="court" pos="0 0 0">
+      <geom name="ct_surround" type="box" rgba="0.10 0.22 0.26 1" mass="0" contype="0" conaffinity="0" pos="6.7 0 0.001" size="8.7 5.05 0.0005" />
+      <geom name="ct_court" type="box" rgba="0.08 0.40 0.28 1" mass="0" contype="0" conaffinity="0" pos="6.7 0 0.002" size="6.7 3.05 0.0005" />
+      <geom name="ct_base_near" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="0.02 0 0.004" size="0.02 3.05 0.0005" />
+      <geom name="ct_base_far" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="13.38 0 0.004" size="0.02 3.05 0.0005" />
+      <geom name="ct_side_d_l" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="6.7 -3.03 0.004" size="6.7 0.02 0.0005" />
+      <geom name="ct_side_d_r" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="6.7 3.03 0.004" size="6.7 0.02 0.0005" />
+      <geom name="ct_side_s_l" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="6.7 -2.57 0.004" size="6.7 0.02 0.0005" />
+      <geom name="ct_side_s_r" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="6.7 2.57 0.004" size="6.7 0.02 0.0005" />
+      <geom name="ct_svc_near" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="4.7 0 0.004" size="0.02 3.05 0.0005" />
+      <geom name="ct_svc_far" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="8.7 0 0.004" size="0.02 3.05 0.0005" />
+      <geom name="ct_long_near" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="0.78 0 0.004" size="0.02 3.05 0.0005" />
+      <geom name="ct_long_far" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="12.62 0 0.004" size="0.02 3.05 0.0005" />
+      <geom name="ct_mid_near" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="2.36 0 0.004" size="2.36 0.02 0.0005" />
+      <geom name="ct_mid_far" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="11.04 0 0.004" size="2.36 0.02 0.0005" />
+      <geom name="ct_net_l" type="mesh" rgba="0.10 0.12 0.12 0.55" mass="0" contype="0" conaffinity="0" mesh="ct_net_l" pos="6.7 0 0" />
+      <geom name="ct_tape_l" type="mesh" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" mesh="ct_tape_l" pos="6.7 0 0" />
+      <geom name="ct_post_l" type="cylinder" rgba="0.85 0.85 0.87 1" mass="0" contype="0" conaffinity="0" pos="6.7 -3.05 0.775" size="0.025 0.775" />
+      <geom name="ct_net_r" type="mesh" rgba="0.10 0.12 0.12 0.55" mass="0" contype="0" conaffinity="0" mesh="ct_net_r" pos="6.7 0 0" />
+      <geom name="ct_tape_r" type="mesh" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" mesh="ct_tape_r" pos="6.7 0 0" />
+      <geom name="ct_post_r" type="cylinder" rgba="0.85 0.85 0.87 1" mass="0" contype="0" conaffinity="0" pos="6.7 3.05 0.775" size="0.025 0.775" />
+    </body>
   </worldbody>
   <actuator>
     <motor name="FL_steer_joint" joint="FL_steer_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
