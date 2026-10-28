@@ -41,7 +41,7 @@ def main():
     parser.add_argument('--run', required=True, type=Path)
     parser.add_argument('--socket', required=True)
     parser.add_argument('--binary', required=True, type=Path)
-    parser.add_argument('--speed', type=float, default=1.0)
+    parser.add_argument('--speed', type=float, default=0.25, help='live simulation speed multiplier (default: 0.25)')
     parser.add_argument('--timeout', type=float, default=180)
     args = parser.parse_args()
     if any(not math.isfinite(x) or x <= 0 for x in (args.speed, args.timeout)):

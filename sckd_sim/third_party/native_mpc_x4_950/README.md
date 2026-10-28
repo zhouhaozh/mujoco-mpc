@@ -69,3 +69,10 @@ library's terminal velocity, consuming controls, bridge output, invalid/rejected
 inputs, reset and destruction, and process mappings without the C API library.
 Headless runs omit `--view`. The default config retains the selected trajectory,
 initial base position, prediction height and motion limits.
+
+实时窗口默认以 0.25 倍速运行（1 秒仿真时间约对应 4 秒墙钟时间），
+可用 `--view-speed 0.1` 改为十分之一速度，或 `--view-speed 1` 恢复正常速度。
+该参数只改变实时等待节奏，不改变物理时间步长和预测时间轴。
+完整重置执行：关闭实时窗口，再次运行同一条 `--view` 命令；这会重新创建
+仿真、预测器和 MPC，并从轨迹首点开始。窗口内目前没有整条控制链重启快捷键。
+默认每次创建新的输出目录；如显式传入 `--output`，重新执行时需使用新的空目录。

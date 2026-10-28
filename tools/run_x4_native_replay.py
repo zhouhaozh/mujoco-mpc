@@ -38,7 +38,7 @@ def main():
     parser.add_argument('--output', type=Path)
     parser.add_argument('--no-build', action='store_true')
     parser.add_argument('--view', action='store_true', help='open the window first, then display the simulation as it runs')
-    parser.add_argument('--view-speed', type=float, default=1.0, help='live simulation speed multiplier (default: 1)')
+    parser.add_argument('--view-speed', type=float, default=0.25, help='live simulation speed multiplier (default: 0.25, four times slower)')
     parser.add_argument('--timeout', type=float, default=180)
     args = parser.parse_args()
     if args.view and not (os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY')):
