@@ -151,6 +151,12 @@ target_include_directories(test_runtime_config PRIVATE third_party/doctest)
 target_link_libraries(test_runtime_config PRIVATE sckd_runtime_contracts)
 add_test(NAME runtime_config COMMAND test_runtime_config)
 
+# 仅配置/静态模型检查；不使能电机、不调用控制器或 mj_step。
+add_executable(test_x4_950_config cpp/tests/test_x4_950_config.cc)
+target_include_directories(test_x4_950_config PRIVATE third_party/doctest)
+target_link_libraries(test_x4_950_config PRIVATE sckd_core sckd_runtime_contracts)
+add_test(NAME x4_950_config COMMAND test_x4_950_config WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
 add_executable(test_runtime_supervision cpp/tests/test_runtime_supervision.cc)
 target_include_directories(test_runtime_supervision PRIVATE third_party/doctest)
 target_link_libraries(test_runtime_supervision PRIVATE sckd_runtime_contracts)

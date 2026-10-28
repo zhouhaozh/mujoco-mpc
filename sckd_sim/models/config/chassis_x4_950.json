@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "variant": "x4_950",
+  "calibrated": false,
+  "geometry": {
+    "corner_xy_m": [
+      [
+        0.475,
+        0.475
+      ],
+      [
+        0.475,
+        -0.475
+      ],
+      [
+        -0.475,
+        0.475
+      ],
+      [
+        -0.475,
+        -0.475
+      ]
+    ],
+    "wheel_radius_m": 0.0825,
+    "dual_wheel_offset_m": 0.024,
+    "drives_per_corner": 2,
+    "wheel_sign": [
+      1,
+      -1,
+      1,
+      -1,
+      1,
+      -1,
+      1,
+      -1
+    ],
+    "robot_mass_kg": 51.163677,
+    "source": "X4_950 URDF舵轴位置±0.475m；轮轴偏移0.1045m减轮碰撞中心偏移0.0805m=0.024m；半径来自collision URDF，符号来自左右轮轴±Y；质量为生成MJCF body_mass求和（导出舍入）。"
+  },
+  "coordination": {
+    "enable_cos_projection": true,
+    "cos_deadband_rad": 0.1,
+    "cos_floor": 0.0,
+    "reverse_threshold_rad": 1.5707963267948966,
+    "reverse_hysteresis_rad": 0.2,
+    "zero_speed_mps": 0.001,
+    "note": "复用现有协同算法及上述算法阈值；不是X4_950硬件标定。"
+  },
+  "ramp": {
+    "accel_limit_mps2": 0.4,
+    "ang_accel_limit_rad_s2": 0.5,
+    "dir_rate_limit_rad_s": 1.0,
+    "note": "独立的低速仿真初值，不表示实际能力上限。"
+  },
+  "servo": {
+    "period_ms": 1,
+    "steer_kp": 0.248906416,
+    "steer_kd": 0.124453208,
+    "wheel_kp": 0.2,
+    "wheel_ki": 0.0,
+    "wheel_int_max_rad": 0.0,
+    "wheel_accel_mps2": 0.4,
+    "note": "未整定仿真假设：舵轴对角惯量约0.015556651kg·m²，ωn=4rad/s、ζ=1，kp=16I、kd=8I；轮速先用P增益0.2N·m/(rad/s)，关闭积分，动态限矩接口仍用于后续启用积分时的抗饱和。"
+  },
+  "odom": {
+    "steer_offset_rad": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "wheel_speed_noise_rad_s": 0,
+    "imu_rate_hz": 1000,
+    "imu_latency_ms": 0,
+    "gyro_bias_rad_s": 0,
+    "gyro_noise_rad_s": 0,
+    "acc_noise_mps2": 0,
+    "gyro_fallback_ms": 300,
+    "note": "真值反馈，无量化、偏移、噪声或延迟；fallback阈值沿用算法值，不是硬件延迟。"
+  }
+}

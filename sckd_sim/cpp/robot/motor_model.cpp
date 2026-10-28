@@ -76,25 +76,13 @@ double MotorModel::envelope(const MotorTypeConfig& m, double abs_speed) {
   return p.back().torque_nm;
 }
 
-double MotorModel::compute(int axis, double q_meas, double dq_meas) {
+double MotorModel::torque_cap(int axis, double requested_tau_nm, double dq_meas) const {
   if (axis < 0 || axis >= kNumAxes) return 0.0;
-  auto& st = st_[axis];
-  if (!st.enabled) {  // 失能:零输出,物理继续
-    st.last_tau = 0.0;
-    return 0.0;
-  }
   const auto& m = motor_of(axis);
   const auto& jc = joint_of(axis);
-  const MotorCmd& c = st.pipe.empty() ? st.issued : st.pipe.front();  // 延迟后的生效命令
-
-  st.effective=c;
-  // 手册混合控制律(RS04 p43 / RS06 p41)
-  double tau = c.kp * (c.q - q_meas) + c.kd * (c.dq - dq_meas) + c.tau_ff;
-
-  // 限幅链:机构限矩 -> 峰值/连续档 -> T-N 方向相关包络
   double cap = std::min(jc.mechanism_limit_nm,
                         cfg_.profile_peak ? m.peak_torque_nm : m.continuous_torque_nm);
-  const bool motoring = tau * dq_meas > 0.0;
+  const bool motoring = requested_tau_nm * dq_meas > 0.0;
   if (motoring) {
     cap = std::min(cap, envelope(m, std::fabs(dq_meas)));
     // 软件速度保护:超过运控速度量程且仍在推动 -> 停止推动
@@ -102,6 +90,24 @@ double MotorModel::compute(int axis, double q_meas, double dq_meas) {
   } else {
     cap = std::min(cap, m.braking_torque_nm);
   }
+  return std::max(0.0, cap);
+}
+
+double MotorModel::compute(int axis, double q_meas, double dq_meas) {
+  if (axis < 0 || axis >= kNumAxes) return 0.0;
+  auto& st = st_[axis];
+  if (!st.enabled) {  // 失能:零输出,物理继续
+    st.last_tau = 0.0;
+    return 0.0;
+  }
+  const MotorCmd& c = st.pipe.empty() ? st.issued : st.pipe.front();  // 延迟后的生效命令
+
+  st.effective=c;
+  // 手册混合控制律(RS04 p43 / RS06 p41)
+  double tau = c.kp * (c.q - q_meas) + c.kd * (c.dq - dq_meas) + c.tau_ff;
+
+  // 限幅链:机构限矩 -> 峰值/连续档 -> T-N 方向相关包络
+  const double cap = torque_cap(axis, tau, dq_meas);
   st.last_raw=tau;st.last_cap=cap;
   st.last_tau = std::clamp(tau, -cap, cap);
   return st.last_tau;

@@ -1,0 +1,44 @@
+X4_950 独立运行配置——本轮改动清单
+
+Diff基准：本轮开始时的工作区；不重复包含前几轮尚未提交的URDF/执行器改动。
+未提交Git。
+
+新增：
+sckd_sim/models/config/chassis_x4_950.json
+sckd_sim/models/config/runtime_x4_950.json
+sckd_sim/cpp/tests/test_x4_950_config.cc
+
+修改：
+sckd_sim/CMakeLists.txt
+sckd_sim/README.md
+sckd_sim/cpp/control/chassis_servo.cpp
+sckd_sim/cpp/core/config.cpp
+sckd_sim/cpp/core/config.h
+sckd_sim/cpp/hal/robot_interface.h
+sckd_sim/cpp/hal/sim_backend.cpp
+sckd_sim/cpp/hal/sim_backend.h
+sckd_sim/cpp/robot/motor_model.cpp
+sckd_sim/cpp/robot/motor_model.h
+sckd_sim/cpp/runtime/state_inputs.cpp
+sckd_sim/cpp/runtime/trajectory_executor.cpp
+sckd_sim/models/config/motors_x4_950.json
+sckd_sim/models/config/x4_950.json
+sckd_sim/models/generated/x4_950_manifest.json
+
+实现：
+1. 独立运行/底盘配置；物理、电机及底盘伺服1ms，零命令延迟、真值反馈、零噪声。
+2. 新机手臂/舵增益按模型惯量生成未整定初值；轮速Kp=0.2、Ki=0；保留实际硬件参数null。
+3. 共用MotorModel现有T-N/延迟算法；底盘抗饱和查询当前能力，连续档低速11Nm、高速降额。
+4. 配套、时序、反馈、17轴执行器映射和限矩加载校验；所有原控制器执行阻断保留。
+5. 网球独立配置及生成模型未变；网球运行默认与原抗饱和积分时序保留。
+
+检查：
+- m2_intercept及相关库/检查目标编译通过（没有启动该应用）。
+- ctest仅运行motor_model、runtime_config、x4_950_config，3/3通过。
+- 构建器静态检查通过，nq24/nv23/nu17；mj_step步数0。
+- 原网球配置、主入口/NMPC/接触阻断文件哈希与本轮开始一致。
+- 未连接或运行仿真闭环、未调用优化器、未推进物理。
+- 检查偏差：协作子任务误执行既有mock底盘伺服单测，4/4通过；其中调用了ChassisServo.update，但没有连接仿真后端或mj_step。发现后停止此类检查。
+- 新增静态检查没有控制器实例、命令发送或物理步进。
+
+未验证：伺服动态稳定性、跟踪性能、羽毛球飞行/击球；配置接线完成不表示可解除运行阻断。

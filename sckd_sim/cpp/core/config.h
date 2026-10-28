@@ -3,6 +3,7 @@
 // 运行时只读;来源与假设标注在 json 内(calibrated/sources 字段)。
 #include <string>
 #include <vector>
+#include <array>
 #include "core/types.h"
 
 namespace sckd {
@@ -31,7 +32,15 @@ struct JointConfig {
   double mechanism_limit_nm = 0;
 };
 
+struct ArmServoConfig {
+  bool enabled = false;  // 未配置时保持网球执行器原有增益和准备姿态。
+  std::array<double, kNumArm> kp{}, kd{}, standby_q{};
+};
+
 struct MotorSystemConfig {
+  std::string robot_variant;
+  bool truth_feedback = false;
+  ArmServoConfig arm_servo;
   double command_delay_ms = 9.0;
   double control_dt_s = 0.001;
   int encoder_bits = 14;                 // 占位,待实机确认(设计 §3.3)
@@ -45,9 +54,7 @@ struct MotorSystemConfig {
 MotorSystemConfig LoadMotorConfig(const std::string& motors_json_path,
                                   const std::string& variant_json_path);
 
-// --- 底盘配置(chassis_m1.json;来源:sckd-robot 实机标定,见 json sources) ---
-
-#include <array>
+// --- 底盘配置：网球与 X4_950 分别加载各自 JSON ---
 
 struct ChassisCoordination {
   bool enable_cos_projection = true;
@@ -80,6 +87,7 @@ struct ChassisOdomParams {
 };
 
 struct ChassisConfig {
+  std::string robot_variant;
   std::array<double, 4> corner_x{}, corner_y{};   // 契约角序 FL,FR,RL,RR
   double wheel_radius = 0.0828;
   double dual_offset = 0.055;

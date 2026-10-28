@@ -4,9 +4,6 @@
 #include <cmath>
 
 namespace sckd {
-namespace {
-constexpr double kWheelTauCap = 36.0;  // RS06 底盘电机机构限矩(N·m,§3.3)
-}
 
 ChassisServo::ChassisServo(const ChassisConfig& cfg, RobotInterface* hw)
     : cfg_(cfg), hw_(hw), kin_(SwerveKinematics::FromChassisConfig(cfg)) {}
@@ -83,7 +80,8 @@ void ChassisServo::WheelTick(double dt) {
       target_lin_[idx] = MoveToward(target_lin_[idx], alloc_lin_[idx],
                                     cfg_.servo.wheel_target_accel_mps2 * dt);
       const double a_tgt = (target_lin_[idx] - prev_tgt) / dt;  // m/s²
-      const double v_meas = sgn * hw_->joint_measured(ax[j]).dq * cfg_.wheel_radius;
+      const JointReport wheel = hw_->joint_measured(ax[j]);
+      const double v_meas = sgn * wheel.dq * cfg_.wheel_radius;
       if (std::fabs(alloc_lin_[idx]) < 1e-6 && std::fabs(v_meas) < 0.05) {
         // 停稳吸附:目标零且低速 -> 清积分/零力矩,消除残余爬行
         wheel_int_[idx] = 0.0;
@@ -96,15 +94,23 @@ void ChassisServo::WheelTick(double dt) {
       const double tau_ff_a = cfg_.robot_mass_kg / kDriveWheels * a_tgt * cfg_.wheel_radius;
       double tau = sgn * (cfg_.servo.wheel_kp * err + cfg_.servo.wheel_ki * wheel_int_[idx]
                           + tau_ff_a);
+      const double tau_cap = hw_->motor_torque_cap(ax[j], tau, wheel.dq);
       // 积分条件:未饱和 且 误差在带内(|err|<4 rad/s)——斜坡/急停大误差期间
       // 不积分,防缠绕过零反弹(2026-10-05 实测:0.6 m/s 反向回弹)
-      if (std::fabs(tau) <= kWheelTauCap && std::fabs(err) < 4.0) {
-        wheel_int_[idx] += err * dt;
-      } else if (std::fabs(tau) > kWheelTauCap) {
-        tau = tau > 0 ? kWheelTauCap : -kWheelTauCap;
-      }
       const double imax = cfg_.servo.wheel_int_max_rad;
-      wheel_int_[idx] = std::clamp(wheel_int_[idx], -imax, imax);  // 幅值钳制防缠绕
+      if (std::fabs(tau) <= tau_cap && std::fabs(err) < 4.0) {
+        const double next_int = std::clamp(wheel_int_[idx] + err * dt, -imax, imax);
+        if (!hw_->has_dynamic_motor_torque_cap()) {
+          // 网球版保持旧积分时序：本拍输出不重算，下拍再依 36 N·m 判断。
+          wheel_int_[idx] = next_int;
+        } else {
+          const double next_tau = sgn * (cfg_.servo.wheel_kp * err +
+                                          cfg_.servo.wheel_ki * next_int + tau_ff_a);
+          const double next_cap = hw_->motor_torque_cap(ax[j], next_tau, wheel.dq);
+          if (std::fabs(next_tau) <= next_cap) wheel_int_[idx] = next_int;
+        }
+      }
+      if (std::fabs(tau) > tau_cap) tau = std::copysign(tau_cap, tau);
       MotorCmd wc;
       wc.tau_ff = tau;  // kp=0/kd=0:纯前馈,环路显式(MPC 可整体替换)
       hw_->set_axis_cmd(ax[j], wc);

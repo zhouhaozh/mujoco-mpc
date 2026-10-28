@@ -47,7 +47,8 @@ void UpdateInputs(InputContext c, double ts) {
   for (int j = 0; j < 5; ++j) {
     const JointReport jr = be.joint_measured(AxisArm(j));
     snapshot.robot.joints[AxisArm(j)]=jr;
-    snapshot.robot.joint_position_source[AxisArm(j)]=RobotStateSource::kMeasured;
+    snapshot.robot.joint_position_source[AxisArm(j)]=be.motor_config().truth_feedback
+        ? RobotStateSource::kSimulationTruth : RobotStateSource::kMeasured;
     q_cur[j] = jr.q; dq_cur[j] = jr.dq;
   }
   // 新增状态快照不能多消费带噪传感器样本，否则会推进SimBackend共享RNG，

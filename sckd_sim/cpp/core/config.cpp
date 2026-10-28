@@ -2,6 +2,8 @@
 
 #include <nlohmann/json.hpp>
 #include <fstream>
+#include <filesystem>
+#include <cmath>
 #include <map>
 #include <sstream>
 #include <stdexcept>
@@ -53,6 +55,18 @@ MotorSystemConfig LoadMotorConfig(const std::string& motors_json_path,
   const auto vj = ReadJson(variant_json_path);
 
   MotorSystemConfig cfg;
+  cfg.robot_variant = vj.value("variant", "");
+  cfg.truth_feedback = mj.value("truth_feedback", false);
+  if (cfg.robot_variant == "x4_950" || mj.value("variant", "") == "x4_950") {
+    if (cfg.robot_variant != "x4_950" || mj.value("variant", "") != "x4_950")
+      throw std::runtime_error("X4_950 motor and robot variants must match");
+    const auto expected = std::filesystem::path(variant_json_path).parent_path().parent_path()
+                          / vj.at("motor_config").get<std::string>();
+    if (mj.value("variant", "") != cfg.robot_variant ||
+        std::filesystem::weakly_canonical(expected) !=
+            std::filesystem::weakly_canonical(motors_json_path))
+      throw std::runtime_error("X4_950 motor config does not match variant.motor_config");
+  }
   cfg.command_delay_ms = mj.value("command_delay_ms", 9.0);
   cfg.control_dt_s = mj.value("control_dt_s", 0.001);
   cfg.encoder_bits = mj.value("encoder_bits", 14);
@@ -84,12 +98,37 @@ MotorSystemConfig LoadMotorConfig(const std::string& motors_json_path,
       throw std::runtime_error("joint " + name + ": mechanism_limit_nm must be > 0");
     cfg.joints.push_back(jc);
   }
+  if (cfg.robot_variant == "x4_950") {
+    const auto& servo = vj.at("arm_servo");
+    for (const char* key : {"kp", "kd", "standby_q_rad"})
+      if (!servo.at(key).is_array() || servo.at(key).size() != kNumArm)
+        throw std::runtime_error("X4_950 arm servo requires five values per field");
+    cfg.arm_servo.kp = servo.at("kp").get<std::array<double, kNumArm>>();
+    cfg.arm_servo.kd = servo.at("kd").get<std::array<double, kNumArm>>();
+    cfg.arm_servo.standby_q = servo.at("standby_q_rad").get<std::array<double, kNumArm>>();
+    for (int j = 0; j < kNumArm; ++j) {
+      const auto& m = motors.at(cfg.joints[AxisArm(j)].motor);
+      const double kp = cfg.arm_servo.kp[j], kd = cfg.arm_servo.kd[j];
+      const double q = cfg.arm_servo.standby_q[j];
+      if (!std::isfinite(kp) || !std::isfinite(kd) || !std::isfinite(q) ||
+          kp < m.kp_min || kp > m.kp_max || kd < m.kd_min || kd > m.kd_max ||
+          std::fabs(q) > m.hybrid_position_limit_rad)
+        throw std::runtime_error("X4_950 arm servo exceeds motor command range");
+      if (j == 1 || j == 2) {
+        const auto& range = vj.at("confirmed_joint_position_limits_rad").at("Joint" + std::to_string(j+1));
+        if (q < range.at(0).get<double>() || q > range.at(1).get<double>())
+          throw std::runtime_error("X4_950 standby exceeds confirmed joint range");
+      }
+    }
+    cfg.arm_servo.enabled = true;
+  }
   return cfg;
 }
 
 ChassisConfig LoadChassisConfig(const std::string& chassis_json_path) {
   const auto j = ReadJson(chassis_json_path);
   ChassisConfig c;
+  c.robot_variant = j.value("variant", "");
   const auto& g = j.at("geometry");
   int i = 0;
   for (const auto& xy : g.at("corner_xy_m")) {

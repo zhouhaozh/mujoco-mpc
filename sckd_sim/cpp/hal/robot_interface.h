@@ -15,6 +15,15 @@ class RobotInterface {
   virtual BaseState base_state() const = 0;                   // 真值(仅评估)
   virtual JointReport joint(int axis) const = 0;              // 真值(仅评估)
   virtual JointReport joint_measured(int axis) = 0;           // 测量视角(控制器)
+  // 底盘抗饱和所需的当前力矩能力。旧后端保持 RS06 36 N·m 语义。
+  virtual double motor_torque_cap(int axis, double requested_tau_nm,
+                                  double dq_rad_s) const {
+    (void)axis;
+    (void)requested_tau_nm;
+    (void)dq_rad_s;
+    return 36.0;
+  }
+  virtual bool has_dynamic_motor_torque_cap() const { return false; }
   virtual bool get_imu(ImuSample* out) = 0;                   // 最新 IMU 样本(带龄期)
   // 臂重力前馈(由模型计算;实机后端用同源模型文件实现——接口不变)
   virtual bool arm_gravity(const double q[kNumArm], double tau_ff[kNumArm]) = 0;

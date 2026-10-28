@@ -1,13 +1,16 @@
 {
   "variant": "x4_950",
-  "purpose": "geometry_only_no_actuators",
+  "purpose": "model_with_actuators_controller_disabled",
   "generated_from": {
     "urdf": "source/x4_950/X4_950.urdf",
     "urdf_sha256": "1f2e3e6f174ff3089cc41d0143136020ad8a3ce56acd3dbf6c13c96ccc3606b4",
+    "motors": "config/motors_x4_950.json",
+    "motors_sha256": "675a90e10c7689ac1e5b0798f8defcf32a7d03cf55ce32a3012534f53c12b2f9",
+    "torque_profile": "continuous",
     "collision_reference": "source/x4_950/X4_950_collision.urdf",
     "collision_reference_sha256": "f42ecd1d16d6364a94b50f1cc2bb9aa3a439a74c3a16b74df21fbfa428266cc2",
     "config": "config/x4_950.json",
-    "config_sha256": "daebea942c664ef33f37b2de53f9cef8ba6ee03221db43d01b3525b74afabd7f",
+    "config_sha256": "a877c845382f5663523a049a5769d0b604e6b020e19abbd8c28bfcd92e048925",
     "mujoco_version": "3.14.0"
   },
   "edits": [
@@ -18,6 +21,20 @@
     {
       "edit": "urdf_to_mjcf_saveLastXML",
       "reason": "网格 geom 保真(mjSpec.to_xml 实测丢 URDF 网格);inertial 原样保留(§3.2.1)"
+    },
+    {
+      "edit": "apply_confirmed_joint_position_limits",
+      "ranges_rad": {
+        "Joint2": [
+          -3.14,
+          0.5
+        ],
+        "Joint3": [
+          -3.14,
+          0.5
+        ]
+      },
+      "reason": "采用用户确认的J2/J3行程；只覆盖生成MJCF，不改归档源URDF"
     },
     {
       "edit": "add_freejoint_base_link",
@@ -36,105 +53,208 @@
       "reason": "几何预览地面；接触参数使用 MuJoCo 默认值，未作动力学验证"
     },
     {
-      "edit": "omit_actuators",
-      "reason": "硬件参数未确认；仅检查几何，不加载网球电机配置"
+      "edit": "add_actuators_17",
+      "reason": "读取独立电机配置；对称ctrlrange取机构裁剪、所选力矩档及制动裁剪的最小值；gear=1；不在MJCF中模拟T-N包络/伺服/延迟，也不解除控制器阻断"
     },
     {
       "edit": "keyframe_home_and_timestep",
       "reason": "base_z=0.0;轮心 0.2514−0.1689=0.0825 m，半径 0.0825 m；零位仅几何检查"
     }
   ],
+  "controller_execution_enabled": false,
   "joint_map": [
     {
       "contract_axis": 0,
       "joint": "FL_steer_joint",
-      "joint_id": 1
+      "joint_id": 1,
+      "actuator_id": 0,
+      "motor": "RS06",
+      "ctrlrange_nm": [
+        -11.0,
+        11.0
+      ]
     },
     {
       "contract_axis": 1,
       "joint": "FL_wheel_left_joint",
-      "joint_id": 2
+      "joint_id": 2,
+      "actuator_id": 1,
+      "motor": "RS06",
+      "ctrlrange_nm": [
+        -11.0,
+        11.0
+      ]
     },
     {
       "contract_axis": 2,
       "joint": "FL_wheel_right_joint",
-      "joint_id": 3
+      "joint_id": 3,
+      "actuator_id": 2,
+      "motor": "RS06",
+      "ctrlrange_nm": [
+        -11.0,
+        11.0
+      ]
     },
     {
       "contract_axis": 3,
       "joint": "FR_steer_joint",
-      "joint_id": 4
+      "joint_id": 4,
+      "actuator_id": 3,
+      "motor": "RS06",
+      "ctrlrange_nm": [
+        -11.0,
+        11.0
+      ]
     },
     {
       "contract_axis": 4,
       "joint": "FR_wheel_left_joint",
-      "joint_id": 5
+      "joint_id": 5,
+      "actuator_id": 4,
+      "motor": "RS06",
+      "ctrlrange_nm": [
+        -11.0,
+        11.0
+      ]
     },
     {
       "contract_axis": 5,
       "joint": "FR_wheel_right_joint",
-      "joint_id": 6
+      "joint_id": 6,
+      "actuator_id": 5,
+      "motor": "RS06",
+      "ctrlrange_nm": [
+        -11.0,
+        11.0
+      ]
     },
     {
       "contract_axis": 6,
       "joint": "RL_steer_joint",
-      "joint_id": 10
+      "joint_id": 10,
+      "actuator_id": 6,
+      "motor": "RS06",
+      "ctrlrange_nm": [
+        -11.0,
+        11.0
+      ]
     },
     {
       "contract_axis": 7,
       "joint": "RL_wheel_left_joint",
-      "joint_id": 11
+      "joint_id": 11,
+      "actuator_id": 7,
+      "motor": "RS06",
+      "ctrlrange_nm": [
+        -11.0,
+        11.0
+      ]
     },
     {
       "contract_axis": 8,
       "joint": "RL_wheel_right_joint",
-      "joint_id": 12
+      "joint_id": 12,
+      "actuator_id": 8,
+      "motor": "RS06",
+      "ctrlrange_nm": [
+        -11.0,
+        11.0
+      ]
     },
     {
       "contract_axis": 9,
       "joint": "RR_steer_joint",
-      "joint_id": 7
+      "joint_id": 7,
+      "actuator_id": 9,
+      "motor": "RS06",
+      "ctrlrange_nm": [
+        -11.0,
+        11.0
+      ]
     },
     {
       "contract_axis": 10,
       "joint": "RR_wheel_left_joint",
-      "joint_id": 8
+      "joint_id": 8,
+      "actuator_id": 10,
+      "motor": "RS06",
+      "ctrlrange_nm": [
+        -11.0,
+        11.0
+      ]
     },
     {
       "contract_axis": 11,
       "joint": "RR_wheel_right_joint",
-      "joint_id": 9
+      "joint_id": 9,
+      "actuator_id": 11,
+      "motor": "RS06",
+      "ctrlrange_nm": [
+        -11.0,
+        11.0
+      ]
     },
     {
       "contract_axis": 12,
       "joint": "Joint1",
-      "joint_id": 13
+      "joint_id": 13,
+      "actuator_id": 12,
+      "motor": "RS04",
+      "ctrlrange_nm": [
+        -40.0,
+        40.0
+      ]
     },
     {
       "contract_axis": 13,
       "joint": "Joint2",
-      "joint_id": 14
+      "joint_id": 14,
+      "actuator_id": 13,
+      "motor": "RS04",
+      "ctrlrange_nm": [
+        -40.0,
+        40.0
+      ]
     },
     {
       "contract_axis": 14,
       "joint": "Joint3",
-      "joint_id": 15
+      "joint_id": 15,
+      "actuator_id": 14,
+      "motor": "RS06",
+      "ctrlrange_nm": [
+        -11.0,
+        11.0
+      ]
     },
     {
       "contract_axis": 15,
       "joint": "Joint4",
-      "joint_id": 16
+      "joint_id": 16,
+      "actuator_id": 15,
+      "motor": "RS06",
+      "ctrlrange_nm": [
+        -11.0,
+        11.0
+      ]
     },
     {
       "contract_axis": 16,
       "joint": "Joint5",
-      "joint_id": 17
+      "joint_id": 17,
+      "actuator_id": 16,
+      "motor": "RS05",
+      "ctrlrange_nm": [
+        -1.6,
+        1.6
+      ]
     }
   ],
   "geometry_check": {
     "nq": 24,
     "nv": 23,
-    "nu": 0,
+    "nu": 17,
     "nmesh": 18,
     "source_mass_kg": 51.1636362,
     "compiled_mass_kg": 51.163677,
@@ -165,24 +285,36 @@
     ],
     "link6_fixed": true,
     "contact_geom_count": 10,
+    "joint_ranges_rad": {
+      "Joint2": [
+        -3.14,
+        0.5
+      ],
+      "Joint3": [
+        -3.14,
+        0.5
+      ]
+    },
+    "joint_limits_ok": true,
+    "actuator_mapping_and_ranges_ok": true,
     "steps_smoke": 0,
     "ok": true
   },
   "missing_hardware_parameters": {
-    "Joint2_position_range_rad": null,
-    "Joint3_position_range_rad": null,
     "arm_velocity_limits_rad_s": null,
     "arm_acceleration_limits_rad_s2": null,
     "chassis_velocity_and_acceleration_limits": null,
     "continuous_joint_cable_travel_limits": null,
-    "motor_types_and_torque_speed_limits": null,
+    "actual_supply_and_drive_versions": null,
+    "additional_transmission_and_mechanism_limits": null,
+    "RS05_braking_torque_nm": null,
     "servo_gains_and_command_delay": null,
     "joint_friction_and_reflected_inertia": null,
     "wheel_ground_friction": null
   },
   "known_gaps": [
-    "不读取网球 motors.json，不生成执行器；不能作为现有 M0/M1/M2 控制程序的可执行模型。",
-    "源 URDF 的 J2/J3 limit 全为零，MuJoCo 3.14 导入后为不限位；不是已确认的实际行程。",
+    "独立电机配置为motors_x4_950.json；生成17个gear=1执行器，ctrlrange取机构裁剪、所选力矩档及制动裁剪最小值。MJCF不实现T-N/伺服/延迟，控制器入口仍阻断。",
+    "源URDF的J2/J3 limit仍全零；生成MJCF已应用用户确认的两轴行程[-3.14,0.5] rad，并显式启用限位。",
     "保留源质量和惯量（MJCF 导出存在数值舍入），未进行硬件辨识。",
     "原网格仅视觉，碰撞只保留八个轮子和 Link6 原有拍面；车体、臂及自碰撞不在本阶段验证范围。",
     "Link6 原点是拍心；racket_face 保留源旋转和尺寸，薄轴为 geom 局部 Z，接近 Link6 局部 X。",

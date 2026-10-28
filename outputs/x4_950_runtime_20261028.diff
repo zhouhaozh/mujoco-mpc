@@ -1,0 +1,816 @@
+diff --git a/sckd_sim/CMakeLists.txt b/sckd_sim/CMakeLists.txt
+--- a/sckd_sim/CMakeLists.txt
++++ b/sckd_sim/CMakeLists.txt
+@@ -151,6 +151,12 @@
+ target_link_libraries(test_runtime_config PRIVATE sckd_runtime_contracts)
+ add_test(NAME runtime_config COMMAND test_runtime_config)
+ 
++# 仅配置/静态模型检查；不使能电机、不调用控制器或 mj_step。
++add_executable(test_x4_950_config cpp/tests/test_x4_950_config.cc)
++target_include_directories(test_x4_950_config PRIVATE third_party/doctest)
++target_link_libraries(test_x4_950_config PRIVATE sckd_core sckd_runtime_contracts)
++add_test(NAME x4_950_config COMMAND test_x4_950_config WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
++
+ add_executable(test_runtime_supervision cpp/tests/test_runtime_supervision.cc)
+ target_include_directories(test_runtime_supervision PRIVATE third_party/doctest)
+ target_link_libraries(test_runtime_supervision PRIVATE sckd_runtime_contracts)
+diff --git a/sckd_sim/README.md b/sckd_sim/README.md
+--- a/sckd_sim/README.md
++++ b/sckd_sim/README.md
+@@ -80,13 +80,13 @@
+ RS05 额定/峰值力矩为1.6/5.5 N·m，减速比7.75:1，运控量程为位置
+ ±12.57 rad、速度±50 rad/s、Kp 0–500、Kd 0–5。48V T-N点是读图近似，
+ 0rpm平台及480rpm零力矩闭合为显式假设，`calibrated=false`。独立配置
+-选连续档，制动限幅1.6 N·m、零延迟、2ms更新和关节裁剪上限均单独标为
++选连续档，制动限幅1.6 N·m、零延迟、1ms更新和关节裁剪上限均单独标为
+ 仿真假设；实际制动能力、额外机构限矩/传动和供电版本仍留空。
+ 构建器读取该独立配置，按契约轴序生成 `gear=1` 的力矩执行器，对称
+ `ctrlrange` 取机构裁剪、所选力矩档和制动裁剪的最小值。当前连续档下
+ J1/J2 为 ±40 N·m，J3/J4 与底盘12轴为 ±11 N·m，J5 为 ±1.6 N·m。
+ MJCF 只落实静态力矩范围，不包含 T-N 包络、伺服增益或命令延迟；
+-电机配置仍未接入运行入口，控制器执行阻断保持不变。
++独立运行接线见下节，控制器执行阻断保持不变。
+ 其他未确认参数继续以 `null` 保留。MuJoCo 默认接触参数仅供预览，不是硬件标定值。
+ 几何接口已适配：`ArmIk` 从模型 `home`（无则 `qpos0`）读取底座高度，
+ 从 `racket_center` 读取拍心，从 `racket_face` 盒的正薄轴读取法向；
+@@ -108,7 +108,29 @@
+ 缺失的运动能力、羽毛球物理/接触参数及避碰约束在 X4_950 JSON 中继续以
+ `null` 列出；这些是待确认清单，填写 JSON 不会自动解除本阶段执行阻断。
+ 本阶段仅验证模型和配置，未运行控制器或推进动力学；没有添加羽毛球，
+-也未适配羽毛球飞行、冲量响应、地面逻辑及电机控制。
++也未适配羽毛球飞行、冲量响应及地面逻辑；电机执行链仅完成接线，未做闭环验证。
++
++## X4_950 独立运行接线（仍禁止控制器执行）
++
++`models/config/runtime_x4_950.json` 用现有配置入口关联新模型、独立电机、
++机器人和底盘配置；相对路径以 `sckd_sim/` 为工作目录。该预设不是可运行的
++羽毛球控制器：保留入口、NMPC 初始化/生成和击球冲量阻断；指定的
++`x4_950_nlp.so` 尚未生成，不能退回网球求解库。
++
++- 物理、电机、底盘分配/轮速环统一1ms；命令延迟0，复用原延迟队列的直通分支。
++- `truth_feedback=true`、`encoder_bits=0`；关节直接读真值，底盘偏移、噪声和IMU延迟置零。
++  球观测接口在存在球时直接返回当前真值/时间戳；当前模型无球，未验证羽毛球预测。
++- `x4_950.json.arm_servo` 保存J1–J5独立增益和准备姿态 `[0,-0.5,-0.5,0,0]`。
++  增益按该姿态的模型对角惯量、假设ωn=4rad/s和ζ=1计算；仅未整定初值。
++  新机仅保留模型重力前馈，不使用网球惯量前馈或辨识增益；NMPC播放补偿延迟取0。
++- `chassis_x4_950.json` 采用新轮径0.0825m、双轮有效偏移0.024m和模型质量。
++  舵增益同样按新惯量给出；轮速先用Kp=0.2、Ki=0，平移加速度0.4m/s²。
++  这些是独立仿真假设，不能当作硬件性能或稳定性结论。
++- T–N插值、方向判定及超速保护复用原MotorModel；抗饱和查询同一动态限矩。
++  连续档底盘低速上限11N·m，高速推动按T–N降额，制动单独裁剪；候选积分不能越限。
++  网球仍使用原配置、原36N·m抗饱和阈值和积分时序。
++- 加载时核对X4模型/配置配套、周期/反馈假设及17轴绑定、gear=1和静态限矩。
++  必要检查仅包含配置读取、静态模型及编译；伺服整定、动态稳定性和击球性能尚未验证。
+ 
+ ## 结构(对应设计 §10)
+ 
+diff --git a/sckd_sim/cpp/control/chassis_servo.cpp b/sckd_sim/cpp/control/chassis_servo.cpp
+--- a/sckd_sim/cpp/control/chassis_servo.cpp
++++ b/sckd_sim/cpp/control/chassis_servo.cpp
+@@ -4,9 +4,6 @@
+ #include <cmath>
+ 
+ namespace sckd {
+-namespace {
+-constexpr double kWheelTauCap = 36.0;  // RS06 底盘电机机构限矩(N·m,§3.3)
+-}
+ 
+ ChassisServo::ChassisServo(const ChassisConfig& cfg, RobotInterface* hw)
+     : cfg_(cfg), hw_(hw), kin_(SwerveKinematics::FromChassisConfig(cfg)) {}
+@@ -83,7 +80,8 @@
+       target_lin_[idx] = MoveToward(target_lin_[idx], alloc_lin_[idx],
+                                     cfg_.servo.wheel_target_accel_mps2 * dt);
+       const double a_tgt = (target_lin_[idx] - prev_tgt) / dt;  // m/s²
+-      const double v_meas = sgn * hw_->joint_measured(ax[j]).dq * cfg_.wheel_radius;
++      const JointReport wheel = hw_->joint_measured(ax[j]);
++      const double v_meas = sgn * wheel.dq * cfg_.wheel_radius;
+       if (std::fabs(alloc_lin_[idx]) < 1e-6 && std::fabs(v_meas) < 0.05) {
+         // 停稳吸附:目标零且低速 -> 清积分/零力矩,消除残余爬行
+         wheel_int_[idx] = 0.0;
+@@ -96,15 +94,23 @@
+       const double tau_ff_a = cfg_.robot_mass_kg / kDriveWheels * a_tgt * cfg_.wheel_radius;
+       double tau = sgn * (cfg_.servo.wheel_kp * err + cfg_.servo.wheel_ki * wheel_int_[idx]
+                           + tau_ff_a);
++      const double tau_cap = hw_->motor_torque_cap(ax[j], tau, wheel.dq);
+       // 积分条件:未饱和 且 误差在带内(|err|<4 rad/s)——斜坡/急停大误差期间
+       // 不积分,防缠绕过零反弹(2026-10-05 实测:0.6 m/s 反向回弹)
+-      if (std::fabs(tau) <= kWheelTauCap && std::fabs(err) < 4.0) {
+-        wheel_int_[idx] += err * dt;
+-      } else if (std::fabs(tau) > kWheelTauCap) {
+-        tau = tau > 0 ? kWheelTauCap : -kWheelTauCap;
++      const double imax = cfg_.servo.wheel_int_max_rad;
++      if (std::fabs(tau) <= tau_cap && std::fabs(err) < 4.0) {
++        const double next_int = std::clamp(wheel_int_[idx] + err * dt, -imax, imax);
++        if (!hw_->has_dynamic_motor_torque_cap()) {
++          // 网球版保持旧积分时序：本拍输出不重算，下拍再依 36 N·m 判断。
++          wheel_int_[idx] = next_int;
++        } else {
++          const double next_tau = sgn * (cfg_.servo.wheel_kp * err +
++                                          cfg_.servo.wheel_ki * next_int + tau_ff_a);
++          const double next_cap = hw_->motor_torque_cap(ax[j], next_tau, wheel.dq);
++          if (std::fabs(next_tau) <= next_cap) wheel_int_[idx] = next_int;
++        }
+       }
+-      const double imax = cfg_.servo.wheel_int_max_rad;
+-      wheel_int_[idx] = std::clamp(wheel_int_[idx], -imax, imax);  // 幅值钳制防缠绕
++      if (std::fabs(tau) > tau_cap) tau = std::copysign(tau_cap, tau);
+       MotorCmd wc;
+       wc.tau_ff = tau;  // kp=0/kd=0:纯前馈,环路显式(MPC 可整体替换)
+       hw_->set_axis_cmd(ax[j], wc);
+diff --git a/sckd_sim/cpp/core/config.cpp b/sckd_sim/cpp/core/config.cpp
+--- a/sckd_sim/cpp/core/config.cpp
++++ b/sckd_sim/cpp/core/config.cpp
+@@ -2,6 +2,8 @@
+ 
+ #include <nlohmann/json.hpp>
+ #include <fstream>
++#include <filesystem>
++#include <cmath>
+ #include <map>
+ #include <sstream>
+ #include <stdexcept>
+@@ -53,6 +55,18 @@
+   const auto vj = ReadJson(variant_json_path);
+ 
+   MotorSystemConfig cfg;
++  cfg.robot_variant = vj.value("variant", "");
++  cfg.truth_feedback = mj.value("truth_feedback", false);
++  if (cfg.robot_variant == "x4_950" || mj.value("variant", "") == "x4_950") {
++    if (cfg.robot_variant != "x4_950" || mj.value("variant", "") != "x4_950")
++      throw std::runtime_error("X4_950 motor and robot variants must match");
++    const auto expected = std::filesystem::path(variant_json_path).parent_path().parent_path()
++                          / vj.at("motor_config").get<std::string>();
++    if (mj.value("variant", "") != cfg.robot_variant ||
++        std::filesystem::weakly_canonical(expected) !=
++            std::filesystem::weakly_canonical(motors_json_path))
++      throw std::runtime_error("X4_950 motor config does not match variant.motor_config");
++  }
+   cfg.command_delay_ms = mj.value("command_delay_ms", 9.0);
+   cfg.control_dt_s = mj.value("control_dt_s", 0.001);
+   cfg.encoder_bits = mj.value("encoder_bits", 14);
+@@ -84,12 +98,37 @@
+       throw std::runtime_error("joint " + name + ": mechanism_limit_nm must be > 0");
+     cfg.joints.push_back(jc);
+   }
++  if (cfg.robot_variant == "x4_950") {
++    const auto& servo = vj.at("arm_servo");
++    for (const char* key : {"kp", "kd", "standby_q_rad"})
++      if (!servo.at(key).is_array() || servo.at(key).size() != kNumArm)
++        throw std::runtime_error("X4_950 arm servo requires five values per field");
++    cfg.arm_servo.kp = servo.at("kp").get<std::array<double, kNumArm>>();
++    cfg.arm_servo.kd = servo.at("kd").get<std::array<double, kNumArm>>();
++    cfg.arm_servo.standby_q = servo.at("standby_q_rad").get<std::array<double, kNumArm>>();
++    for (int j = 0; j < kNumArm; ++j) {
++      const auto& m = motors.at(cfg.joints[AxisArm(j)].motor);
++      const double kp = cfg.arm_servo.kp[j], kd = cfg.arm_servo.kd[j];
++      const double q = cfg.arm_servo.standby_q[j];
++      if (!std::isfinite(kp) || !std::isfinite(kd) || !std::isfinite(q) ||
++          kp < m.kp_min || kp > m.kp_max || kd < m.kd_min || kd > m.kd_max ||
++          std::fabs(q) > m.hybrid_position_limit_rad)
++        throw std::runtime_error("X4_950 arm servo exceeds motor command range");
++      if (j == 1 || j == 2) {
++        const auto& range = vj.at("confirmed_joint_position_limits_rad").at("Joint" + std::to_string(j+1));
++        if (q < range.at(0).get<double>() || q > range.at(1).get<double>())
++          throw std::runtime_error("X4_950 standby exceeds confirmed joint range");
++      }
++    }
++    cfg.arm_servo.enabled = true;
++  }
+   return cfg;
+ }
+ 
+ ChassisConfig LoadChassisConfig(const std::string& chassis_json_path) {
+   const auto j = ReadJson(chassis_json_path);
+   ChassisConfig c;
++  c.robot_variant = j.value("variant", "");
+   const auto& g = j.at("geometry");
+   int i = 0;
+   for (const auto& xy : g.at("corner_xy_m")) {
+diff --git a/sckd_sim/cpp/core/config.h b/sckd_sim/cpp/core/config.h
+--- a/sckd_sim/cpp/core/config.h
++++ b/sckd_sim/cpp/core/config.h
+@@ -3,6 +3,7 @@
+ // 运行时只读;来源与假设标注在 json 内(calibrated/sources 字段)。
+ #include <string>
+ #include <vector>
++#include <array>
+ #include "core/types.h"
+ 
+ namespace sckd {
+@@ -31,7 +32,15 @@
+   double mechanism_limit_nm = 0;
+ };
+ 
++struct ArmServoConfig {
++  bool enabled = false;  // 未配置时保持网球执行器原有增益和准备姿态。
++  std::array<double, kNumArm> kp{}, kd{}, standby_q{};
++};
++
+ struct MotorSystemConfig {
++  std::string robot_variant;
++  bool truth_feedback = false;
++  ArmServoConfig arm_servo;
+   double command_delay_ms = 9.0;
+   double control_dt_s = 0.001;
+   int encoder_bits = 14;                 // 占位,待实机确认(设计 §3.3)
+@@ -45,9 +54,7 @@
+ MotorSystemConfig LoadMotorConfig(const std::string& motors_json_path,
+                                   const std::string& variant_json_path);
+ 
+-// --- 底盘配置(chassis_m1.json;来源:sckd-robot 实机标定,见 json sources) ---
+-
+-#include <array>
++// --- 底盘配置：网球与 X4_950 分别加载各自 JSON ---
+ 
+ struct ChassisCoordination {
+   bool enable_cos_projection = true;
+@@ -80,6 +87,7 @@
+ };
+ 
+ struct ChassisConfig {
++  std::string robot_variant;
+   std::array<double, 4> corner_x{}, corner_y{};   // 契约角序 FL,FR,RL,RR
+   double wheel_radius = 0.0828;
+   double dual_offset = 0.055;
+diff --git a/sckd_sim/cpp/hal/robot_interface.h b/sckd_sim/cpp/hal/robot_interface.h
+--- a/sckd_sim/cpp/hal/robot_interface.h
++++ b/sckd_sim/cpp/hal/robot_interface.h
+@@ -15,6 +15,15 @@
+   virtual BaseState base_state() const = 0;                   // 真值(仅评估)
+   virtual JointReport joint(int axis) const = 0;              // 真值(仅评估)
+   virtual JointReport joint_measured(int axis) = 0;           // 测量视角(控制器)
++  // 底盘抗饱和所需的当前力矩能力。旧后端保持 RS06 36 N·m 语义。
++  virtual double motor_torque_cap(int axis, double requested_tau_nm,
++                                  double dq_rad_s) const {
++    (void)axis;
++    (void)requested_tau_nm;
++    (void)dq_rad_s;
++    return 36.0;
++  }
++  virtual bool has_dynamic_motor_torque_cap() const { return false; }
+   virtual bool get_imu(ImuSample* out) = 0;                   // 最新 IMU 样本(带龄期)
+   // 臂重力前馈(由模型计算;实机后端用同源模型文件实现——接口不变)
+   virtual bool arm_gravity(const double q[kNumArm], double tau_ff[kNumArm]) = 0;
+diff --git a/sckd_sim/cpp/hal/sim_backend.cpp b/sckd_sim/cpp/hal/sim_backend.cpp
+--- a/sckd_sim/cpp/hal/sim_backend.cpp
++++ b/sckd_sim/cpp/hal/sim_backend.cpp
+@@ -20,7 +20,21 @@
+   }
+   d_ = mj_makeData(m_);
+   // 物理步长以配置为准(设计 §1.2:1 ms;0.5 ms 用于接触校核场景)
+-  if (std::fabs(m_->opt.timestep - cfg_.control_dt_s) > 1e-12) {
++  const std::string model_name = m_->names ? m_->names : "";
++  const bool involves_x4 = model_name == "X4_950" || cfg_.robot_variant == "x4_950" ||
++                           chcfg_.robot_variant == "x4_950";
++  if (involves_x4 && (model_name != "X4_950" || cfg_.robot_variant != "x4_950" ||
++                      chcfg_.robot_variant != "x4_950")) {
++    std::fprintf(stderr,
++                 "[SimBackend] X4 variant mismatch: model='%s', motor='%s', chassis='%s'\n",
++                 model_name.c_str(), cfg_.robot_variant.c_str(), chcfg_.robot_variant.c_str());
++    mj_deleteData(d_);
++    mj_deleteModel(m_);
++    d_ = nullptr;
++    m_ = nullptr;
++    return;
++  }
++  if (!involves_x4 && std::fabs(m_->opt.timestep - cfg_.control_dt_s) > 1e-12) {
+     std::fprintf(stderr, "[SimBackend] note: XML timestep %.5g != config %.5g, using config\n",
+                  m_->opt.timestep, cfg_.control_dt_s);
+     m_->opt.timestep = cfg_.control_dt_s;
+@@ -34,6 +48,14 @@
+     return;
+   }
+   motor_ = std::make_unique<MotorModel>(cfg_);
++  if (involves_x4 && !validate_x4_runtime()) {
++    motor_.reset();
++    mj_deleteData(d_);
++    mj_deleteModel(m_);
++    d_ = nullptr;
++    m_ = nullptr;
++    return;
++  }
+   scratch_ = mj_makeData(m_);   // 重力前馈专用(悬空姿态,无接触)
+ }
+ 
+@@ -68,6 +90,59 @@
+     const int bj = mj_name2id(m_, mjOBJ_JOINT, "ball_free");
+     if (bj >= 0) ball_qadr_ = m_->jnt_qposadr[bj];
+     else ball_bid_ = -1;
++  }
++  return true;
++}
++
++bool SimBackend::validate_x4_runtime() const {
++  const auto& odom = chcfg_.odom;
++  const bool zero_steer_offsets = std::all_of(
++      odom.steer_offset_rad.begin(), odom.steer_offset_rad.end(),
++      [](double offset) { return std::fabs(offset) <= 1e-12; });
++  if (std::fabs(cfg_.control_dt_s - 0.001) > 1e-12 ||
++      std::fabs(m_->opt.timestep - 0.001) > 1e-12 ||
++      std::fabs(cfg_.command_delay_ms) > 1e-12 || cfg_.encoder_bits != 0 ||
++      !cfg_.truth_feedback || cfg_.profile_peak ||
++      std::fabs(chcfg_.servo.period_ms - 1.0) > 1e-12 ||
++      std::fabs(odom.imu_rate_hz - 1000.0) > 1e-12 ||
++      std::fabs(odom.imu_latency_ms) > 1e-12 ||
++      std::fabs(odom.wheel_speed_noise_rad_s) > 1e-12 ||
++      std::fabs(odom.gyro_bias_rad_s) > 1e-12 ||
++      std::fabs(odom.gyro_noise_rad_s) > 1e-12 ||
++      std::fabs(odom.acc_noise_mps2) > 1e-12 || !zero_steer_offsets) {
++    std::fprintf(stderr,
++                 "[SimBackend] X4 runtime requires 1 ms, zero delay, encoder_bits=0, "
++                 "truth feedback, continuous torque profile, and zero-noise 1 kHz chassis "
++                 "feedback\n");
++    return false;
++  }
++  if (m_->nu != kNumAxes) {
++    std::fprintf(stderr, "[SimBackend] X4 requires exactly %d actuators, got %lld\n",
++                 kNumAxes, static_cast<long long>(m_->nu));
++    return false;
++  }
++  for (int axis = 0; axis < kNumAxes; ++axis) {
++    const int actuator = aid_[axis];
++    const int ctrl = m_->actuator_ctrladr[actuator];
++    const int out = m_->actuator_outadr[actuator];
++    const double cap = motor_->torque_cap(axis, 0.0, 0.0);
++    bool gear_ok = out >= 0 && m_->actuator_outnum[actuator] == 1 &&
++                   std::fabs(m_->actuator_gear[6 * out] - 1.0) <= 1e-12;
++    for (int k = 1; k < 6 && gear_ok; ++k)
++      gear_ok = std::fabs(m_->actuator_gear[6 * out + k]) <= 1e-12;
++    const bool ok = m_->actuator_trntype[actuator] == mjTRN_JOINT &&
++                    m_->actuator_trnid[2 * actuator] == jid_[axis] &&
++                    m_->actuator_ctrlnum[actuator] == 1 && ctrl >= 0 &&
++                    m_->actuator_ctrllimited[ctrl] && gear_ok &&
++                    std::fabs(m_->actuator_ctrlrange[2 * ctrl] + cap) <= 1e-9 &&
++                    std::fabs(m_->actuator_ctrlrange[2 * ctrl + 1] - cap) <= 1e-9;
++    if (!ok) {
++      std::fprintf(stderr,
++                   "[SimBackend] X4 actuator contract mismatch on axis %d ('%s'), "
++                   "expected joint binding, gear=1 and ctrlrange=[%.6g, %.6g]\n",
++                   axis, kAxisJointName[axis], -cap, cap);
++      return false;
++    }
+   }
+   return true;
+ }
+@@ -116,6 +191,7 @@
+ void SimBackend::set_axis_cmd(int axis, const MotorCmd& cmd) { motor_->set_cmd(axis, cmd); }
+ 
+ JointReport SimBackend::joint_measured(int axis) {
++  if (cfg_.truth_feedback) return joint(axis);
+   JointReport r = joint(axis);
+   r.q = quantize(r.q);
+   if (axis >= 0 && axis < kNumChassis) {
+@@ -267,9 +343,25 @@
+ }
+ 
+ bool SimBackend::get_ball_obs(BallObs* out) {
++  if (cfg_.truth_feedback) {
++    if (!ok() || !out || ball_bid_ < 0 || ball_qadr_ < 0) return false;
++    out->t = d_->time;
++    for (int i = 0; i < 3; ++i) out->p[i] = d_->qpos[ball_qadr_ + i];
++    return true;
++  }
+   if (!ok() || !ball_obs_valid_ || !out) return false;
+   *out = ball_obs_;
+   return true;
++}
++
++double SimBackend::motor_torque_cap(int axis, double requested_tau_nm,
++                                    double dq_rad_s) const {
++  if (!has_dynamic_motor_torque_cap() || !motor_) return 36.0;
++  return motor_->torque_cap(axis, requested_tau_nm, dq_rad_s);
++}
++
++bool SimBackend::has_dynamic_motor_torque_cap() const {
++  return cfg_.robot_variant == "x4_950";
+ }
+ 
+ JointReport SimBackend::joint(int axis) const {
+diff --git a/sckd_sim/cpp/hal/sim_backend.h b/sckd_sim/cpp/hal/sim_backend.h
+--- a/sckd_sim/cpp/hal/sim_backend.h
++++ b/sckd_sim/cpp/hal/sim_backend.h
+@@ -35,6 +35,9 @@
+   BaseState base_state() const override;
+   JointReport joint(int axis) const override;
+   JointReport joint_measured(int axis) override;
++  double motor_torque_cap(int axis, double requested_tau_nm,
++                          double dq_rad_s) const override;
++  bool has_dynamic_motor_torque_cap() const override;
+   bool get_imu(ImuSample* out) override;
+   bool get_ball_obs(BallObs* out);
+   bool arm_gravity(const double q[kNumArm], double tau_ff[kNumArm]) override;
+@@ -60,6 +63,7 @@
+  private:
+   void write_ctrl();
+   bool build_maps();
++  bool validate_x4_runtime() const;
+   void sample_imu();                     // 200Hz:真值 + 偏置/噪声 -> imu_(带龄期戳)
+   void sample_ball_obs();                // 300Hz:球位置 + 噪声 -> ball_obs_(带龄期戳)
+ 
+diff --git a/sckd_sim/cpp/robot/motor_model.cpp b/sckd_sim/cpp/robot/motor_model.cpp
+--- a/sckd_sim/cpp/robot/motor_model.cpp
++++ b/sckd_sim/cpp/robot/motor_model.cpp
+@@ -76,6 +76,23 @@
+   return p.back().torque_nm;
+ }
+ 
++double MotorModel::torque_cap(int axis, double requested_tau_nm, double dq_meas) const {
++  if (axis < 0 || axis >= kNumAxes) return 0.0;
++  const auto& m = motor_of(axis);
++  const auto& jc = joint_of(axis);
++  double cap = std::min(jc.mechanism_limit_nm,
++                        cfg_.profile_peak ? m.peak_torque_nm : m.continuous_torque_nm);
++  const bool motoring = requested_tau_nm * dq_meas > 0.0;
++  if (motoring) {
++    cap = std::min(cap, envelope(m, std::fabs(dq_meas)));
++    // 软件速度保护:超过运控速度量程且仍在推动 -> 停止推动
++    if (std::fabs(dq_meas) > m.hybrid_speed_limit_rad_s) cap = 0.0;
++  } else {
++    cap = std::min(cap, m.braking_torque_nm);
++  }
++  return std::max(0.0, cap);
++}
++
+ double MotorModel::compute(int axis, double q_meas, double dq_meas) {
+   if (axis < 0 || axis >= kNumAxes) return 0.0;
+   auto& st = st_[axis];
+@@ -83,8 +100,6 @@
+     st.last_tau = 0.0;
+     return 0.0;
+   }
+-  const auto& m = motor_of(axis);
+-  const auto& jc = joint_of(axis);
+   const MotorCmd& c = st.pipe.empty() ? st.issued : st.pipe.front();  // 延迟后的生效命令
+ 
+   st.effective=c;
+@@ -92,16 +107,7 @@
+   double tau = c.kp * (c.q - q_meas) + c.kd * (c.dq - dq_meas) + c.tau_ff;
+ 
+   // 限幅链:机构限矩 -> 峰值/连续档 -> T-N 方向相关包络
+-  double cap = std::min(jc.mechanism_limit_nm,
+-                        cfg_.profile_peak ? m.peak_torque_nm : m.continuous_torque_nm);
+-  const bool motoring = tau * dq_meas > 0.0;
+-  if (motoring) {
+-    cap = std::min(cap, envelope(m, std::fabs(dq_meas)));
+-    // 软件速度保护:超过运控速度量程且仍在推动 -> 停止推动
+-    if (std::fabs(dq_meas) > m.hybrid_speed_limit_rad_s) cap = 0.0;
+-  } else {
+-    cap = std::min(cap, m.braking_torque_nm);
+-  }
++  const double cap = torque_cap(axis, tau, dq_meas);
+   st.last_raw=tau;st.last_cap=cap;
+   st.last_tau = std::clamp(tau, -cap, cap);
+   return st.last_tau;
+diff --git a/sckd_sim/cpp/robot/motor_model.h b/sckd_sim/cpp/robot/motor_model.h
+--- a/sckd_sim/cpp/robot/motor_model.h
++++ b/sckd_sim/cpp/robot/motor_model.h
+@@ -25,6 +25,9 @@
+ 
+   // 由测量值算输出力矩(限幅后);不推进时间
+   double compute(int axis, double q_meas, double dq_meas);
++  // 查询当前工况的实际力矩能力，与 compute 共用同一限幅链。
++  // requested_tau_nm 仅用于区分推动/制动方向，不改变电机状态。
++  double torque_cap(int axis, double requested_tau_nm, double dq_meas) const;
+ 
+   double last_tau_cmd(int axis) const;
+   MotorCmd issued_command(int axis) const {return st_.at(axis).issued;}
+diff --git a/sckd_sim/cpp/runtime/state_inputs.cpp b/sckd_sim/cpp/runtime/state_inputs.cpp
+--- a/sckd_sim/cpp/runtime/state_inputs.cpp
++++ b/sckd_sim/cpp/runtime/state_inputs.cpp
+@@ -47,7 +47,8 @@
+   for (int j = 0; j < 5; ++j) {
+     const JointReport jr = be.joint_measured(AxisArm(j));
+     snapshot.robot.joints[AxisArm(j)]=jr;
+-    snapshot.robot.joint_position_source[AxisArm(j)]=RobotStateSource::kMeasured;
++    snapshot.robot.joint_position_source[AxisArm(j)]=be.motor_config().truth_feedback
++        ? RobotStateSource::kSimulationTruth : RobotStateSource::kMeasured;
+     q_cur[j] = jr.q; dq_cur[j] = jr.dq;
+   }
+   // 新增状态快照不能多消费带噪传感器样本，否则会推进SimBackend共享RNG，
+diff --git a/sckd_sim/cpp/runtime/trajectory_executor.cpp b/sckd_sim/cpp/runtime/trajectory_executor.cpp
+--- a/sckd_sim/cpp/runtime/trajectory_executor.cpp
++++ b/sckd_sim/cpp/runtime/trajectory_executor.cpp
+@@ -45,6 +45,7 @@
+ ExecutionFrame ExecuteTrajectory(ExecutionContext c, int t, double ts) {
+   ExecutionFrame out;
+   auto& be = c.be;
++  const auto& arm_servo = be.motor_config().arm_servo;
+   auto& servo = c.servo;
+   auto& plan = c.plan;
+   auto& wb_plan = c.wb_plan;
+@@ -144,7 +145,7 @@
+     const double tau_hat6 = (den > 1e-6)
+         ? std::clamp(-num / den, 0.0, 0.10) : n6_tau;
+     n6_tau = 0.7 * n6_tau + 0.3 * tau_hat6;
+-    if(coherent)n6_tau=variant=="servo_mpc"?0:be.motor_config().command_delay_ms*.001;
++    if(coherent || arm_servo.enabled)n6_tau=variant=="servo_mpc"?0:be.motor_config().command_delay_ms*.001;
+     sample6(ts + n6_tau, n6_q, n6_dq);
+     {   // 底盘速度:ts 时刻(无 τ̂ —— 伺服斜坡与 Plans 斜坡同 8 m/s²)
+       const double tau6 = ts - n6_t0;
+@@ -266,7 +267,9 @@
+     static constexpr double kStandby[5] = {0.0, -0.6109, -0.6109, 0.0, 0.0};
+     static constexpr double kReady[5] = {0, -1.0, 0.5, 0, 0.8};
+     const bool swing_mode = !n6_mode && !wb_mode;
+-    if (t_plan0 >= 0.0 && swing_mode) {
++    if (arm_servo.enabled) {
++      for (int j = 0; j < 5; ++j) ac.q[j] = arm_servo.standby_q[j];
++    } else if (t_plan0 >= 0.0 && swing_mode) {
+       const double transition = cfg.time_windows.pfly_ready_transition_s;
+       const double s = transition > 0 ? std::clamp((ts - t_plan0) / transition, 0.0, 1.0) : 1.0;
+       const double p = 10*s*s*s - 15*s*s*s*s + 6*s*s*s*s*s;
+@@ -280,10 +283,10 @@
+   if (StageProfile::Measure("arm_gravity", [&]{return be.arm_gravity(ac.q, ff);})) for (int j=0;j<5;++j) ac.tau_ff[j]=ff[j];
+   // 惯性前馈:τ_ff += Î·q̈(对角估计;挥拍段跟踪误差 I·a/kp 的直接抵消)
+   static constexpr double kArmInertia[5] = {1.2, 2.0, 0.8, 0.3, 0.05};
+-  for (int j = 0; j < 5; ++j)
++  for (int j = 0; !arm_servo.enabled && j < 5; ++j)
+     ac.tau_ff[j] += kArmInertia[j] *
+                     (wb_exec ? wb_ddq[j] : (n6_exec ? 0.0 : sc.ddp[j]));
+-  if(inverse_ff&&!wb_mode) {
++  if(inverse_ff&&!wb_mode&&!arm_servo.enabled) {
+     double accel[5],inv[5],qa[5],dqa[5];
+     for(int j=0;j<5;++j){qa[j]=ac.q[j];dqa[j]=ac.dq[j];accel[j]=n6_exec?(have_dq_command?std::clamp((ac.dq[j]-previous_dq_command[j])/.001,-(j<2?30.0:j==2?180.0:j==3?400.0:200.0),(j<2?30.0:j==2?180.0:j==3?400.0:200.0)):0):sc.ddp[j];}
+     if(be.arm_inverse(qa,dqa,accel,inv))for(int j=0;j<5;++j)ac.tau_ff[j]=inv[j];
+@@ -292,6 +295,12 @@
+     // 候选受原协议/限矩约束；具体辨识参数由独立文件加载，未设置则拒绝运行。
+     const auto& gains=identified_gains_config;
+     for(int j=0;j<5;++j){ac.kp[j]=gains["kp"][j];ac.kd[j]=gains["kd"][j];}
++  }
++  if (arm_servo.enabled) {
++    for (int j = 0; j < 5; ++j) {
++      ac.kp[j] = arm_servo.kp[j];
++      ac.kd[j] = arm_servo.kd[j];
++    }
+   }
+   for(int j=0;j<5;++j)previous_dq_command[j]=ac.dq[j];have_dq_command=true;
+   StageProfile::Measure("actuator_write", [&]{be.set_arm_hybrid(ac);});
+diff --git a/sckd_sim/cpp/tests/test_x4_950_config.cc b/sckd_sim/cpp/tests/test_x4_950_config.cc
+new file mode 100644
+--- /dev/null
++++ b/sckd_sim/cpp/tests/test_x4_950_config.cc
+@@ -0,0 +1,58 @@
++// 静态接线检查：没有控制器实例、命令发送、仿真步进或求解器。
++#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
++#include <doctest.h>
++#include "hal/sim_backend.h"
++#include "runtime/runtime_config.h"
++
++using namespace sckd;
++
++TEST_CASE("X4 runtime loads independent configs with truth feedback and dynamic caps") {
++  const auto cfg = runtime::ResolvedConfig::Resolve(
++      {"config_check", "--config", "models/config/runtime_x4_950.json"},
++      [](const std::string&) -> std::optional<std::string> { return std::nullopt; });
++  const auto& v = cfg.values();
++  CHECK_FALSE(cfg.modes().inverse_ff);
++  CHECK_FALSE(cfg.modes().identified_gains);
++  CHECK(v.nmpc6_nlp_path == "third_party/nmpc6/x4_950_nlp.so");
++  SimBackend be(v.scene_path, v.motors_path, v.robot_variant_path, v.chassis_path);
++  REQUIRE(be.ok());
++  REQUIRE(be.reset()); // 仅 mj_forward，时间保持零。
++  CHECK(be.model()->opt.timestep == doctest::Approx(.001));
++  CHECK(be.chassis_config().servo.period_ms == 1);
++  CHECK(be.motor_config().command_delay_ms == 0);
++  CHECK(be.motor_config().truth_feedback);
++  REQUIRE(be.motor_config().arm_servo.enabled);
++  CHECK(be.motor_config().arm_servo.kd[4] <= 5);
++  CHECK(be.chassis_config().wheel_radius == doctest::Approx(.0825));
++  CHECK(be.chassis_config().dual_offset == doctest::Approx(.024));
++
++  const int axis = AxisArm(4);
++  const int jid = mj_name2id(be.model(), mjOBJ_JOINT, "Joint5");
++  be.data_mut()->qpos[be.model()->jnt_qposadr[jid]] = .123456789;
++  CHECK(be.joint_measured(axis).q == .123456789);
++  CHECK(be.quantize(.123456789) == .123456789);
++  CHECK_FALSE(be.joint(axis).enabled);
++  CHECK(be.motor_torque_cap(axis, 2, 0) == doctest::Approx(1.6));
++  CHECK(be.motor_torque_cap(AxisWheelL(0), 20, 0) == doctest::Approx(11));
++  CHECK(be.motor_torque_cap(AxisWheelL(0), 20, 67.187) == doctest::Approx(5));
++  CHECK(be.motor_torque_cap(AxisWheelL(0), -20, 67.187) == doctest::Approx(11));
++  CHECK(be.motor_torque_cap(AxisWheelL(0), 20, 76) == 0);
++  CHECK(be.data()->time == 0);
++  CHECK(be.tick() == 0);
++
++  // 错配必须在进入控制器前失败。
++  CHECK_THROWS(LoadMotorConfig("models/config/motors.json", v.robot_variant_path));
++  SimBackend wrong_chassis(v.scene_path, v.motors_path, v.robot_variant_path,
++                           "models/config/chassis_m1.json");
++  CHECK_FALSE(wrong_chassis.ok());
++}
++
++TEST_CASE("tennis motor and servo defaults remain unchanged") {
++  const auto cfg = LoadMotorConfig("models/config/motors.json", "models/config/x4_tennis.json");
++  CHECK_FALSE(cfg.arm_servo.enabled);
++  CHECK_FALSE(cfg.truth_feedback);
++  CHECK(cfg.command_delay_ms == 9);
++  CHECK(cfg.encoder_bits == 14);
++  CHECK(cfg.profile_peak);
++  CHECK(LoadChassisConfig("models/config/chassis_m1.json").servo.period_ms == 4);
++}
+diff --git a/sckd_sim/models/config/chassis_x4_950.json b/sckd_sim/models/config/chassis_x4_950.json
+new file mode 100644
+--- /dev/null
++++ b/sckd_sim/models/config/chassis_x4_950.json
+@@ -0,0 +1,81 @@
++{
++  "schema_version": 1,
++  "variant": "x4_950",
++  "calibrated": false,
++  "geometry": {
++    "corner_xy_m": [
++      [
++        0.475,
++        0.475
++      ],
++      [
++        0.475,
++        -0.475
++      ],
++      [
++        -0.475,
++        0.475
++      ],
++      [
++        -0.475,
++        -0.475
++      ]
++    ],
++    "wheel_radius_m": 0.0825,
++    "dual_wheel_offset_m": 0.024,
++    "drives_per_corner": 2,
++    "wheel_sign": [
++      1,
++      -1,
++      1,
++      -1,
++      1,
++      -1,
++      1,
++      -1
++    ],
++    "robot_mass_kg": 51.163677,
++    "source": "X4_950 URDF舵轴位置±0.475m；轮轴偏移0.1045m减轮碰撞中心偏移0.0805m=0.024m；半径来自collision URDF，符号来自左右轮轴±Y；质量为生成MJCF body_mass求和（导出舍入）。"
++  },
++  "coordination": {
++    "enable_cos_projection": true,
++    "cos_deadband_rad": 0.1,
++    "cos_floor": 0.0,
++    "reverse_threshold_rad": 1.5707963267948966,
++    "reverse_hysteresis_rad": 0.2,
++    "zero_speed_mps": 0.001,
++    "note": "复用现有协同算法及上述算法阈值；不是X4_950硬件标定。"
++  },
++  "ramp": {
++    "accel_limit_mps2": 0.4,
++    "ang_accel_limit_rad_s2": 0.5,
++    "dir_rate_limit_rad_s": 1.0,
++    "note": "独立的低速仿真初值，不表示实际能力上限。"
++  },
++  "servo": {
++    "period_ms": 1,
++    "steer_kp": 0.248906416,
++    "steer_kd": 0.124453208,
++    "wheel_kp": 0.2,
++    "wheel_ki": 0.0,
++    "wheel_int_max_rad": 0.0,
++    "wheel_accel_mps2": 0.4,
++    "note": "未整定仿真假设：舵轴对角惯量约0.015556651kg·m²，ωn=4rad/s、ζ=1，kp=16I、kd=8I；轮速先用P增益0.2N·m/(rad/s)，关闭积分，动态限矩接口仍用于后续启用积分时的抗饱和。"
++  },
++  "odom": {
++    "steer_offset_rad": [
++      0,
++      0,
++      0,
++      0
++    ],
++    "wheel_speed_noise_rad_s": 0,
++    "imu_rate_hz": 1000,
++    "imu_latency_ms": 0,
++    "gyro_bias_rad_s": 0,
++    "gyro_noise_rad_s": 0,
++    "acc_noise_mps2": 0,
++    "gyro_fallback_ms": 300,
++    "note": "真值反馈，无量化、偏移、噪声或延迟；fallback阈值沿用算法值，不是硬件延迟。"
++  }
++}
+diff --git a/sckd_sim/models/config/motors_x4_950.json b/sckd_sim/models/config/motors_x4_950.json
+--- a/sckd_sim/models/config/motors_x4_950.json
++++ b/sckd_sim/models/config/motors_x4_950.json
+@@ -5,8 +5,8 @@
+   "parameter_frame": "gearbox_output_joint_side; RS04/RS06 retain existing 72V model, RS05 uses 48V manual",
+   "torque_profile": "continuous",
+   "command_delay_ms": 0,
+-  "control_dt_s": 0.002,
+-  "encoder_bits": 14,
++  "control_dt_s": 0.001,
++  "encoder_bits": 0,
+   "calibrated": false,
+   "sources": [
+     "2026-10-28 用户确认：J1/J2=RS04，J3/J4及底盘12轴=RS06，J5=RS05；J2/J3=[-3.14,0.5] rad。",
+@@ -18,9 +18,9 @@
+     "RS04/RS06保留旧72V模型口径，RS05单独为48V模型；不表示实机共用同一母线或其供电版本已经确认。",
+     "采用连续档：RS05以额定负载1.6 N·m作持续输出上限；5.5 N·m只记录峰值。现有MotorModel不含热/持续时间限制，不应直接启用峰值档。",
+     "RS05 braking_torque_nm=1.6仅为本仿真的对称制动裁剪假设，取额定负载值；手册未给出独立制动能力，不等于实机确认。",
+-    "零命令延迟、2ms电机更新为最小仿真假设，不复用旧9ms延迟；encoder_bits=14仅作现有加载接口参数，不在本次启用测量量化。",
++    "统一1ms物理/电机/底盘伺服周期，零命令延迟，encoder_bits=0且truth_feedback=true：不量化、不添加传感器噪声和反馈延迟；均为最小仿真假设。",
+     "RS05 T-N点为48V图形的人工近似读数；0rpm平台为外推，480rpm零力矩端点按标称空载转速闭合。原图490rpm仍有力矩，与480rpm空载标称并不严格一致，因此不保留该尾点，不能用于性能标定。",
+-    "构建器读取本配置生成静态限矩执行器；尚未接入电机控制运行入口或实现MJCF中的T-N/伺服/延迟，X4_950控制器阻断保持不变。"
++    "构建器生成静态限矩执行器；运行配置接入现有MotorModel的T-N和延迟算法，零延迟走已有直通分支。控制器执行阻断保持，未运行闭环或验证动态性能。"
+   ],
+   "unconfirmed_hardware_parameters": {
+     "actual_supply_and_drive_versions": null,
+@@ -320,5 +320,6 @@
+       "source_note": "印刷页5额定负载1.6、峰值5.5、空载480rpm±10%；页6为48V T-N图。曲线读图点非精确厂家数据，端点闭合和制动限幅属于上文所列仿真假设。",
+       "peak_duration_note": "印刷页6：25℃环境、绕组约束135℃、100rpm条件下，5.5N·m过载时间4s；不能当作任意工况允许时间。"
+     }
+-  }
++  },
++  "truth_feedback": true
+ }
+diff --git a/sckd_sim/models/config/runtime_x4_950.json b/sckd_sim/models/config/runtime_x4_950.json
+new file mode 100644
+--- /dev/null
++++ b/sckd_sim/models/config/runtime_x4_950.json
+@@ -0,0 +1,21 @@
++{
++  "schema": "SCKD_RUNTIME_CONFIG/1",
++  "path_base": "process_cwd",
++  "values": {
++    "scene_path": "models/generated/x4_950_scene.mjcf",
++    "motors_path": "models/config/motors_x4_950.json",
++    "robot_variant_path": "models/config/x4_950.json",
++    "chassis_path": "models/config/chassis_x4_950.json",
++    "base_mode": "nmpc6",
++    "control_variant": "clock",
++    "steer_rate_mode": "limited",
++    "servo_identification_path": "",
++    "nmpc6_nlp_path": "third_party/nmpc6/x4_950_nlp.so",
++    "nmpc6_speed_factor": 1.0,
++    "predictor_socket_path": null,
++    "measured_replay_path": null
++  },
++  "sources": {
++    "note": "独立接线预设，相对路径基于sckd_sim工作目录。控制器执行仍被代码阻断；X4_950求解库尚未生成，不能运行。clock仅选择现有同步执行算法，禁用旧辨识增益/加速度前馈。1ms、零延迟、真值反馈见独立电机和底盘配置。此文件不确认羽毛球物理、轨迹约束或动态可行性。"
++  }
++}
+diff --git a/sckd_sim/models/config/x4_950.json b/sckd_sim/models/config/x4_950.json
+--- a/sckd_sim/models/config/x4_950.json
++++ b/sckd_sim/models/config/x4_950.json
+@@ -149,5 +149,38 @@
+     "Link6 原点是拍心；racket_face 保留源旋转和尺寸，薄轴为 geom 局部 Z，接近 Link6 局部 X。",
+     "NMPC 仅提供五轴 FK/法向/Jacobian 几何分支，保持 yaw=0；完整 NLP 生成、求解器初始化及拍球冲量被代码阻止，填写本清单不会自动启用。",
+     "不套用旧 z>=0.35 避碰阈值、网球回弹/气动参数或速度折减；未来最小羽毛球场景按落地结束，不使用网球反弹。"
+-  ]
++  ],
++  "arm_servo": {
++    "kp": [
++      16.552211533645,
++      22.59750456735,
++      0.361050675806,
++      0.628801103932,
++      0.002276959991
++    ],
++    "kd": [
++      8.276105766822,
++      11.298752283675,
++      0.180525337903,
++      0.314400551966,
++      0.001138479996
++    ],
++    "standby_q_rad": [
++      0,
++      -0.5,
++      -0.5,
++      0,
++      0
++    ],
++    "reference_diagonal_inertia_kg_m2": [
++      1.0345132208527879,
++      1.4123440354593526,
++      0.022565667237870804,
++      0.039300068995778266,
++      0.0001423099994673077
++    ],
++    "calibrated": false,
++    "source": "生成X4_950模型在standby_q_rad下mj_forward/mj_fullM的关节对角惯量，视其他自由度固定。仿真假设ωn=4 rad/s、ζ=1，kp=16I、kd=8I；仅未整定初值，不代表硬件增益或闭环稳定性。",
++    "feedforward_note": "仅用当前模型重力前馈；不套用网球惯量前馈、辨识增益或自适应加速度前馈。准备姿态为仿真假设，不是实机home。"
++  }
+ }
+diff --git a/sckd_sim/models/generated/x4_950_manifest.json b/sckd_sim/models/generated/x4_950_manifest.json
+--- a/sckd_sim/models/generated/x4_950_manifest.json
++++ b/sckd_sim/models/generated/x4_950_manifest.json
+@@ -5,12 +5,12 @@
+     "urdf": "source/x4_950/X4_950.urdf",
+     "urdf_sha256": "1f2e3e6f174ff3089cc41d0143136020ad8a3ce56acd3dbf6c13c96ccc3606b4",
+     "motors": "config/motors_x4_950.json",
+-    "motors_sha256": "1df94736c50e7a370e8e3f2e71e0f044dc706f1bfaa1c04bfca5d1605c69e70a",
++    "motors_sha256": "675a90e10c7689ac1e5b0798f8defcf32a7d03cf55ce32a3012534f53c12b2f9",
+     "torque_profile": "continuous",
+     "collision_reference": "source/x4_950/X4_950_collision.urdf",
+     "collision_reference_sha256": "f42ecd1d16d6364a94b50f1cc2bb9aa3a439a74c3a16b74df21fbfa428266cc2",
+     "config": "config/x4_950.json",
+-    "config_sha256": "2011cc481bdc8a0306b6aecf2eeb629b2a7179a346b512e907ebffcd697c6628",
++    "config_sha256": "a877c845382f5663523a049a5769d0b604e6b020e19abbd8c28bfcd92e048925",
+     "mujoco_version": "3.14.0"
+   },
+   "edits": [

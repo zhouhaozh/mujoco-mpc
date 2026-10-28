@@ -20,7 +20,21 @@ SimBackend::SimBackend(const std::string& scene_xml, const std::string& motors_j
   }
   d_ = mj_makeData(m_);
   // 物理步长以配置为准(设计 §1.2:1 ms;0.5 ms 用于接触校核场景)
-  if (std::fabs(m_->opt.timestep - cfg_.control_dt_s) > 1e-12) {
+  const std::string model_name = m_->names ? m_->names : "";
+  const bool involves_x4 = model_name == "X4_950" || cfg_.robot_variant == "x4_950" ||
+                           chcfg_.robot_variant == "x4_950";
+  if (involves_x4 && (model_name != "X4_950" || cfg_.robot_variant != "x4_950" ||
+                      chcfg_.robot_variant != "x4_950")) {
+    std::fprintf(stderr,
+                 "[SimBackend] X4 variant mismatch: model='%s', motor='%s', chassis='%s'\n",
+                 model_name.c_str(), cfg_.robot_variant.c_str(), chcfg_.robot_variant.c_str());
+    mj_deleteData(d_);
+    mj_deleteModel(m_);
+    d_ = nullptr;
+    m_ = nullptr;
+    return;
+  }
+  if (!involves_x4 && std::fabs(m_->opt.timestep - cfg_.control_dt_s) > 1e-12) {
     std::fprintf(stderr, "[SimBackend] note: XML timestep %.5g != config %.5g, using config\n",
                  m_->opt.timestep, cfg_.control_dt_s);
     m_->opt.timestep = cfg_.control_dt_s;
@@ -34,6 +48,14 @@ SimBackend::SimBackend(const std::string& scene_xml, const std::string& motors_j
     return;
   }
   motor_ = std::make_unique<MotorModel>(cfg_);
+  if (involves_x4 && !validate_x4_runtime()) {
+    motor_.reset();
+    mj_deleteData(d_);
+    mj_deleteModel(m_);
+    d_ = nullptr;
+    m_ = nullptr;
+    return;
+  }
   scratch_ = mj_makeData(m_);   // 重力前馈专用(悬空姿态,无接触)
 }
 
@@ -68,6 +90,59 @@ bool SimBackend::build_maps() {
     const int bj = mj_name2id(m_, mjOBJ_JOINT, "ball_free");
     if (bj >= 0) ball_qadr_ = m_->jnt_qposadr[bj];
     else ball_bid_ = -1;
+  }
+  return true;
+}
+
+bool SimBackend::validate_x4_runtime() const {
+  const auto& odom = chcfg_.odom;
+  const bool zero_steer_offsets = std::all_of(
+      odom.steer_offset_rad.begin(), odom.steer_offset_rad.end(),
+      [](double offset) { return std::fabs(offset) <= 1e-12; });
+  if (std::fabs(cfg_.control_dt_s - 0.001) > 1e-12 ||
+      std::fabs(m_->opt.timestep - 0.001) > 1e-12 ||
+      std::fabs(cfg_.command_delay_ms) > 1e-12 || cfg_.encoder_bits != 0 ||
+      !cfg_.truth_feedback || cfg_.profile_peak ||
+      std::fabs(chcfg_.servo.period_ms - 1.0) > 1e-12 ||
+      std::fabs(odom.imu_rate_hz - 1000.0) > 1e-12 ||
+      std::fabs(odom.imu_latency_ms) > 1e-12 ||
+      std::fabs(odom.wheel_speed_noise_rad_s) > 1e-12 ||
+      std::fabs(odom.gyro_bias_rad_s) > 1e-12 ||
+      std::fabs(odom.gyro_noise_rad_s) > 1e-12 ||
+      std::fabs(odom.acc_noise_mps2) > 1e-12 || !zero_steer_offsets) {
+    std::fprintf(stderr,
+                 "[SimBackend] X4 runtime requires 1 ms, zero delay, encoder_bits=0, "
+                 "truth feedback, continuous torque profile, and zero-noise 1 kHz chassis "
+                 "feedback\n");
+    return false;
+  }
+  if (m_->nu != kNumAxes) {
+    std::fprintf(stderr, "[SimBackend] X4 requires exactly %d actuators, got %lld\n",
+                 kNumAxes, static_cast<long long>(m_->nu));
+    return false;
+  }
+  for (int axis = 0; axis < kNumAxes; ++axis) {
+    const int actuator = aid_[axis];
+    const int ctrl = m_->actuator_ctrladr[actuator];
+    const int out = m_->actuator_outadr[actuator];
+    const double cap = motor_->torque_cap(axis, 0.0, 0.0);
+    bool gear_ok = out >= 0 && m_->actuator_outnum[actuator] == 1 &&
+                   std::fabs(m_->actuator_gear[6 * out] - 1.0) <= 1e-12;
+    for (int k = 1; k < 6 && gear_ok; ++k)
+      gear_ok = std::fabs(m_->actuator_gear[6 * out + k]) <= 1e-12;
+    const bool ok = m_->actuator_trntype[actuator] == mjTRN_JOINT &&
+                    m_->actuator_trnid[2 * actuator] == jid_[axis] &&
+                    m_->actuator_ctrlnum[actuator] == 1 && ctrl >= 0 &&
+                    m_->actuator_ctrllimited[ctrl] && gear_ok &&
+                    std::fabs(m_->actuator_ctrlrange[2 * ctrl] + cap) <= 1e-9 &&
+                    std::fabs(m_->actuator_ctrlrange[2 * ctrl + 1] - cap) <= 1e-9;
+    if (!ok) {
+      std::fprintf(stderr,
+                   "[SimBackend] X4 actuator contract mismatch on axis %d ('%s'), "
+                   "expected joint binding, gear=1 and ctrlrange=[%.6g, %.6g]\n",
+                   axis, kAxisJointName[axis], -cap, cap);
+      return false;
+    }
   }
   return true;
 }
@@ -116,6 +191,7 @@ bool SimBackend::enable(int axis, bool on) { return motor_->enable(axis, on); }
 void SimBackend::set_axis_cmd(int axis, const MotorCmd& cmd) { motor_->set_cmd(axis, cmd); }
 
 JointReport SimBackend::joint_measured(int axis) {
+  if (cfg_.truth_feedback) return joint(axis);
   JointReport r = joint(axis);
   r.q = quantize(r.q);
   if (axis >= 0 && axis < kNumChassis) {
@@ -267,9 +343,25 @@ void SimBackend::sample_ball_obs() {
 }
 
 bool SimBackend::get_ball_obs(BallObs* out) {
+  if (cfg_.truth_feedback) {
+    if (!ok() || !out || ball_bid_ < 0 || ball_qadr_ < 0) return false;
+    out->t = d_->time;
+    for (int i = 0; i < 3; ++i) out->p[i] = d_->qpos[ball_qadr_ + i];
+    return true;
+  }
   if (!ok() || !ball_obs_valid_ || !out) return false;
   *out = ball_obs_;
   return true;
+}
+
+double SimBackend::motor_torque_cap(int axis, double requested_tau_nm,
+                                    double dq_rad_s) const {
+  if (!has_dynamic_motor_torque_cap() || !motor_) return 36.0;
+  return motor_->torque_cap(axis, requested_tau_nm, dq_rad_s);
+}
+
+bool SimBackend::has_dynamic_motor_torque_cap() const {
+  return cfg_.robot_variant == "x4_950";
 }
 
 JointReport SimBackend::joint(int axis) const {

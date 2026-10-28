@@ -1,0 +1,21 @@
+{
+  "schema": "SCKD_RUNTIME_CONFIG/1",
+  "path_base": "process_cwd",
+  "values": {
+    "scene_path": "models/generated/x4_950_scene.mjcf",
+    "motors_path": "models/config/motors_x4_950.json",
+    "robot_variant_path": "models/config/x4_950.json",
+    "chassis_path": "models/config/chassis_x4_950.json",
+    "base_mode": "nmpc6",
+    "control_variant": "clock",
+    "steer_rate_mode": "limited",
+    "servo_identification_path": "",
+    "nmpc6_nlp_path": "third_party/nmpc6/x4_950_nlp.so",
+    "nmpc6_speed_factor": 1.0,
+    "predictor_socket_path": null,
+    "measured_replay_path": null
+  },
+  "sources": {
+    "note": "独立接线预设，相对路径基于sckd_sim工作目录。控制器执行仍被代码阻断；X4_950求解库尚未生成，不能运行。clock仅选择现有同步执行算法，禁用旧辨识增益/加速度前馈。1ms、零延迟、真值反馈见独立电机和底盘配置。此文件不确认羽毛球物理、轨迹约束或动态可行性。"
+  }
+}

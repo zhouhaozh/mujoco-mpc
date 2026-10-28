@@ -35,6 +35,9 @@ class SimBackend : public RobotInterface {
   BaseState base_state() const override;
   JointReport joint(int axis) const override;
   JointReport joint_measured(int axis) override;
+  double motor_torque_cap(int axis, double requested_tau_nm,
+                          double dq_rad_s) const override;
+  bool has_dynamic_motor_torque_cap() const override;
   bool get_imu(ImuSample* out) override;
   bool get_ball_obs(BallObs* out);
   bool arm_gravity(const double q[kNumArm], double tau_ff[kNumArm]) override;
@@ -60,6 +63,7 @@ class SimBackend : public RobotInterface {
  private:
   void write_ctrl();
   bool build_maps();
+  bool validate_x4_runtime() const;
   void sample_imu();                     // 200Hz:真值 + 偏置/噪声 -> imu_(带龄期戳)
   void sample_ball_obs();                // 300Hz:球位置 + 噪声 -> ball_obs_(带龄期戳)
 

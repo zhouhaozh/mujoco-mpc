@@ -45,6 +45,7 @@ void SampleWm(const WmPlan& p, double t, double q[5], double dq[5],
 ExecutionFrame ExecuteTrajectory(ExecutionContext c, int t, double ts) {
   ExecutionFrame out;
   auto& be = c.be;
+  const auto& arm_servo = be.motor_config().arm_servo;
   auto& servo = c.servo;
   auto& plan = c.plan;
   auto& wb_plan = c.wb_plan;
@@ -144,7 +145,7 @@ ExecutionFrame ExecuteTrajectory(ExecutionContext c, int t, double ts) {
     const double tau_hat6 = (den > 1e-6)
         ? std::clamp(-num / den, 0.0, 0.10) : n6_tau;
     n6_tau = 0.7 * n6_tau + 0.3 * tau_hat6;
-    if(coherent)n6_tau=variant=="servo_mpc"?0:be.motor_config().command_delay_ms*.001;
+    if(coherent || arm_servo.enabled)n6_tau=variant=="servo_mpc"?0:be.motor_config().command_delay_ms*.001;
     sample6(ts + n6_tau, n6_q, n6_dq);
     {   // 底盘速度:ts 时刻(无 τ̂ —— 伺服斜坡与 Plans 斜坡同 8 m/s²)
       const double tau6 = ts - n6_t0;
@@ -266,7 +267,9 @@ ExecutionFrame ExecuteTrajectory(ExecutionContext c, int t, double ts) {
     static constexpr double kStandby[5] = {0.0, -0.6109, -0.6109, 0.0, 0.0};
     static constexpr double kReady[5] = {0, -1.0, 0.5, 0, 0.8};
     const bool swing_mode = !n6_mode && !wb_mode;
-    if (t_plan0 >= 0.0 && swing_mode) {
+    if (arm_servo.enabled) {
+      for (int j = 0; j < 5; ++j) ac.q[j] = arm_servo.standby_q[j];
+    } else if (t_plan0 >= 0.0 && swing_mode) {
       const double transition = cfg.time_windows.pfly_ready_transition_s;
       const double s = transition > 0 ? std::clamp((ts - t_plan0) / transition, 0.0, 1.0) : 1.0;
       const double p = 10*s*s*s - 15*s*s*s*s + 6*s*s*s*s*s;
@@ -280,10 +283,10 @@ ExecutionFrame ExecuteTrajectory(ExecutionContext c, int t, double ts) {
   if (StageProfile::Measure("arm_gravity", [&]{return be.arm_gravity(ac.q, ff);})) for (int j=0;j<5;++j) ac.tau_ff[j]=ff[j];
   // 惯性前馈:τ_ff += Î·q̈(对角估计;挥拍段跟踪误差 I·a/kp 的直接抵消)
   static constexpr double kArmInertia[5] = {1.2, 2.0, 0.8, 0.3, 0.05};
-  for (int j = 0; j < 5; ++j)
+  for (int j = 0; !arm_servo.enabled && j < 5; ++j)
     ac.tau_ff[j] += kArmInertia[j] *
                     (wb_exec ? wb_ddq[j] : (n6_exec ? 0.0 : sc.ddp[j]));
-  if(inverse_ff&&!wb_mode) {
+  if(inverse_ff&&!wb_mode&&!arm_servo.enabled) {
     double accel[5],inv[5],qa[5],dqa[5];
     for(int j=0;j<5;++j){qa[j]=ac.q[j];dqa[j]=ac.dq[j];accel[j]=n6_exec?(have_dq_command?std::clamp((ac.dq[j]-previous_dq_command[j])/.001,-(j<2?30.0:j==2?180.0:j==3?400.0:200.0),(j<2?30.0:j==2?180.0:j==3?400.0:200.0)):0):sc.ddp[j];}
     if(be.arm_inverse(qa,dqa,accel,inv))for(int j=0;j<5;++j)ac.tau_ff[j]=inv[j];
@@ -292,6 +295,12 @@ ExecutionFrame ExecuteTrajectory(ExecutionContext c, int t, double ts) {
     // 候选受原协议/限矩约束；具体辨识参数由独立文件加载，未设置则拒绝运行。
     const auto& gains=identified_gains_config;
     for(int j=0;j<5;++j){ac.kp[j]=gains["kp"][j];ac.kd[j]=gains["kd"][j];}
+  }
+  if (arm_servo.enabled) {
+    for (int j = 0; j < 5; ++j) {
+      ac.kp[j] = arm_servo.kp[j];
+      ac.kd[j] = arm_servo.kd[j];
+    }
   }
   for(int j=0;j<5;++j)previous_dq_command[j]=ac.dq[j];have_dq_command=true;
   StageProfile::Measure("actuator_write", [&]{be.set_arm_hybrid(ac);});

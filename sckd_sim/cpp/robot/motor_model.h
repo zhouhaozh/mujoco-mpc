@@ -25,6 +25,9 @@ class MotorModel {
 
   // 由测量值算输出力矩(限幅后);不推进时间
   double compute(int axis, double q_meas, double dq_meas);
+  // 查询当前工况的实际力矩能力，与 compute 共用同一限幅链。
+  // requested_tau_nm 仅用于区分推动/制动方向，不改变电机状态。
+  double torque_cap(int axis, double requested_tau_nm, double dq_meas) const;
 
   double last_tau_cmd(int axis) const;
   MotorCmd issued_command(int axis) const {return st_.at(axis).issued;}
