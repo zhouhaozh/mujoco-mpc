@@ -47,6 +47,11 @@ foreach(app m0_determinism m0_step_rate m0_static_contact m0_arm_step_response
   target_link_libraries(${app} PRIVATE sckd_core)
 endforeach()
 
+# Measured initial state + recorded command replay through the existing X4
+# actuator, chassis-servo and MuJoCo dynamics stack. No planner/MPC dependency.
+add_executable(x4_command_replay cpp/apps/x4_command_replay.cpp)
+target_link_libraries(x4_command_replay PRIVATE sckd_core)
+
 # MIT 协议单机仿真(2026-10-18):纯标准库独立可执行,不链 sckd_core/MuJoCo,
 # 复现真机臂执行链(4×16bit 量化帧/1kHz 驱动器/9ms 延迟/RS04 T-N 包络)
 add_executable(mit_motor_sim cpp/apps/mit_motor_sim.cpp)
