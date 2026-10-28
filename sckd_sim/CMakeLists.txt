@@ -161,3 +161,53 @@ add_executable(test_runtime_supervision cpp/tests/test_runtime_supervision.cc)
 target_include_directories(test_runtime_supervision PRIVATE third_party/doctest)
 target_link_libraries(test_runtime_supervision PRIVATE sckd_runtime_contracts)
 add_test(NAME runtime_supervision COMMAND test_runtime_supervision)
+
+# Opt-in native X4 replay. Keep the predictor's OpenCV/TensorRT runtime in a
+# separate process from the supplied MPC library's OpenCV/CasADi runtime.
+option(SCKD_BUILD_X4_NATIVE_REPLAY "Build supplied-library X4 measured replay" OFF)
+if(SCKD_BUILD_X4_NATIVE_REPLAY)
+  set(BALL_MLP_ROOT "/home/ubuntu/works/ball-mlp" CACHE PATH "Existing ball-mlp checkout and build")
+  find_library(BALL_MLP_LIBRARY NAMES ball-mlp PATHS "${BALL_MLP_ROOT}/build/src/ball-mlp" NO_DEFAULT_PATH REQUIRED)
+  find_library(BALL_MLP_OPENCV NAMES opencv_core PATHS /usr/local/lib NO_DEFAULT_PATH REQUIRED)
+  find_library(BALL_MLP_CUDEV NAMES opencv_cudev PATHS /usr/local/lib NO_DEFAULT_PATH REQUIRED)
+  find_library(BALL_MLP_FMT NAMES fmt REQUIRED)
+  find_library(BALL_MLP_CUDART NAMES cudart PATHS /usr/local/cuda/lib64 REQUIRED)
+  find_library(BALL_MLP_TENSORRT NAMES nvinfer PATHS /usr/local/TensorRT/lib REQUIRED)
+  add_executable(x4_shuttle_predictor cpp/apps/x4_shuttle_predictor.cpp cpp/estimation/measured_shuttle_predictor.cpp)
+  target_include_directories(x4_shuttle_predictor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cpp)
+  target_include_directories(x4_shuttle_predictor SYSTEM PRIVATE ${BALL_MLP_ROOT}/include)
+  target_link_libraries(x4_shuttle_predictor PRIVATE ${BALL_MLP_LIBRARY} ${BALL_MLP_OPENCV}
+    ${BALL_MLP_CUDEV} ${BALL_MLP_FMT} ${BALL_MLP_CUDART} ${BALL_MLP_TENSORRT} ${CMAKE_DL_LIBS} Threads::Threads rt)
+  set(NATIVE_MPC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/native_mpc_x4_950")
+  set(NATIVE_MPC_LIBRARY "${NATIVE_MPC_DIR}/libnmpc.so.1")
+  file(SHA256 "${NATIVE_MPC_LIBRARY}" NATIVE_MPC_SHA256)
+  file(SHA256 "${NATIVE_MPC_DIR}/nmpc.h" NATIVE_MPC_HEADER_SHA256)
+  if(NOT NATIVE_MPC_SHA256 STREQUAL "2afcda72d20e7a0f77798d101049aba97cb7d9952b10da1ac6b82aaea9607554"
+     OR NOT NATIVE_MPC_HEADER_SHA256 STREQUAL "e3b82039f985691e37c42e1638404d62a2bbbeef3f5e0c11a7df39f3a8d35389")
+    message(FATAL_ERROR "Native MPC header/library pair changed; verify ABI and control units before updating hashes")
+  endif()
+  set(NATIVE_MPC_DEPS "${NATIVE_MPC_DIR}/runtime")
+  set(NATIVE_MPC_OPENCV_INCLUDE "${NATIVE_MPC_DIR}/include/opencv4")
+  add_library(x4_nmpc_binary SHARED IMPORTED)
+  set_target_properties(x4_nmpc_binary PROPERTIES IMPORTED_LOCATION "${NATIVE_MPC_LIBRARY}")
+  add_library(sckd_native_mpc STATIC cpp/control/native_mpc_bridge.cpp)
+  target_include_directories(sckd_native_mpc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cpp)
+  target_include_directories(sckd_native_mpc SYSTEM PRIVATE
+      ${NATIVE_MPC_DIR} ${NATIVE_MPC_DIR}/include ${NATIVE_MPC_OPENCV_INCLUDE})
+  target_compile_definitions(sckd_native_mpc PRIVATE SCKD_NATIVE_MPC_LIBRARY="${NATIVE_MPC_LIBRARY}")
+  target_link_libraries(sckd_native_mpc PUBLIC x4_nmpc_binary "${NATIVE_MPC_DEPS}/libcasadi.so.3.7" Threads::Threads)
+  target_link_options(sckd_native_mpc INTERFACE "-Wl,-rpath-link,${NATIVE_MPC_DEPS}")
+  add_executable(x4_native_replay cpp/apps/x4_native_replay.cpp)
+  target_link_libraries(x4_native_replay PRIVATE sckd_core sckd_native_mpc)
+  add_executable(test_native_mpc cpp/tests/test_native_mpc.cc)
+  target_link_libraries(test_native_mpc PRIVATE sckd_native_mpc)
+  target_include_directories(test_native_mpc SYSTEM PRIVATE
+      ${NATIVE_MPC_DIR} ${NATIVE_MPC_DIR}/include ${NATIVE_MPC_OPENCV_INCLUDE})
+  target_compile_definitions(test_native_mpc PRIVATE SCKD_NATIVE_MPC_LIBRARY="${NATIVE_MPC_LIBRARY}")
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/native-mpc-check")
+  add_test(NAME native_mpc COMMAND test_native_mpc)
+  set_tests_properties(native_mpc PROPERTIES
+      WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/native-mpc-check"
+      ENVIRONMENT "LD_LIBRARY_PATH=${NATIVE_MPC_DEPS};CASADIPATH=${NATIVE_MPC_DEPS};OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1"
+      TIMEOUT 60)
+endif()

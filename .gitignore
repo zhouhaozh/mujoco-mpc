@@ -57,3 +57,6 @@ sckd_sim/models/source/x4_tennis/tmp*.urdf
 # 当前 Linux x86_64 构建和运行需要的预编译依赖
 !sckd_sim/third_party/osqp/libosqp.a
 !sckd_sim/third_party/nmpc6/nlp.so
+!sckd_sim/third_party/native_mpc_x4_950/runtime/*.so
+!sckd_sim/third_party/native_mpc_x4_950/include/opencv4/opencv2/video/
+!sckd_sim/third_party/native_mpc_x4_950/include/opencv4/opencv2/video/**

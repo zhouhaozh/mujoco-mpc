@@ -1,0 +1,3415 @@
+{
+  "runtime": [
+    {
+      "file": "runtime/libopencv_core.so.406",
+      "source": "/home/ubuntu/works/my_isaaclab_badminton/mpc-zhou/third_party/mpc/lib/libopencv_core.so.406",
+      "sha256": "b0997f6ad1379bfd4e645cca851254d638885d86e8c1f69a675dd723563af7d0",
+      "soname": "libopencv_core.so.406"
+    },
+    {
+      "file": "runtime/libboost_filesystem.so.1.83.0",
+      "source": "/home/ubuntu/works/my_isaaclab_badminton/mpc-zhou/third_party/mpc/lib/libboost_filesystem.so.1.83.0",
+      "sha256": "b07309fe53eb51a6f579d4caf3f2e40ff48bc8523c9436305f435f4a3246efb2",
+      "soname": "libboost_filesystem.so.1.83.0"
+    },
+    {
+      "file": "runtime/libcasadi.so.3.7",
+      "source": "/opt/openrobots/lib/libcasadi.so.3.7",
+      "sha256": "32f043466d36c4799c6dd99d698692fe6264315a160fdcb474d4d2340282a22d",
+      "soname": "libcasadi.so.3.7"
+    },
+    {
+      "file": "runtime/libcasadi_nlpsol_ipopt.so.3.7",
+      "source": "/opt/openrobots/lib/libcasadi_nlpsol_ipopt.so.3.7",
+      "sha256": "eb2fc4226a8e3a867f75c2188e38e806fa73158f4288a378ad75efc9e18f54d1",
+      "soname": "libcasadi_nlpsol_ipopt.so.3.7"
+    },
+    {
+      "file": "runtime/libipopt.so.1.9.9",
+      "source": "/usr/lib/libipopt.so.1.9.9",
+      "sha256": "da040c79b8650ee65561586a42f34b78e567e13cc282c3aef239767b4d35e970",
+      "soname": "libipopt.so.1"
+    },
+    {
+      "file": "runtime/libdmumps_seq-5.6.1.so",
+      "source": "/usr/lib/x86_64-linux-gnu/libdmumps_seq-5.6.1.so",
+      "sha256": "5b90da60c490aaf7bd9b9030d78231f6218db878d849be0d26969193170a481e",
+      "soname": "libdmumps_seq-5.6.so"
+    },
+    {
+      "file": "runtime/libopenblasp-r0.3.26.so",
+      "source": "/usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so",
+      "sha256": "bfc7492adbf84a8f567720a9e1fae2afc18f3d817da233e7f4d453683485308e",
+      "soname": "libopenblas.so.0"
+    },
+    {
+      "file": "runtime/liblapack.so.3",
+      "source": "/usr/lib/x86_64-linux-gnu/openblas-pthread/liblapack.so.3",
+      "sha256": "1e82245607c58d13405580c71b9b0134b5a952686ac861f979fc7a886ebd4229",
+      "soname": "liblapack.so.3"
+    },
+    {
+      "file": "runtime/libscotch-7.0.4.so",
+      "source": "/usr/lib/x86_64-linux-gnu/libscotch-7.0.4.so",
+      "sha256": "f56acad39566d3b67eb6e2907ee4c0b57cbc96c87a282e9cd567d8373f11008b",
+      "soname": "libscotch-7.0.so"
+    },
+    {
+      "file": "runtime/libmumps_common_seq-5.6.1.so",
+      "source": "/usr/lib/x86_64-linux-gnu/libmumps_common_seq-5.6.1.so",
+      "sha256": "0a3cf0808af846ad4f65997a9f972ae409fa97d5dcd00227b9428969aebff784",
+      "soname": "libmumps_common_seq-5.6.so"
+    },
+    {
+      "file": "runtime/libesmumps-7.0.4.so",
+      "source": "/usr/lib/x86_64-linux-gnu/libesmumps-7.0.4.so",
+      "sha256": "0dbaffee4db2d6e874f59a3ed903539d06ee1adba64a7e4fddb8213fca57023b",
+      "soname": "libesmumps-7.0.so"
+    },
+    {
+      "file": "runtime/libscotcherr-7.0.4.so",
+      "source": "/usr/lib/x86_64-linux-gnu/libscotcherr-7.0.4.so",
+      "sha256": "ba530aac01a6373abb01e9fcb9fc5eefb04b6e4421f1c471f3647c2c4fb2c7bd",
+      "soname": "libscotcherr-7.0.so"
+    },
+    {
+      "file": "runtime/libtbb.so.12.11",
+      "source": "/usr/lib/x86_64-linux-gnu/libtbb.so.12.11",
+      "sha256": "1e2a936d4519f2a4f2e62411a9f680f967a4742525ecf5c2dcac57f1b82501e7",
+      "soname": "libtbb.so.12"
+    },
+    {
+      "file": "runtime/libblas.so.3",
+      "source": "/usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3",
+      "sha256": "8ba4a98f44d763c2e648755ef452025919e28633339f23ff605044de3483a25d",
+      "soname": "libblas.so.3"
+    }
+  ],
+  "headers": [
+    {
+      "file": "include/casadi/casadi.hpp",
+      "sha256": "7da26945f7e4ba4afa305bf530f573ad1b44139e87ba2128c74ddd29dd79818c"
+    },
+    {
+      "file": "include/casadi/casadi_c.h",
+      "sha256": "af8082a46278f5557caa2b17b6999f1b08e6a7e78a83e7af6e9637bdaf155d3e"
+    },
+    {
+      "file": "include/casadi/config.h",
+      "sha256": "95e2561082c37490dade484d4e46a1faa2334b84e5583fa29d4ad1f9eb3e6c3b"
+    },
+    {
+      "file": "include/casadi/core/archiver.hpp",
+      "sha256": "97ab75018ad8330bf30f3f0bbd64c46cad66863f21d61cd6cb810f0cd5930895"
+    },
+    {
+      "file": "include/casadi/core/blazing_spline.hpp",
+      "sha256": "2a89e3865c88e4b0f0a55a68a52828d44c403ec3cd8638f0724c98dfcde97c1f"
+    },
+    {
+      "file": "include/casadi/core/calculus.hpp",
+      "sha256": "dfa81b185fcd58619485a892396c8c6eb74fee95bbc1e1c11bd422c9d4097421"
+    },
+    {
+      "file": "include/casadi/core/callback.hpp",
+      "sha256": "ff852f406f591f90bb831f87f3024d48b3418a7a7a09114ce77bf634fbabf429"
+    },
+    {
+      "file": "include/casadi/core/casadi_common.hpp",
+      "sha256": "0bff22bfa88e6d9994637c4c7e3568b3ef7139b7001bff7956c56ddf9c0033f5"
+    },
+    {
+      "file": "include/casadi/core/casadi_enum.hpp",
+      "sha256": "145f78dc14b0e651d94d738ae97aac621d26e1205f1f0d7e78e25e8aa9f6f233"
+    },
+    {
+      "file": "include/casadi/core/casadi_export.h",
+      "sha256": "35979b1af1567004199eb8d758c2891a0ac2546388d52b0042a4fa4970b7516f"
+    },
+    {
+      "file": "include/casadi/core/casadi_interrupt.hpp",
+      "sha256": "17d6c78f5ea3674c29ff3463538a7c13ca2af5ae72c455079235742227021023"
+    },
+    {
+      "file": "include/casadi/core/casadi_limits.hpp",
+      "sha256": "6577f9143ce2ad36587a8e9cc3c31aa8407e568774b933fb5b49bc88e9b3334f"
+    },
+    {
+      "file": "include/casadi/core/casadi_logger.hpp",
+      "sha256": "7eed5cc799098378a7cf998c6483d05148b99d909662532a66853bb16c1d406c"
+    },
+    {
+      "file": "include/casadi/core/casadi_meta.hpp",
+      "sha256": "7dfdf15b617829a04db22aac8c3e487d38d2d7cc9c6b618e0bdb0593950047ed"
+    },
+    {
+      "file": "include/casadi/core/casadi_misc.hpp",
+      "sha256": "d144df5ef02a0a29bf086dc2056da1355861d244f5c2af31a0f4825df90ae0f1"
+    },
+    {
+      "file": "include/casadi/core/casadi_types.hpp",
+      "sha256": "ac7bb6125cf874d149a072fad966541efa5badc1364cc64df04e01efaebe243b"
+    },
+    {
+      "file": "include/casadi/core/code_generator.hpp",
+      "sha256": "44334f2b26da05319d7853f66506048c55571109ee2f434ad759d3eb777ef902"
+    },
+    {
+      "file": "include/casadi/core/conic.hpp",
+      "sha256": "7355d44186857aed454c645167fa19ce58a4c6ab6b4c171fe119855a26ee85b0"
+    },
+    {
+      "file": "include/casadi/core/core.hpp",
+      "sha256": "fc8c5601c9b99c33591b26cd36fe2d20bdc15ffd6a78c57ff4c3eaf256a812b7"
+    },
+    {
+      "file": "include/casadi/core/dae_builder.hpp",
+      "sha256": "bc0bbec4ff0f3f5b2c22d050c3b815b835ac99e8433ba3981ff2cab1148de511"
+    },
+    {
+      "file": "include/casadi/core/dm.hpp",
+      "sha256": "47492c4f93cd80fe65116f840debdda1d90c457e942d2cfc69f9e5b4879834bc"
+    },
+    {
+      "file": "include/casadi/core/dm_fwd.hpp",
+      "sha256": "814e4918b1020a778594b35b046b331abc8ef56aafb5bec1e3ee81143d189e15"
+    },
+    {
+      "file": "include/casadi/core/dple.hpp",
+      "sha256": "a0506a04da173467fc3893643326def8e3481990bb188bf6974ee7b9c72e3e54"
+    },
+    {
+      "file": "include/casadi/core/exception.hpp",
+      "sha256": "4cf286ac30e3db4659d7619a832002ad4e8cbf8f7db10fafa9b3250951c35bb9"
+    },
+    {
+      "file": "include/casadi/core/expm.hpp",
+      "sha256": "1c2394d63bd3d0d9aceabb6dfe3e6e8cb4812d65b22dc616f50cacb850516616"
+    },
+    {
+      "file": "include/casadi/core/external.hpp",
+      "sha256": "7260cbbc4a491eb0cd1eefb824b1760ecc92351e57df763f51cbcb38305ca182"
+    },
+    {
+      "file": "include/casadi/core/filesystem.hpp",
+      "sha256": "9a94dd0f8b22afcfaaebbcdd1e37d282edd70355fcc5de52108a4c4537251006"
+    },
+    {
+      "file": "include/casadi/core/fmu.hpp",
+      "sha256": "8b483cbe8da418776098adc7250e6b23eff977429b4053f75224ada552fb2881"
+    },
+    {
+      "file": "include/casadi/core/function.hpp",
+      "sha256": "ec64ca01a1a380ee54bf098f2776be08056d7c8124d24b38a7216b66710b0273"
+    },
+    {
+      "file": "include/casadi/core/generic_expression.hpp",
+      "sha256": "d7c24539b637c3ee61e120b205c66e99eda4584f361f780dc5ce1f5dbffca1cb"
+    },
+    {
+      "file": "include/casadi/core/generic_matrix.hpp",
+      "sha256": "37c0f2ff5b5bc54e0eaca5404e984136e18f3dab96448570eb0a6e2dc72961e3"
+    },
+    {
+      "file": "include/casadi/core/generic_shared.hpp",
+      "sha256": "5eff5d4f88ee9973d13e6d852c06c2ba8017cf2a1814df1e187deccb3d4358c6"
+    },
+    {
+      "file": "include/casadi/core/generic_shared_impl.hpp",
+      "sha256": "40e336074f2b125270bce65e0cb15345dc24becfd000cba6fc62231c62cd7567"
+    },
+    {
+      "file": "include/casadi/core/generic_shared_internal.hpp",
+      "sha256": "c9f96f05494b122c535187326350db9f5f1976df416c829ada8f542d21a8aade"
+    },
+    {
+      "file": "include/casadi/core/generic_type.hpp",
+      "sha256": "89237b995d0560d961ec3e48b77615a9c1ae82fbcf47b1ed48e2931faf4f30a3"
+    },
+    {
+      "file": "include/casadi/core/global_options.hpp",
+      "sha256": "f6d414e09fa3fcd70e7e77dc0ca3dca2ffa7c5ba4f036489ca287d887ba15e1f"
+    },
+    {
+      "file": "include/casadi/core/im.hpp",
+      "sha256": "5470122f0b379d5085003fa2b416b56a1f2bcfa7d91af57a927ca24717c7056e"
+    },
+    {
+      "file": "include/casadi/core/im_fwd.hpp",
+      "sha256": "6367f34b1e904f1fe5ed021fb00c270f58e4b683dde20b20196c7954945b1580"
+    },
+    {
+      "file": "include/casadi/core/importer.hpp",
+      "sha256": "ff089350ea8fa11ea127ffe20cc13f986f41b63084d4047139a98db0bf830a46"
+    },
+    {
+      "file": "include/casadi/core/integration_tools.hpp",
+      "sha256": "60a97f36dd14b08e6b0f5fa1e14fa32305e77c889d89d8a5489e8a0764ec0e2e"
+    },
+    {
+      "file": "include/casadi/core/integrator.hpp",
+      "sha256": "f2d32146d22c30b17f3b99196daa0fde3c11d96f5caba9bb9d75edc8b126f1d7"
+    },
+    {
+      "file": "include/casadi/core/interpolant.hpp",
+      "sha256": "2041f449882407e84cb3412044f430a0f637a6deeab339bac45978e54d601641"
+    },
+    {
+      "file": "include/casadi/core/linsol.hpp",
+      "sha256": "a7c4ead5eb52e7595c394473d228e24a49a6a382c1cd972a154efa650634ec3b"
+    },
+    {
+      "file": "include/casadi/core/matrix_decl.hpp",
+      "sha256": "a5e6e7626523e2ac20ffbb947421abfea89e526665bb47ac723c6f31a7833338"
+    },
+    {
+      "file": "include/casadi/core/matrix_fwd.hpp",
+      "sha256": "02c393da59ab85777f2aedbf42db4a6a37105508145bb6fffeadd7435a33a213"
+    },
+    {
+      "file": "include/casadi/core/mx.hpp",
+      "sha256": "8d02bf6336157d575ba2b93173ce45ffb8fde498233cc7793be2ac45c40c5f8d"
+    },
+    {
+      "file": "include/casadi/core/nlp_builder.hpp",
+      "sha256": "ed0d71b5912d810dbf7add828d62b9d049cc066e4446b8da7bf6b9cf3deb3fd4"
+    },
+    {
+      "file": "include/casadi/core/nlp_tools.hpp",
+      "sha256": "eb06f68cc299303c1f429dd57c5e15e328b173096454dfc97d396c4d4584746b"
+    },
+    {
+      "file": "include/casadi/core/nlpsol.hpp",
+      "sha256": "55cf9ae4c1312729e6b6891c5d59c691e517eb2efb98f664aa485c1ed6f5a6c8"
+    },
+    {
+      "file": "include/casadi/core/nonzeros.hpp",
+      "sha256": "b1f4338886d8c0f142b9863522662bbc810bbe4d501d97ecc9cd84f29b9f5804"
+    },
+    {
+      "file": "include/casadi/core/options.hpp",
+      "sha256": "80f848a0dded6730a6b60a01b596fdd7cef7184be2eb92c22dcdcc74252308dc"
+    },
+    {
+      "file": "include/casadi/core/optistack.hpp",
+      "sha256": "9430d2edaf3893dcc16c8d000612c474fc8a0774147bdf65dfea967281afb5db"
+    },
+    {
+      "file": "include/casadi/core/polynomial.hpp",
+      "sha256": "7d524d95a49d720275b0c18a04e320e58d24ed7b22c2a3784f7b4f69c50881ae"
+    },
+    {
+      "file": "include/casadi/core/printable.hpp",
+      "sha256": "e133872532ad34385b2a743f1b179eb0dfaec52e29560b4ca189cd19d81714e3"
+    },
+    {
+      "file": "include/casadi/core/resource.hpp",
+      "sha256": "6783b90d9e95a2a4c1b67d2cb44583efe5f58771c362e71ea5b661cae9ae6483"
+    },
+    {
+      "file": "include/casadi/core/rootfinder.hpp",
+      "sha256": "f20353e1e876e9cfbba0fece300fbdb4518cf1c15bf0247091b95065c7409d65"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_axpy.hpp",
+      "sha256": "c3035d4b8b8f435c20fb9670d18ab565e08967ebfd204a3971399017a59c5291"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_bfgs.hpp",
+      "sha256": "1ebe57538bea1c8ae4b04e5c4746c1a21acb15b4ce26be4b8d564695ef4520b1"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_bilin.hpp",
+      "sha256": "ae0735394eaa6aedfd8baf933c66c27c8d478592bb430931da1e56dc9bdd33a4"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_blazing_1d_boor_eval.hpp",
+      "sha256": "9a44d18c053106a3bf0810a69d1ff489b0bb478a603bc896dbb9fecd916fd19c"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_blazing_2d_boor_eval.hpp",
+      "sha256": "12c3cdfa2139d14c6aa2dff6f07878e95ef583fead1536f9473769e0054e467f"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_blazing_3d_boor_eval.hpp",
+      "sha256": "3daeec4fc2db86ba4c7b3ef5043d576117512cd10dcf5e5b9e587e157ab22dd3"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_blazing_de_boor.hpp",
+      "sha256": "efe54e39a54e014c1a7916c9ef7b7c0b970e94e8b3c1ae7cefbce776e085eea9"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_bound_consistency.hpp",
+      "sha256": "208c4d12b3c4a9822e9fbd781db0007eaa0f8d86addcf72b4b59a95417b4d99d"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_cache.hpp",
+      "sha256": "1bb746432e745c1500325477bdd3792674fc2285b361ebcd205c38cc14f49092"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_clear.hpp",
+      "sha256": "028355a62f617c01bda1b94118dfcff645238ad0363f4aafa4f2be79fd3d2078"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_clip_max.hpp",
+      "sha256": "c288b637a847ca7a30e5823fb62c5b47542063e4d76b77da50f4dde85729ebf6"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_clip_min.hpp",
+      "sha256": "e97363f6ffa2c5b7bfb501d0e83581ec03182456b6f8da58a37a31a4a51342fa"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_convexify.hpp",
+      "sha256": "728a2945a047f8e3afd468005d645ba0bd3134fd841784e7704be8c89a10ddff"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_copy.hpp",
+      "sha256": "7974bec3830338c6256d75b420d4627804d9a4b71d6e22ef61aadeed89e891f0"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_cvx.hpp",
+      "sha256": "81728b2946e91e4797eb6301ed5b28d20b7589c74a032ab6cae77257b3a5c279"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_de_boor.hpp",
+      "sha256": "e61947e954bdf9da81f4d235b54159a87e44094668baa0a700135abf5311137a"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_dense_lsqr.hpp",
+      "sha256": "c66dbb89732c34d703f580802b969454e30d9d1d36996348c773ac1b819e3955"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_densify.hpp",
+      "sha256": "0aa3745163efa10649566b04e9800e030f05b12646675ffcf41c3a1886ad2f2a"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_dot.hpp",
+      "sha256": "aa72dcf7e16fa6616c0fea271be9839b2a1da1deaa685280de31466e1ffb3a10"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_feasiblesqpmethod.hpp",
+      "sha256": "4c714b3f0d968e21a5028a7271dca2559abf5f6340ff308020c41d472d95f855"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_file_slurp.hpp",
+      "sha256": "28fb579c059434bee9ba4d1c73d367fc4c2da5e32b2f8ba34ae8d2262c7ac8b6"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_fill.hpp",
+      "sha256": "ebd51f8090c8986189007357d93ea868281e92454ccf19b3eff41f8076ea87b0"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_finite_diff.hpp",
+      "sha256": "d44432c46177575a48c4c70fccaa28ef7813943c349106b8dff0fa5007165807"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_flip.hpp",
+      "sha256": "73667f97e6116a8c48685391f3c0299d6d14f4340a23066d6f1dfafa545000a4"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_getu.hpp",
+      "sha256": "9c7add496b7b267f9916992db80771f39b6c943f2fbc6d52a5d09ff8eb8f3b6a"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_iamax.hpp",
+      "sha256": "0d753473f066966d9e1313f1d178090e9cfcd9b09b6507ca51004d994d23a4c8"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_interpn.hpp",
+      "sha256": "035272295f9a5cdeb423d299a31fb76a67c86558bcb41e4fe95c58290735b6d9"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_interpn_grad.hpp",
+      "sha256": "922f5a62e1ba3317c5435e23de6cf17e36a91dee4fd442586ab605b8004ea60f"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_interpn_interpolate.hpp",
+      "sha256": "57121ff9b2802e66362711851e47f6a8e60908af8195bb1091975091e17be8da"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_interpn_weights.hpp",
+      "sha256": "01a26f2f15e9d1c9d7edf183aece2b51e879abd532ed43ec14ebb05651f499ec"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_ipqp.hpp",
+      "sha256": "bac0eb92681eabc1501694fa81aa5a7619aef5ed1d300d2c36d6141f408357c4"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_jac.hpp",
+      "sha256": "485691c119645443c5d975f2ef864436e0cb97145631f6ba03b801be32b673b8"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_kkt.hpp",
+      "sha256": "ca55a1b5d2bda80c2be0ee6c8efa8640205c50789b7effe896913687c5288e7d"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_kron.hpp",
+      "sha256": "2b2257c8de89afc0df5524906077adae46c6230168ceca8be8c664e58566075b"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_ldl.hpp",
+      "sha256": "d14f696c105a0c38276418dbcb081bec321efc65cbecce291fe39d468b3a34d5"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_logsumexp.hpp",
+      "sha256": "cbedbf528503ad831b4e613adf27186cfc8da39285527d13fd06cb8c98c646a5"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_low.hpp",
+      "sha256": "7766e921447f2ee53bf5346b38e1e0cd69cb2dcd3d9802e573634f76a3478caa"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_lsqr.hpp",
+      "sha256": "9f4d96a6129d8c6f70a75d752d46073d49a59f3e5b0dab86bd3a0e0298e21cd0"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_masked_norm_inf.hpp",
+      "sha256": "e9ef8949dc843e0de6171dcbf7f39ffd20ab5a2c2413610a2ea7f7a8922b8100"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_max_viol.hpp",
+      "sha256": "4e1dc2fa5f6a73e3cfeeb46b3e529998b9264c72770ec06e409bffba6d8d0f41"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_mmax.hpp",
+      "sha256": "d3ec8a91573bbe0af42a1c89a073951141c3a36bbdbd672e842ac9adfdef8b38"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_mmin.hpp",
+      "sha256": "83ac5bc5d2d328272f52eafab7f74ab52d26cbc88bc3f4ef2efce4d76d5d1392"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_mtimes.hpp",
+      "sha256": "24aacd7c583d1efeead5a8ed2be3006d7be85fd07d4f23bb0c4da43e705ef7b3"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_mv.hpp",
+      "sha256": "800034aff9c7c0b91541daed6a6e20c5e49955b60ade97678330adc75c9acb1e"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_mv_dense.hpp",
+      "sha256": "8bdb84ccd28088b3bb3f35daed4506ce93a2cbb762da813c0071972362eba4c4"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_nd_boor_dual_eval.hpp",
+      "sha256": "e29d0e92c4749ad2f44d4982a44ccf334c3c9eec2960fd5ca9dd2a74b956f403"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_nd_boor_eval.hpp",
+      "sha256": "5a13e78402e9fa44654755f10dafd649025ce76342a9db3229864e083cb29df8"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_newton.hpp",
+      "sha256": "4fb32eb10db1b30398ea0d305a71329fdd6864029de3829c8869388b324dfb3d"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_nlp.hpp",
+      "sha256": "c4cffdd81c9b2f7828703896c49b1618293cd40593e26e5bd2b209e325c106ed"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_norm_1.hpp",
+      "sha256": "1342a8017c50a624e6f18ebe24481290f9235166d9c273ef3bbf286b3ba948f8"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_norm_2.hpp",
+      "sha256": "78320715584d1fb114b5c6f060c6549fda640c1ffe0fd3696051b10d9435a47a"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_norm_inf.hpp",
+      "sha256": "9d3aae27d4f0e340c6685f0f8fcfa4af238fd5fac3b091d75915f98e7dc3e4ec"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_norm_inf_mul.hpp",
+      "sha256": "5483b01a6948c5e95e58552a03ebdda6fe613e2879df3a3dc2bda44d67d495b5"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_ocp_block.hpp",
+      "sha256": "4ec5facbf0eb588b071b193abeb07c957746ef090f8f8c3612a048b3eafb86f9"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_oracle.hpp",
+      "sha256": "af713dbb8062e6aca3ddc2be9e343b1e09b0cde5e6fd337b8f77b88cabbe20bc"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_oracle_callback.hpp",
+      "sha256": "82977b7279bedd3a23b5f16522d8103016ba2e30e02c20b8637ce5d3bf9e5e5e"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_polyval.hpp",
+      "sha256": "b7cf9a87eb571f1d075b1eb279c600067d1cbdac394970cd9b14d7de2681c850"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_print_canonical.hpp",
+      "sha256": "a7cfc09a26ead61f01ab774eb8d018f40cd75fe8ecb3a6322dc8c3ebea0fe7fa"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_print_scalar.hpp",
+      "sha256": "c39096c6b7d37fe5fc3803fc049dce8b2584ba3f1e06e457e427d9ab8f709338"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_print_vector.hpp",
+      "sha256": "69b074ed91d126ba17c51f75827e815af856bd6c9b8cccfd0743d7831488da04"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_printme.hpp",
+      "sha256": "aa3d4afe079c8be5054fc7be447c914834e89fc1dcf99ee9854ecec2109da35d"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_project.hpp",
+      "sha256": "09f4f893907f760e173b40d355eda09b2b54e70bdd3b6d55992a6f4913777697"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_qp.hpp",
+      "sha256": "21c5d58b2488b003543f06a91b2e7daf57f9da978b6dc71e3336381cdcc02479"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_qr.hpp",
+      "sha256": "542ddfb0fd2838c4e189abe16299986ec59db59d89d5d9eeddcfb38a6620cc12"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_qrqp.hpp",
+      "sha256": "d76e800bddbba6e1f9ea8c41d4ea16e1e72e48768dfaaf59a0633290c910d9c0"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_rank1.hpp",
+      "sha256": "ef57dc62bfddb292ff606dd037294528ff04e7bc025876da4eb5d227712bede6"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_regularize.hpp",
+      "sha256": "cb711afbffcd73e7e4d915f51c0d3256186f01e9660485b14c6eab39111757f2"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_runtime.hpp",
+      "sha256": "a1512e25c4640f996a55ef6c4a9030adda73fd6876dfce7d1e15366cb87c0777"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_scal.hpp",
+      "sha256": "91e5e764c766201555c0079680b103b947127a234a877e3a37e772ca3f6f0d5b"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_scaled_copy.hpp",
+      "sha256": "d883356d72e58ba6c5afc18035eb4d790a592be8077d8033d471a27736d7794a"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_sparsify.hpp",
+      "sha256": "fbd6701b57d0d9cc86c84d663f67cce697eea88b616a2bfdb56401552e0fd4ef"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_sparsity.hpp",
+      "sha256": "1e6ce6d35f0710d01b911a16c682e3daa1a572e758f6207037284c4d5f8581b4"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_sqpmethod.hpp",
+      "sha256": "1468c7b9bd6a1264c3822dc1e2eefc3c784b2437d82ae58d274383c8e9135837"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_sum.hpp",
+      "sha256": "c5efa9f74ea7420b543bbc698619c1f5a1db69aa603f5ac311a242053886ad98"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_sum_viol.hpp",
+      "sha256": "51c4724078be48ef593ddaaa5fbd97f9d3e8aa4763758ac96cb14f9846ea1cab"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_swap.hpp",
+      "sha256": "2c0319535245628bd00829a0d33fae360265d0897c7a4567c235086e882d3ed1"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_trans.hpp",
+      "sha256": "a1d265baf4cde9b2d0b66b580de7e3089935c261ff16808dfbd78a88f03a2c7d"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_tri_project.hpp",
+      "sha256": "ea471a1968bf701f8a53de6c6fd28491234b85894500cbd5f960c6099eac630b"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_trilsolve.hpp",
+      "sha256": "78c6fa91b38172e4d2c1938562b11fe6c8c47e2ebb4848e01b2b23630abf5a8f"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_triusolve.hpp",
+      "sha256": "7710eb4b38ce2bf0fb2000658a075fcd011d6328e84c4514076c3cb102b6fd7c"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_vector_fmax.hpp",
+      "sha256": "bd112fa31b3910cd2db277c54e07422e6e641dfb301ef72fe9c5efaeee1dcf4d"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_vector_fmin.hpp",
+      "sha256": "e94911867dcea9f69d0a377f2e43b0bebae30d813d58f20fd6458d1d934332b9"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_vfmax.hpp",
+      "sha256": "995e12519bf38f12eb7c795f2c6174b35869076e27d866883f92b528077a95c8"
+    },
+    {
+      "file": "include/casadi/core/runtime/casadi_vfmin.hpp",
+      "sha256": "0ce5f435657430a7bfe48eecd3fa3ca8715bdd19ad4c9085c463ccafe5943b5e"
+    },
+    {
+      "file": "include/casadi/core/runtime/shared.hpp",
+      "sha256": "eda015f59ea7680dc7b3d52dabaddcf5878b46c7d996373398b0521e49ea1031"
+    },
+    {
+      "file": "include/casadi/core/serializer.hpp",
+      "sha256": "7aefa19a242110794309ecb9ae61e42522068ba6f89f2f68c17f281689149d30"
+    },
+    {
+      "file": "include/casadi/core/serializing_stream.hpp",
+      "sha256": "83f773218d360ffc2a6caf6521b301ea46a2794d6fbef7e1db5be9d4c27393f5"
+    },
+    {
+      "file": "include/casadi/core/shared_object.hpp",
+      "sha256": "6544588feed5e8b97603e4f8928e4bb33a7246c0b47a8c5e4c2b459f6fd393f6"
+    },
+    {
+      "file": "include/casadi/core/slice.hpp",
+      "sha256": "d006e3c4d8890591b501b581a4936a228b974a2a85b612dac8adbc980c45fae9"
+    },
+    {
+      "file": "include/casadi/core/sparsity.hpp",
+      "sha256": "e82583e8609e4782b38cc063d1214d7a5ee9b3e140d7bdfed1cd06d682de2760"
+    },
+    {
+      "file": "include/casadi/core/sparsity_interface.hpp",
+      "sha256": "f4d9651099c0b276b4b7ac288addd058ac362efb000e14fa575833f1ec4263f1"
+    },
+    {
+      "file": "include/casadi/core/submatrix.hpp",
+      "sha256": "a0cd2f0202f9ddc211766d6f1ae8dbd43c5c3a3f856b76bcfb5694fc30e45ccd"
+    },
+    {
+      "file": "include/casadi/core/sx.hpp",
+      "sha256": "e98ed3733f6848af7a467231055461cffb6d37b1b1af13bc0c02c21eeaf16afb"
+    },
+    {
+      "file": "include/casadi/core/sx_elem.hpp",
+      "sha256": "7c546fb0b29787c7c98d59ef7d3b47139dd01b6f3fa18a0991be6f8d1e3b8671"
+    },
+    {
+      "file": "include/casadi/core/sx_fwd.hpp",
+      "sha256": "38dc4c1bc2ad2231ca9db098048a34f19816e26bc1f005fd51c5defac1557169"
+    },
+    {
+      "file": "include/casadi/core/timing.hpp",
+      "sha256": "43accd4de1afa1cc68adaff973d809484c48af14dde601d288b746f8b5017545"
+    },
+    {
+      "file": "include/casadi/core/tools.hpp",
+      "sha256": "56a2d594aaef2c4d89de91d4b2e40be92dd4c18b74318cd5688ba26df26c070d"
+    },
+    {
+      "file": "include/casadi/core/xml_file.hpp",
+      "sha256": "f728f1ea42532683713097e29d6ff85ac02fa25f1b896393c4e38e5b60bc3bce"
+    },
+    {
+      "file": "include/casadi/core/xml_node.hpp",
+      "sha256": "853c36f42a20dd40d8aa0964eb2b37ae0d79ccea78f859a4c25c34ccd1380595"
+    },
+    {
+      "file": "include/casadi/mem.h",
+      "sha256": "f3d663d3622036cb21b2b64ee4ba0d9c0a6e7225c70ab98c0a19996e8f8813d0"
+    },
+    {
+      "file": "include/opencv4/opencv2/alphamat.hpp",
+      "sha256": "34bdb75bccf58ec1ddea508204f74f920978ad575fcf9013f076a9eec9fc818e"
+    },
+    {
+      "file": "include/opencv4/opencv2/aruco/aruco_calib.hpp",
+      "sha256": "b57b980084dbcd8a2691813aa7eddd54d7e2bef2216972cb7eb37317a8b12f84"
+    },
+    {
+      "file": "include/opencv4/opencv2/aruco/charuco.hpp",
+      "sha256": "585d86aa15d7b3311258dd1539e775a5cd425461eacd69dfd019739c5a3a8e8a"
+    },
+    {
+      "file": "include/opencv4/opencv2/aruco.hpp",
+      "sha256": "6283f5e438f82e1920fdcfaa1ffd85a8e51f0759065993cd0ad93abd262da783"
+    },
+    {
+      "file": "include/opencv4/opencv2/bgsegm.hpp",
+      "sha256": "b400c61e75bbc1a771ecf5e171324babbe47fbb916aee03e54a3619fb58f6ace"
+    },
+    {
+      "file": "include/opencv4/opencv2/bioinspired/bioinspired.hpp",
+      "sha256": "7339752dc301f556b5d922d2ac5ee1afc68f3f756194820b449fc07c298b3843"
+    },
+    {
+      "file": "include/opencv4/opencv2/bioinspired/retina.hpp",
+      "sha256": "e1a142a09db3207ef78b71cd935734fd70e616fca13ed5754f148228583781da"
+    },
+    {
+      "file": "include/opencv4/opencv2/bioinspired/retinafasttonemapping.hpp",
+      "sha256": "96e415c5d825f7df371885d3649f1e1ef0c678ed967fe7badef2a06f23bb31ee"
+    },
+    {
+      "file": "include/opencv4/opencv2/bioinspired/transientareassegmentationmodule.hpp",
+      "sha256": "bb009b2b08f49b522ca5838b806f30560f0776215322b605dfaa6ad288c20d35"
+    },
+    {
+      "file": "include/opencv4/opencv2/bioinspired.hpp",
+      "sha256": "ba6fa34925cc29aa5e30e872e94ca2c75ae291bfdcd4e04cbf4138d6e4d823a3"
+    },
+    {
+      "file": "include/opencv4/opencv2/calib3d/calib3d.hpp",
+      "sha256": "84cafb3c18dbf7c5f6c34e9eff0c018185c12ca9c3cb00955d1452e42fcbf5e5"
+    },
+    {
+      "file": "include/opencv4/opencv2/calib3d/calib3d_c.h",
+      "sha256": "c0208fdc32f171d444d25d7096ac9a6f1dbb903176dc3ddf366a974293028bd7"
+    },
+    {
+      "file": "include/opencv4/opencv2/calib3d.hpp",
+      "sha256": "73f626cc18f9ae1e1aa560a1ebaa649da57cb692ee31d4313f2baecdc7cb50b0"
+    },
+    {
+      "file": "include/opencv4/opencv2/ccalib/multicalib.hpp",
+      "sha256": "81551caaa7d718fc298151a225f36e4faa50aea731642a2daf4af9c12a9c5e46"
+    },
+    {
+      "file": "include/opencv4/opencv2/ccalib/omnidir.hpp",
+      "sha256": "b2f3bd9c90f185bfdbc7d837c170544ceae40ec3f8805311cc848544529c4def"
+    },
+    {
+      "file": "include/opencv4/opencv2/ccalib/randpattern.hpp",
+      "sha256": "ea514812845feb59482da8b9eafd63cfea34f6bf5a8d95320b5d772d9199add8"
+    },
+    {
+      "file": "include/opencv4/opencv2/ccalib.hpp",
+      "sha256": "1e6616f6eb7c96015be9f2db79cd0de6268939ae3eac41370541570fa0f44a45"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/affine.hpp",
+      "sha256": "f67b0e1a0d51ed1a0cb0f0010568a3c3649aa99ab51a0183e092858be6b00da4"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/async.hpp",
+      "sha256": "4ebd7dec356441c35e53447f548cb4c1074d93109a92716ab570d40469992313"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/base.hpp",
+      "sha256": "fabf426229e7acb4e3eca682d8dbcb11146da8e7691a62a7dd40b32c55b6ebf6"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/bindings_utils.hpp",
+      "sha256": "7438b1e6e13b0cdf73e4792fa1f7b5c2de6f0db621552c7b9dd13c538549f264"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/bufferpool.hpp",
+      "sha256": "65dd904d4f15850ec23ad7531a8f431fd023c98c429adc59e00ae346c8976667"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/check.hpp",
+      "sha256": "fb7cf749c4695f02cb311b198efa9823eac1f1e98831b776fe8ab5f976bea4d1"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/core.hpp",
+      "sha256": "21a4ea4d80847984ef8eafe4746ecc18d5bcafd10564ce4c24e2416043d85798"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/core_c.h",
+      "sha256": "7c5d2883897df0d8f86a322078c32132cf890a34f45fcdb9460f1bde84e97466"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/block.hpp",
+      "sha256": "706494ee8db1c697ffa51541ada3ea6eace83f2c776c9fd24f755bb412bc2c6d"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/border_interpolate.hpp",
+      "sha256": "ec035bb5aba46f139fe841ce5b09f0f098d330378a29b39db9f2d38f19be19c2"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/color.hpp",
+      "sha256": "0092ae7b45369b4eb86bc3b9c2cd64331c93d3ad9c338285e7f842adc3dd3331"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/common.hpp",
+      "sha256": "74144295b4913025b57b8a15bc4043091f2ad1ad2ad4835766ff76c7a7bfe0ca"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/cuda_compat.hpp",
+      "sha256": "758a75bd0e9b2968a50f52132d83acb75c6e49eb6f04be798c627f2b756ed3b3"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/datamov_utils.hpp",
+      "sha256": "7f9cc05e1ba9db626bb6cdf2833b3f56c0423efa9ae8bbfac7a31ae7d4550bc4"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/detail/color_detail.hpp",
+      "sha256": "79d28f503115106ed34f914e73a184e7691292afa0f2bf1abce5a50e6fa9ff41"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/detail/reduce.hpp",
+      "sha256": "ce9c9f1286821b1ad2f31e0e8afe3c683503b8eafed0f329880d8aa573cffbfd"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/detail/reduce_key_val.hpp",
+      "sha256": "b781ffca5b62f64332cf62988aa18728d52abb24ffb2cb4a82fcda521d7da88a"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/detail/transform_detail.hpp",
+      "sha256": "72650821b8fd19a4a3b2c18a9bad2878064f41bb82206a1297c2bdbd0193aa82"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/detail/type_traits_detail.hpp",
+      "sha256": "cf9aa11a5c0e8a599e93ffd40d3ae45d62d1da19a4b38a00d64c14d8caae8f2a"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/detail/vec_distance_detail.hpp",
+      "sha256": "c6db61c660a173e05a32ba205a113b562316fdeefaf70dcf9c12bc1a22d31a9b"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/dynamic_smem.hpp",
+      "sha256": "6c98892ee9425c177d54d8b1f434396b87124250a575cd2bbcd410b53888c9aa"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/emulation.hpp",
+      "sha256": "675546d761bb50159c27b8c1afc0b7f97981bbb6a3fe80befff04e6d2ed02f82"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/filters.hpp",
+      "sha256": "7be49a92d1376c9be94721c15fd1a3b6005a4db6cf1bc5d6ea2476a9ee2a3bb0"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/funcattrib.hpp",
+      "sha256": "05038a7802c6f01d755f8bbfd78efe5d09790c3fb1722a8f24a68d4048ff38a3"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/functional.hpp",
+      "sha256": "8932acace59199f392c2d8404d163261a89c5e2f6a72d573b4ef24078d4205bd"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/limits.hpp",
+      "sha256": "ccd8bb12cc19901476bb61f5b25d62974661481f9e1126ed3af3439a85c100fa"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/reduce.hpp",
+      "sha256": "1a7928067702e4f2889270cca922e6c73c9e6d2cdf88cc4b4f8dab8dee7cec7c"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/saturate_cast.hpp",
+      "sha256": "63d7ce621e96bad38aa846b9bb001da72048f1dbcd49311606c35a238ae5b926"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/scan.hpp",
+      "sha256": "2c3f207fdaca653a09e9167fa3c0dec7e46469c029be17942c5fff0fe564f437"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/simd_functions.hpp",
+      "sha256": "5501456d3853386bfe71e11a2ab86b3e1c3122ea644d64bd1a3355bbfef48bba"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/transform.hpp",
+      "sha256": "4ba3c9a282bb1e0d4fd0f00aacca8b4e00261e4c63f2c3e7f9ed472ef320b288"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/type_traits.hpp",
+      "sha256": "4d88a91029fa59f1c37a0efb021efe332450c71e9c0194840fb01157fd193f77"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/utility.hpp",
+      "sha256": "8c6ab8996d00802d47194035304744ea6e81c7eddb4c7a20fa4143cb647051da"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/vec_distance.hpp",
+      "sha256": "f48fdf00b959c67edc38cdd107464c2901adc03dbb6c5e964267813332238195"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/vec_math.hpp",
+      "sha256": "272db4c607e7447d32b0e982c3e59e92bbbe61843a9fcd6dfada7e2d59f28448"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/vec_traits.hpp",
+      "sha256": "a610615d408722e809729b7a6f29f394263cc727bb45362a1a23153921a76026"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/warp.hpp",
+      "sha256": "f96ba84d3b06426b3676a1ad09e621107adaf40fc3fd388e7dcbd323cd1db55e"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/warp_reduce.hpp",
+      "sha256": "9ba443e97474d2a97cb8b99eb6c22f76659ba2cb8d352dffbb1c9deb9b944373"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda/warp_shuffle.hpp",
+      "sha256": "8efd947fc7abae68bc81841a1243d49022a5328807143d3b818d82043eeeb82c"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda.hpp",
+      "sha256": "b725d6848786e49dc878c0b362f7b2b4b3c45ec2463ac03112e5041560a40748"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda.inl.hpp",
+      "sha256": "caff4880ae6c88f63db928666202f1468c8b16e02843acc24e31bfb0c50091b8"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda_stream_accessor.hpp",
+      "sha256": "e23118e9761e8eda3b9223aaf5ef040f58751a67d641953f48f29be9e354b31e"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cuda_types.hpp",
+      "sha256": "01753a8d438bacf14ac4439192542d5fc4bca88afb3918717afd7e1a36efacea"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cv_cpu_dispatch.h",
+      "sha256": "f499c63f0c14479a8f681b5b9c52e9f770d5dbf803c2378ce9791cc90c4f08fa"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cv_cpu_helper.h",
+      "sha256": "1ed879be3ce94c83fd03169e5ae32b24c3c2dc5d41504a23701ff7ff370cf20d"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cvdef.h",
+      "sha256": "68abe35f45279759db0287898a538b3a6fbb71edb68693750cfed278c3a4a681"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cvstd.hpp",
+      "sha256": "96a1ddefb0539061389be0704b554e5ab30f20132944485f4c70644ceeb4a0d2"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cvstd.inl.hpp",
+      "sha256": "33223f6f38d88607f3da7f02683ff91aa07279240d34084e1a0fe7b19ab5ca28"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/cvstd_wrapper.hpp",
+      "sha256": "babed4fc9c3d804502aa053c5add427600600f080984985812d8cce716b35ffa"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/detail/async_promise.hpp",
+      "sha256": "84920f5944b2561b0f6da3784a5fd281aba39e8544651a7ac8a889e3509982f4"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/detail/dispatch_helper.impl.hpp",
+      "sha256": "a6c812132580f4eaca6f35f2f19b32d40b24ef9ab0b75b51291c551c6b4224d9"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/detail/exception_ptr.hpp",
+      "sha256": "30ae6e20abd03cf3621bfb392e7778aff8a90635bd4679e9f2e706c8c99b0986"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/directx.hpp",
+      "sha256": "ef2b12df417633e49c8a7341e9f82d70eff7ff84fd944fa098947254ee491ea8"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/dualquaternion.hpp",
+      "sha256": "ed725cacbb20ca9b17c72256504ec74d270bcf44559952508392d7b69764f1ad"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/dualquaternion.inl.hpp",
+      "sha256": "1b6b478123cd15b7f24f2f3399d5c9199f7af979d9b57f0b0265a02cd4279484"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/eigen.hpp",
+      "sha256": "fb98669a1bf5b6ab3c31ed3479663d0608131bc9af743f7b7e868640b3428485"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/fast_math.hpp",
+      "sha256": "151bf6365b54bec9836afc3a8bcdba8b600bc5b769d24e7f0147420897a9acf7"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/hal.hpp",
+      "sha256": "0f8eadf8fd6899858ab46db329ba94770160ecf9cd8ac897dece8c6884c8d521"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/interface.h",
+      "sha256": "bd11814cfd2c331eaa93b42d80a0911a4916f6afa99907f332fe8f641098eb43"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin.hpp",
+      "sha256": "eeb3be550b8d7f6492c762bcefeb2e8fe5c9c0628ccb09f2ded7f1b2f34d6aa3"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_avx.hpp",
+      "sha256": "a94f0297f74c4081a341d27eace3e000f6720d2419df890ffbeeccf2174d37aa"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_avx512.hpp",
+      "sha256": "b7fd72f1e96a00370e1096a1d61f75f6bf0355d9f2b1fff2bca64affac7aa23e"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_cpp.hpp",
+      "sha256": "57a562e14713f00069f53c104521c7d2c0c28e3576b7ae6465523bbf8809eb2a"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_forward.hpp",
+      "sha256": "ad93e16fdad234aab37ccc96bd37768f213c6ee2fedb3c6309e1057307f621f2"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_lasx.hpp",
+      "sha256": "4d731ad3c689efea2905db049636adb3d48d5fdf3436cd1b61a3bd283ddaa023"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_legacy_ops.h",
+      "sha256": "9162fd638f6523412d095dc69bc67b5d5eb0b945c185003e67b0938a79c90686"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_lsx.hpp",
+      "sha256": "aa31563f0a5033495e27a5bab0cde7deda49bc2c039aeeabb4ae9ed1f68b172b"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_math.hpp",
+      "sha256": "8d6ed7f222d15da0d73080fe407d7e3f9809b3fc5c93222cbe320f9a9f794e5c"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_msa.hpp",
+      "sha256": "80dfbe94520016a6d10be1444c612cdb889d606ef6f016f2a693f215be289b09"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_neon.hpp",
+      "sha256": "0e8c9124023cd4ccc3dcfe8e9cf234a7c4f028a227cceb95569177541413a3f0"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_rvv071.hpp",
+      "sha256": "2ddc9c4978233a8fa09d7d990349723cf6ad627cdd967c27ad6765b4ede6528b"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_rvv_scalable.hpp",
+      "sha256": "60e6040f2fcb239699516073bf688d2fab522806d98c0bd364e4fe9f579ac2df"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_sse.hpp",
+      "sha256": "9ea43239afc6dd6915c37715074d8d6351a055b3890aa71fb644864dcb9ececd"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_sse_em.hpp",
+      "sha256": "9a8369d287ff500756fae5577f528c360f011e04e5a4a44f5af1d697b1d1442a"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_vsx.hpp",
+      "sha256": "aaec43fe948c55b3b31d730358d4b266f90aede3c262cff794c293a7370c13fe"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/intrin_wasm.hpp",
+      "sha256": "4c63d4c9717d6c75261415c197a7b0912dd848eefa8d13fc87ad306d60ce9656"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/msa_macros.h",
+      "sha256": "bf5842830c95304950487c93f9f8ec5ac29ad659a316fb2ea80407229ee2a6e0"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/hal/simd_utils.impl.hpp",
+      "sha256": "a7416b4d5fc41cd2df66f4fdb36a0a85374d79de3dc5d8fb38ce40be049ff772"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/mat.hpp",
+      "sha256": "157c25e4590c3903c0a24be331a24931edfbfa9bebd7545cd1907c5141837677"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/mat.inl.hpp",
+      "sha256": "6670cb2d634103de1070233b4ca4ccbd486a1dc4ca9e1ce3226e0a81e6934b50"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/matx.hpp",
+      "sha256": "086ceebe87ed54c98155bfff778f02305697dc7cd9d10449f2f21a482023872b"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/matx.inl.hpp",
+      "sha256": "010153afc595d6e58ba24949c85af8a6a2fc038d52ec054a35ae9eed8a97980d"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/neon_utils.hpp",
+      "sha256": "ac4f537960e50684671ca6a4b95c1eb6db5ba05e8d9f42f66b930ac8702ae7f9"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/ocl.hpp",
+      "sha256": "28eb3a7a8d1cc542dd5b76360a732d918dca89048c015b140f6067310229222b"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/ocl_genbase.hpp",
+      "sha256": "9744e968d9bdfea84cdee4aeae0c141e300cc90ce44329accdd535952c3c48dd"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/ocl_defs.hpp",
+      "sha256": "9bdcabf71097dc339f80702269616dc5755f718843759941e79dfc25284c8e89"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/opencl_info.hpp",
+      "sha256": "9ab1bf080b8e1438df491a3934f1fbfce154a7ad216e91a7e3f94803694402eb"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/opencl_svm.hpp",
+      "sha256": "73c8f9da9214399ecb88b7e478943ff311464db791abf5625b3b31be479c9da4"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/runtime/autogenerated/opencl_clblas.hpp",
+      "sha256": "02380689f8e64c9343cf995bd05a24634215cb8c5ba0d1dc8ec5f447ee0ef8e2"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/runtime/autogenerated/opencl_clfft.hpp",
+      "sha256": "179a73296a8eaa588efbf2ab0b1a0d181a6ea506aecc50751611c1a97b285c3d"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/runtime/autogenerated/opencl_core.hpp",
+      "sha256": "fb5cbda14014100c23cbd29cd7f542ce6ce6389218532aa5e5db012bab985f51"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/runtime/autogenerated/opencl_core_wrappers.hpp",
+      "sha256": "3176bcb1c25904ff4795c0f70ab0fee92f7d4892cbd5250c9be4ed63612647b5"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/runtime/autogenerated/opencl_gl.hpp",
+      "sha256": "1b496c1015cb6ee9db7068bd3a6c6da80729d7ee815a15de93dbf9cee1da5d37"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/runtime/autogenerated/opencl_gl_wrappers.hpp",
+      "sha256": "bc9e212a5cf9019b75e2a47683c593a10390a1f7bddcb3ab796fb2fdb609c052"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/runtime/opencl_clblas.hpp",
+      "sha256": "3b76c057001979ee78c6208f13c8b684c4f0e4d5a7b4a7d597495b80e65b95ed"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/runtime/opencl_clfft.hpp",
+      "sha256": "3a68d279e239fa325d3abf0113061727251c04a4d629b2f85ce46426ef582e99"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/runtime/opencl_core.hpp",
+      "sha256": "b9e8a9b925a815d26bd1ce94741581f3568027d3b93993f0372a0cc84c650115"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/runtime/opencl_core_wrappers.hpp",
+      "sha256": "ba119681e962a46083f2985fcb88c325a5277bf5b119e6a7b1508807ad072662"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/runtime/opencl_gl.hpp",
+      "sha256": "8c3699033b34fe4502a0c891217a00322a4c8f21ff023fd820a6a0107707d95c"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/runtime/opencl_gl_wrappers.hpp",
+      "sha256": "85bb84fc5eaf8f110c3d31c42b691cdef2e9ba6a9a296a788c3e0892a934d7b7"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/runtime/opencl_svm_20.hpp",
+      "sha256": "2297538b39e076d21c167fb66facc41854293a82f5d34f245083c797cd9b0ffd"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/runtime/opencl_svm_definitions.hpp",
+      "sha256": "56e3927d9adff9edd71c42fe675a962660527db1374901f08a8619a876bf9c6a"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opencl/runtime/opencl_svm_hsa_extension.hpp",
+      "sha256": "e72f6ad28d18a825c8caff56eaca1642298aeb4af960b61ee1ef12e987c04719"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/opengl.hpp",
+      "sha256": "44b70716a071add4946046690bb3232908d1e5b56a9ae236f50497b2d420c790"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/operations.hpp",
+      "sha256": "426e7a2a9206c603af60a2cda4e3a36a60bdc53d268df577cf1d32ae1156f843"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/optim.hpp",
+      "sha256": "acfc26fa3409d2c7dc897fc816a6eab67554414a514a1a062de68a68cb351e80"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/ovx.hpp",
+      "sha256": "e4b13bc11c14d59f640ac59963bd02670ca352d533160d539b6e790052051530"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/parallel/backend/parallel_for.openmp.hpp",
+      "sha256": "903d8ba56eae3158e816522c5a816e9e9811e41c62e812a34bbf1dbfde81132e"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/parallel/backend/parallel_for.tbb.hpp",
+      "sha256": "af6dd3c7162df172e8462b8c697f2fcddf2af1777f98a993ab3be8b33fb58b7e"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/parallel/parallel_backend.hpp",
+      "sha256": "79c71d6191b0931cb1db9931ca4ecaa156cfec83bc6e4e71b8407722ed3d7194"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/persistence.hpp",
+      "sha256": "992e7d7575fd671302b2beb9600a99e380485797aa6448bdbaa81d8c66b524b8"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/quaternion.hpp",
+      "sha256": "571ed73ee3df3066b74bdfb18c4420baadbed598ba215132390ba86cf52f62be"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/quaternion.inl.hpp",
+      "sha256": "dff743f883e47035d84e52058cb9bca9fbf5d615e35bf3923097164263d6a164"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/saturate.hpp",
+      "sha256": "bf418a3f44d575b17c18af968dbe3e2c8bd0663c22f8dcb53c4b0f77b5db14ba"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/simd_intrinsics.hpp",
+      "sha256": "ac81c6962c8b5679dfb63fe06487c27ae197946b66b1df90ad46e410a11a5a20"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/softfloat.hpp",
+      "sha256": "43c01ea3c1b3f99352437dddaca1b9b862e9d9b734c7a901f63abad5b28e3412"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/sse_utils.hpp",
+      "sha256": "2d9f170fdecb359c434387e6379fe5f16f9ffc77ef8dc4ba111ca517c3359023"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/traits.hpp",
+      "sha256": "6c45b2ee5137464ab4080063e38b68a6c5ac8b415e04aee8cb5c634b5dcc9861"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/types.hpp",
+      "sha256": "ed45810298941aefeb838d1d8d080bf2f2925b053bd92ef83a913f5251774d4f"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/types_c.h",
+      "sha256": "0bab108b55e64c5f7b6a1faa3d8eb655591321efd7b30dc0a663201531f48900"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/utility.hpp",
+      "sha256": "e5b9e25e349f121c3d3f2347c48afef5d18a8c7c4124acee833c0e04b9c270b0"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/utils/allocator_stats.hpp",
+      "sha256": "260d7dff55a04646ae7f78bfe7af249fe2bbe368add0c934cad108703dbb56c1"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/utils/allocator_stats.impl.hpp",
+      "sha256": "62b1f1d878926e7ce8fa323a75a5e8cdb184fd0c6261890963fd82dc9c26c874"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/utils/filesystem.hpp",
+      "sha256": "584606928e15cdfa0846f97a4f1922860b6f193e0bc3e9f15bd58796edb10b86"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/utils/fp_control_utils.hpp",
+      "sha256": "2565900dff6e97772c2cb1434b8d136df85446e4596a708d73ae14f3cae9a8d8"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/utils/instrumentation.hpp",
+      "sha256": "dcb6a1ae866d143f400f844a4761b52f64429342a7511d1f6402b87105511e9d"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/utils/logger.defines.hpp",
+      "sha256": "03bc3fd53608846ee3ad1b1feeeb97ac68e9758f4ceb5827ecca87c58204304c"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/utils/logger.hpp",
+      "sha256": "d99ae8e0d5d387315e3f98ea6cd04a71d55dee07494380b15b81eb4a6864707b"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/utils/logtag.hpp",
+      "sha256": "1ab5f6f986e02af6aec74d7881ce0676dd82b215c4a5b33087f7e8010a1808b5"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/utils/tls.hpp",
+      "sha256": "3b3261c3900c2d1ab82496b6722979996cb899f3110492d7177651790b6f9aef"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/utils/trace.hpp",
+      "sha256": "0f0d8b3b0c68c871d026a95c549110e4438f8b349c42864ac7f49a9b5fe72066"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/va_intel.hpp",
+      "sha256": "3da1e78ac9e178d0ff6b2ef03e3cf912582139c1531142a338ba284b3906181b"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/version.hpp",
+      "sha256": "939e2d8dffcbfb4f6851d7b0c115e74b015f40fd8ffa6218c5abc9d0d4fc83bf"
+    },
+    {
+      "file": "include/opencv4/opencv2/core/vsx_utils.hpp",
+      "sha256": "51c85ce8d989e2b30784a2e512582899ba9ae31f7ec0d6817415620b9b602fe4"
+    },
+    {
+      "file": "include/opencv4/opencv2/core.hpp",
+      "sha256": "62edcacfea97ab6a6e9e65ce3aaae022618d26f7962f9afd8776d32fa042d75f"
+    },
+    {
+      "file": "include/opencv4/opencv2/core_detect.hpp",
+      "sha256": "03ecca193d1d1da1e8a531607d656339434d9c1edcbd9429a6fc4cc53a0ffbfa"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudaarithm.hpp",
+      "sha256": "db28b57a339e2e3e22cf4ea51bc780daa0aebeb1a4eb8dc90c6754a8f14cdd0e"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudabgsegm.hpp",
+      "sha256": "f13781593040b547a6e773516fa31b24e24e68ae51377a499f4e94c298a2782a"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudacodec.hpp",
+      "sha256": "c3c78c085a48b7a52566d835fd3364b73098d04857b152a1618f18489f0c2393"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudafeatures2d.hpp",
+      "sha256": "a480b65f9872b54c945da3bc98d5c0956cca242e1b3f4c2cb1199fdcf99d8f28"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudafilters.hpp",
+      "sha256": "3daf69bb6f7d260c90478b18697e64d622e77b3a483dace76e3f768f86ce70be"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudaimgproc.hpp",
+      "sha256": "cff07c894163bd8d450be342c980aef3e3bb31c0451bb88bb7ef742e80151356"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudalegacy/NCV.hpp",
+      "sha256": "9ef6726de65c7a31dba72643d5d003819798b0403c138ea00fa56a7834ed1829"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudalegacy/NCVBroxOpticalFlow.hpp",
+      "sha256": "1e3e1a4326e0658178c1693e303cb07251e75e0b02969bb826325e1d451b8c0c"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudalegacy/NCVHaarObjectDetection.hpp",
+      "sha256": "084a9a672c9b695f027a72e8f7524d9cf0b70cf03505ddbf9b3b267762d37e7f"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudalegacy/NCVPyramid.hpp",
+      "sha256": "f2425ef602b494ac2dc8b19d4f3b1957f68991bb48e5895a7ec3630ebde25cdc"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudalegacy/NPP_staging.hpp",
+      "sha256": "35ae0b1dda11d553aed97014076f805d4f0173c7090388a177481f5724a6dc50"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudalegacy.hpp",
+      "sha256": "c8e6499a7e63d130952bdef8195abeacfe8d7912d23de9d19a2280c31460d2d4"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudaobjdetect.hpp",
+      "sha256": "8bd2354c5fbefc01eecd7459d6dd9b097c27cd83c2a5e977281ff24975883506"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudaoptflow.hpp",
+      "sha256": "97cc9528b32bb441c1eb7ac84b4b73bc11e460142d398a5b9b2a2b33fdc079a1"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudastereo.hpp",
+      "sha256": "025c4a5d67823ef77e2a8193447c0b4a62bbd29b2bd176f5532fdba56f8a4dea"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudawarping.hpp",
+      "sha256": "3b0cc2a008c932ac6c1cb3b6adf972a919a1f5a5135f09277e5dc25b24679807"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/block/block.hpp",
+      "sha256": "20ef363751988a3f49bd0229c2045be435b8d562ff7e2155a78343d91b5fba30"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/block/detail/reduce.hpp",
+      "sha256": "e5a039b5760eeca7eb308249ac090304b700bdfee83d8c6cef21160ade13b97a"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/block/detail/reduce_key_val.hpp",
+      "sha256": "5209633fcae242311d0754686e7730fdaa3cc4a112b1100725108590056cbfcf"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/block/dynamic_smem.hpp",
+      "sha256": "67b751f6f8a63f83cb2de8ff1432e0fbe22e31b4d0dce0702ab8eab4a6334906"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/block/reduce.hpp",
+      "sha256": "3e4a59d2cbc4af5f17303bde259b3996dfb4ba8ff4edcc75e63e48686d6e352e"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/block/scan.hpp",
+      "sha256": "c72fac2438d08d2c58b1b97966b20104bddbf9d4b347ecab0f54291799e67419"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/block/vec_distance.hpp",
+      "sha256": "5998f94efa05c591669b170a06d74034f95c65fae6e269fd7622dd8b6851aa21"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/common.hpp",
+      "sha256": "ffce8a11163a1efcdfe597002515a4d6e4c284b66865543a6b431048c00544a9"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/expr/binary_func.hpp",
+      "sha256": "a87c9984171f47d480904c995d8a52a5187bf3128f87a55f2c405c62a062df19"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/expr/binary_op.hpp",
+      "sha256": "77a2de98bf74d5521e63825d212c35be3e9b3c2ed654318537b886be19271f6a"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/expr/color.hpp",
+      "sha256": "3013c1f903f5168725927b573d686ca0fe53242b2642c78db0227e317e49e102"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/expr/deriv.hpp",
+      "sha256": "44f439399d6244322cbcb3c2cbe41233f5e466db2c3cf9f098aca37d03417a2c"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/expr/expr.hpp",
+      "sha256": "b3a36559710f165afed7f702ce90d84c289e8d959e69d954bea2d01cc85c8eed"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/expr/per_element_func.hpp",
+      "sha256": "aa974e6d20e6a8b589c2d8095b2f8dddefef8300351b59ea1bb1e1a98decaabd"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/expr/reduction.hpp",
+      "sha256": "484eb7d42c0357574ac4d59e780c62e3b20823167806215103e56b81420cebe8"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/expr/unary_func.hpp",
+      "sha256": "5913369d225c01912c3ef57ed446854601d1162d77bb944477567b7254e3cc3d"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/expr/unary_op.hpp",
+      "sha256": "5741484701117ac6c6d8c796b077fbe9548229ee752590653406886f49a85574"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/expr/warping.hpp",
+      "sha256": "7239f913c2c10e4463e1788a33099f211d3794ccf105949058e8656989d267da"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/functional/color_cvt.hpp",
+      "sha256": "23b447955cdea458fcdaab040a25ee201a56684392ec0cc378aff8ba791cfc1a"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/functional/detail/color_cvt.hpp",
+      "sha256": "9657a04388e5c60cb07eee6a199988d4c7364a8b4bb766290dea4301b2934f3d"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/functional/functional.hpp",
+      "sha256": "cffa399f8af66ebd99b419e5785ee45813b0cd23315c3858eb2b3104384862d9"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/functional/tuple_adapter.hpp",
+      "sha256": "a1ca76c8ace8c284fb77f721455cb2f09213bf045a0046af72dd3b4d43ad9979"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/copy.hpp",
+      "sha256": "9a0e3f9263dd740828c224a98269db4c8a7cf337d6e57e5452646e3b6cc9256e"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/detail/copy.hpp",
+      "sha256": "4991d986289f7e495d4efc5bd676e2e3fbc559f9f729bcd2aad439d775d306d4"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/detail/histogram.hpp",
+      "sha256": "52a304212684ed853d5d3d364562309a2bbf25d47575b210b836c8debd1c1ba0"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/detail/integral.hpp",
+      "sha256": "2f70d896f96d752b4c4c9bc26ef96cf7a4e18194f7d5b4069da9cc69fc59b841"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/detail/minmaxloc.hpp",
+      "sha256": "8ab36352c8c59b41bc00ebfc36476d0acedb15cb6d305a38ae826d8ddaca6d88"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/detail/pyr_down.hpp",
+      "sha256": "d46cc935f7e9697ff36e4c6f51ef3a233807e06ee0eadbb9a2e6a4492bddb701"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/detail/pyr_up.hpp",
+      "sha256": "1555de9bbb107c0dfd132c24c531c9af701476c8c85c22c214f0bb4d4c3dd9fc"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/detail/reduce.hpp",
+      "sha256": "0ca4c354381b6f0aa18c642e2a559c5956e8ea9df1d1094d394aa40cc95ce90a"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/detail/reduce_to_column.hpp",
+      "sha256": "ea7096b75c6b47553cde950db251bb7e63356f5729bf143e9907e00045dd5534"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/detail/reduce_to_row.hpp",
+      "sha256": "4deac0be81cffc22da45a6eaad549ab0794e284c5e96ecf6774a8a78fdbb05cc"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/detail/split_merge.hpp",
+      "sha256": "c70f3c4d5e92a11d30b1652664ac7077fc69d8a84f20e1ddb502e3a976129783"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/detail/transform.hpp",
+      "sha256": "fe07c3e347a5720f6efc4efa10aa62fc871d8ad417d55a812e864673672d154d"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/detail/transpose.hpp",
+      "sha256": "89b110fc6955ac724e7fd8ede0b35d2fb9e32ac6e2fd51dca51df2f409a728c8"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/histogram.hpp",
+      "sha256": "94e4c294363a048290a504479aff2b4f85cb731a052e3bbae3fdb5ca3163caa8"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/integral.hpp",
+      "sha256": "733e9ea4b3877a03c94a75dd0f39ac2efaee29a7a1a11f632b06125c65937084"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/pyramids.hpp",
+      "sha256": "50648be72425dcc5572f7283f1cc1815b371bdca8a409d41607acbd21c73fd71"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/reduce.hpp",
+      "sha256": "85e2757b0f2049290160b9e20d39bf5f2fe44bd5bfebc8b48f1714a2d56b1784"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/reduce_to_vec.hpp",
+      "sha256": "aaa589ba856388c5e9f0af7e09befe511b9ebd6791d65c1e6d369d0edb024c73"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/split_merge.hpp",
+      "sha256": "b578f659ead1cc09b6d66e63707332a4ed51fa56d12507759f66df846b90a896"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/transform.hpp",
+      "sha256": "14a8d708193f27214950ef4bc04601f87a7d510599ce8c2a3b64a4341b9403b9"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/grid/transpose.hpp",
+      "sha256": "1fe421ae97c23423705ee39169bc2b32d3819dd3466f3b01e8f311f828a57e07"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/constant.hpp",
+      "sha256": "63c7a48008c046b17aad1593b7606589686c1c14644748edbf64ec59a71daa15"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/deriv.hpp",
+      "sha256": "cdbe363c06c6fb48170429e9026b32626535dd3740823c7053ad320c33c47df7"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/detail/gpumat.hpp",
+      "sha256": "b0a0ccc540b75c8c7fcc8d1bc6059b188ae8637eccfdda9e7b6e21f880945c06"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/extrapolation.hpp",
+      "sha256": "00a5091edab88260fe7a48d08b26e8270e4c0915b382a0a0ca37e7471ee7176d"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/glob.hpp",
+      "sha256": "cdf0fb9534054d03de907d006cce2a8ad78555fd3c7828d2e24c7f274ea2b825"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/gpumat.hpp",
+      "sha256": "6b2f6976ac599e7a7017ba697a245a3e7773cacc2c25c07fb7b735ff59e9fa9b"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/interpolation.hpp",
+      "sha256": "d699a0442c78f5800d65f4510efd48c24e0b0998b201bb787bc20283b953b35b"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/lut.hpp",
+      "sha256": "f937e51d01c1f1359db3a50dcfea995e9d2339c4524e7302b30fcebc0fc35f07"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/mask.hpp",
+      "sha256": "8a3c6cf7f566ad89af6375ae2986952ee6195bdb17bd96ad7aea433c761eda4c"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/remap.hpp",
+      "sha256": "092a73d3b12286e5a193f33e9b21a7075895d5aee70a1c6dfa3c16dfb838f981"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/resize.hpp",
+      "sha256": "cf38c4d7bd3abf250745642f7c4b1d3c44c14ac7a1a082beb1618c269ec6e79a"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/texture.hpp",
+      "sha256": "deb405918aa0580ce601e3f9abf516508d840318d84977ec692094f5f82dcbd0"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/traits.hpp",
+      "sha256": "932fba7dbeaa281dc7b1e6a7e7c52f779388094b923bef17fdb8b63660f84a00"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/transform.hpp",
+      "sha256": "707da07ab71e464fd0f99deedaad24af3a82cff26a83a50d258e5b35d717f286"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/warping.hpp",
+      "sha256": "f1f7da641c911348da044133d81e5be256dade5407b34128111ca2f1decb95ba"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/ptr2d/zip.hpp",
+      "sha256": "79f04f6c7ce99e1967c0004e02fd2a954cf0e60c38ebe927603aadbbf53975d8"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/util/atomic.hpp",
+      "sha256": "a114d1b8b6d55035299ed38d356476ad78307427aabf98d0f316865be9a1fa78"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/util/detail/tuple.hpp",
+      "sha256": "975f1f60cfc69d7fd45fdaabb981acb7ca35b9e3130e71055135d923262f7415"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/util/detail/type_traits.hpp",
+      "sha256": "26d8a350868319041416d98b73364fe0e0c07d06d7d3b8b14fa10259679d2630"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/util/limits.hpp",
+      "sha256": "5c30625941b41a4d1ddf3a32117a11e4b54805927fea3fb71008a35bfd99e0ad"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/util/saturate_cast.hpp",
+      "sha256": "a1a1b5f7cfd9dd2781602f277d0a98931c008d307ad7042b1b6fa7e6765499b5"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/util/simd_functions.hpp",
+      "sha256": "1707318b4b3c032c31128dd1f4f9fe0afc3473533c25b539b15da003b5ea964e"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/util/tuple.hpp",
+      "sha256": "eb826fed941f015f778bfe6f66bd6bd8846497fffc7095c0d90c19bc4de876c2"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/util/type_traits.hpp",
+      "sha256": "d335a2c1b79d14f8bcb086de2fd8ce3435fbdee67d7615fdda33294acd00418a"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/util/vec_math.hpp",
+      "sha256": "7b416c6957d60c2f477c5575c248473a2744cc5e0e47c7f8bc8b6a3cc0474322"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/util/vec_traits.hpp",
+      "sha256": "7b307d918802dfa04dd7524e59d582d0b772a4b47ef9d6cc0bd7320668cf3bb3"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/warp/detail/reduce.hpp",
+      "sha256": "1dd1720e87eb3692fb8c48a5d8be2c5f1fa56d4ed5d41eb28d33bd523c0b3eb7"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/warp/detail/reduce_key_val.hpp",
+      "sha256": "1aaee45203718b379664fd44deecc13490f7e933828d329eb9c8d4f544e80d6d"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/warp/reduce.hpp",
+      "sha256": "e2a84c5ee5337a151f6137932d4c212299c781b582bfda4d4ff7b39514af41a6"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/warp/scan.hpp",
+      "sha256": "78ff5490b467ef992ac7f68176498957af23f8213f221175c72aab4a47034668"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/warp/shuffle.hpp",
+      "sha256": "90fc8bbfdd2d7b35fb70afef7bf1b379747fcc2ec18cd9195000d98b88dce9d0"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev/warp/warp.hpp",
+      "sha256": "14c26acb7bcca1fab1462868cd4024545d3d95e2e97bd53ef42c25640c45a087"
+    },
+    {
+      "file": "include/opencv4/opencv2/cudev.hpp",
+      "sha256": "a1cac9bc839b596a46ed6724adfb22e7578da1311a7f8945b20c93b952f4ae87"
+    },
+    {
+      "file": "include/opencv4/opencv2/cvconfig.h",
+      "sha256": "4321873a31e330c88ad4bb8d921228773b2cacb3048e1b89f433f23de4d6d428"
+    },
+    {
+      "file": "include/opencv4/opencv2/cvv/call_meta_data.hpp",
+      "sha256": "583ade09072fc82ec63a2a9462d00663da51f798d87ebf4dd8a26657fa54e3c3"
+    },
+    {
+      "file": "include/opencv4/opencv2/cvv/cvv.hpp",
+      "sha256": "b08cb1cae1d21032248ceb62b3228c5da79468dd0bff9ffa5eb9d95a8cf8443e"
+    },
+    {
+      "file": "include/opencv4/opencv2/cvv/debug_mode.hpp",
+      "sha256": "75cef73d3c81655771502d13c3779eaad0c639e644f354f102d7f0a12a32cc1f"
+    },
+    {
+      "file": "include/opencv4/opencv2/cvv/dmatch.hpp",
+      "sha256": "4ac9fa8f17be747ec35d5ea2460c3274c6cb39bab1bae8ab6f7fcf6a3720d8cc"
+    },
+    {
+      "file": "include/opencv4/opencv2/cvv/filter.hpp",
+      "sha256": "f2d9f0e39960ea20be7f332f852d89f0f9de38c6612a96a1bc08a14914aba28f"
+    },
+    {
+      "file": "include/opencv4/opencv2/cvv/final_show.hpp",
+      "sha256": "64f2759f27948eff65e3dc6bb6abced90997b3c969f99eda3f91c9257ababfe4"
+    },
+    {
+      "file": "include/opencv4/opencv2/cvv/show_image.hpp",
+      "sha256": "5427f66c90c4bec92ff6a5a7ab3178dc3ba0b8b54199ffacb9a67d5e462ab120"
+    },
+    {
+      "file": "include/opencv4/opencv2/cvv.hpp",
+      "sha256": "11833fced7aca3673e4fb0a0377535623ec349fb6d8eb4fc9c074693e1a76503"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/ar_hmdb.hpp",
+      "sha256": "59b2ffd671487110e5e919ab42234319b75a583378aec6fc091ab947df878af4"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/ar_sports.hpp",
+      "sha256": "5a9cb321d7dd3987654720021a442c4ccb3d3cc5e58cdd8f8b4f9a7aafcb3b17"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/dataset.hpp",
+      "sha256": "d5d7b7d2b54e97ace76aa1d2952de68bcbfbc8a690f00827e18422f0f314c577"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/fr_adience.hpp",
+      "sha256": "979fd11260d716e6f44776f7c42604c033f211880096b35afc1b43e5b32a3793"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/fr_lfw.hpp",
+      "sha256": "7eb9b2eb8d3724a108ab2cd16e2161d87c91b359491b0661f2c5f41a80162c98"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/gr_chalearn.hpp",
+      "sha256": "798b021632cbe126be9b66e866d8cdfa0e0069260e77a48a4b21eadc6e2c4866"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/gr_skig.hpp",
+      "sha256": "94efd24c73a5e4cb6887b8c7ce83403993e8e0f8e26fe4fa3f9a6479d9d7e175"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/hpe_humaneva.hpp",
+      "sha256": "36780f8098e5e9555863cf3118126d55636a69a4c11fa04a7e8392105824c4dc"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/hpe_parse.hpp",
+      "sha256": "60efe6f92bfa83e726282e20b97e22a0be6e79d964ab80e21d8e0e4d2cdc10b5"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/ir_affine.hpp",
+      "sha256": "5d1d6110b246b1a3f2e3285b301be1de43ebe25eb0ded00f593d6a209d180be1"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/ir_robot.hpp",
+      "sha256": "478bb29f409d6e163c9b41a816882976116e8589ee0ba477a3990e16c109da67"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/is_bsds.hpp",
+      "sha256": "b94fd4a97a08aa873165f673e765c05c5f0822c8e78d9a67df19f05861a19e5f"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/is_weizmann.hpp",
+      "sha256": "fa3197dc96fb63d678c8db00d53d56c068a7d17fb22017ba09466dc4ff706cc9"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/msm_epfl.hpp",
+      "sha256": "04ea4c0c35d231146c7f84907a8fe39ff985397b9303df995e44f7ebbd4815af"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/msm_middlebury.hpp",
+      "sha256": "baf808ae617811f1104f676d68db4980a1c973e6e825147c1e3e9c2223e6a6da"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/or_imagenet.hpp",
+      "sha256": "ae54a22cfa173984997ae0ef3887ac3e85ed6cfa87fd08a3bfdcc7796ef6f0ec"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/or_mnist.hpp",
+      "sha256": "118861ba43bbf4a132e55c44126cf377b144532f09964939de9e45b7afe0bfc8"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/or_pascal.hpp",
+      "sha256": "24aeacf0213cbaaa909f0f06856d5548165f3f81e5a68e7f3deacdb131abf15b"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/or_sun.hpp",
+      "sha256": "631f83a4289b7883110d7263601f437a0200ffa3829bf81d9fdd2968e08b921d"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/pd_caltech.hpp",
+      "sha256": "e8ed1856581719d801e6635c9ae329b0494d9dbd7eaaacf8a71af8d6caf5ee51"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/pd_inria.hpp",
+      "sha256": "00eb5e13e8c92e8d0e2f83ea10457e38e908f333a0405330493436a82a7614c1"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/slam_kitti.hpp",
+      "sha256": "a60a72a75fb7ff61795724744836477db0b95ed3502d7f162dc1646579693468"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/slam_tumindoor.hpp",
+      "sha256": "60c2f6499cfcb3aa97a50f39346a70a5714ed700dc504426a6105b43c4fa2240"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/sr_bsds.hpp",
+      "sha256": "1d04fe693527641b813198156162129a7b0681c070a5f4c0ef53816fa1f429c7"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/sr_div2k.hpp",
+      "sha256": "69e21e14c9533cc1279e2cb805cc348fe7d664b82d7763c7e919671d6a7463e6"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/sr_general100.hpp",
+      "sha256": "a052d29dbb9ec2425fa2a97f175149abb264e0c34b0df4b5c22cff6cf027f52d"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/tr_chars.hpp",
+      "sha256": "1ccd98e7b0c43893df78a88622a2a0381e450916c20c7ee7332708635cbd124d"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/tr_icdar.hpp",
+      "sha256": "c1325d35e1340bd6e58c0334386430630cbe0208764e7fe67a1479b98b71f893"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/tr_svt.hpp",
+      "sha256": "2b7ab5e70d31c4d55b428b1376eb1b6a25f70977c89cfe25f815b0e2e5fa994c"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/track_alov.hpp",
+      "sha256": "09479d51fa58346cfad8fc4242fe40fe3ecd1450796de8dd701a59ea98fe117b"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/track_vot.hpp",
+      "sha256": "4779b82b29bd391b3a258a0c21d36d84a6c56cd7316ac95fd9b2ca8d017ba822"
+    },
+    {
+      "file": "include/opencv4/opencv2/datasets/util.hpp",
+      "sha256": "92d1ecabf3d45af715fc5260f6a1c884151d4dce938910f39562a4c4cfb16973"
+    },
+    {
+      "file": "include/opencv4/opencv2/dnn/all_layers.hpp",
+      "sha256": "be7e33abff7806908ec25d5373f4120d4592ea891628aa146f524fea3ef4420c"
+    },
+    {
+      "file": "include/opencv4/opencv2/dnn/dict.hpp",
+      "sha256": "98faa03a299e950f04d48cec6d7305176fa696014a773b8a0a3a29ab9f9a614e"
+    },
+    {
+      "file": "include/opencv4/opencv2/dnn/dnn.hpp",
+      "sha256": "160e5995101b07453803b96349a4dcfe3674f19f8e480a109580c21978ffc294"
+    },
+    {
+      "file": "include/opencv4/opencv2/dnn/dnn.inl.hpp",
+      "sha256": "c979c478eb31f7d03898c536f03d89e439c1c242c44f41dcd6fa63d776e52490"
+    },
+    {
+      "file": "include/opencv4/opencv2/dnn/layer.details.hpp",
+      "sha256": "75e0aa313cb8dad528be7ae4e9daa8bd77690e299d38c91182c8913364f64b74"
+    },
+    {
+      "file": "include/opencv4/opencv2/dnn/layer.hpp",
+      "sha256": "e3db29dbf6e4928c4a0023ca402e9a43921cd899731f4d763841b235ff503c0b"
+    },
+    {
+      "file": "include/opencv4/opencv2/dnn/shape_utils.hpp",
+      "sha256": "488a6a2f8e23302ad8692fe4c4defda00c5fb22c453167cb89160266587568b3"
+    },
+    {
+      "file": "include/opencv4/opencv2/dnn/utils/debug_utils.hpp",
+      "sha256": "186db370f2d2090247b7f92119ccd0af87086e370b31213db7fd943a5ec340f3"
+    },
+    {
+      "file": "include/opencv4/opencv2/dnn/utils/inference_engine.hpp",
+      "sha256": "0deb20d27d8dbe6ca41cbc6e49fd082d8a7f3108c181be905e480cc5fa257047"
+    },
+    {
+      "file": "include/opencv4/opencv2/dnn/version.hpp",
+      "sha256": "676d8beb0c3f7472dcda1c5e0307b23765d86de604b515e697d533ceca83b92d"
+    },
+    {
+      "file": "include/opencv4/opencv2/dnn.hpp",
+      "sha256": "f2012cb1f4980d641f9dcacba7694c5b129af5589391154e2b2f00477ac31309"
+    },
+    {
+      "file": "include/opencv4/opencv2/dnn_superres.hpp",
+      "sha256": "e5c37697f6b8437d3c24fb3a413223e74596b47fac2a1bf48199272474afced6"
+    },
+    {
+      "file": "include/opencv4/opencv2/dpm.hpp",
+      "sha256": "7fd81ecb13b05caef6d5157b6fd6ca23f4109db31c01d0fb243732484f7deebe"
+    },
+    {
+      "file": "include/opencv4/opencv2/face/bif.hpp",
+      "sha256": "bcd03f638743f97d4f50f7fb6edf29be408b4eafcb5da34efb92548666a8b44c"
+    },
+    {
+      "file": "include/opencv4/opencv2/face/face_alignment.hpp",
+      "sha256": "52d461ffddf74eadd2230fb056752950ed3831c24871f565cb3db29027d021bc"
+    },
+    {
+      "file": "include/opencv4/opencv2/face/facemark.hpp",
+      "sha256": "fb5acfdc605643c17a885c6bf2567ff3496c8682796f4acb2bfcc76c3e011998"
+    },
+    {
+      "file": "include/opencv4/opencv2/face/facemarkAAM.hpp",
+      "sha256": "c5b8efae55da64e7448104a20f84a0c48156df988170fd2ccccde7c8c5faa3b8"
+    },
+    {
+      "file": "include/opencv4/opencv2/face/facemarkLBF.hpp",
+      "sha256": "4457c2c846037c73a1f52d91eb32f8689f1ff49b16dbe14da606539737a14e46"
+    },
+    {
+      "file": "include/opencv4/opencv2/face/facemark_train.hpp",
+      "sha256": "f203d62a188c463f43056f27c5bb2caf969d98a18c7a1e053a619fc984a5a9f2"
+    },
+    {
+      "file": "include/opencv4/opencv2/face/facerec.hpp",
+      "sha256": "812187f68b5e1a7c6239149611a3dcb86b962d5c724e5978c6c3d5c06733d065"
+    },
+    {
+      "file": "include/opencv4/opencv2/face/mace.hpp",
+      "sha256": "03f86ab5f0637564f6e2d5435540fbc005d83343e26426ef89178dcf8395c768"
+    },
+    {
+      "file": "include/opencv4/opencv2/face/predict_collector.hpp",
+      "sha256": "ed2fad0381d625bb2bdfd3a9cbc49f8668119ae7ccb4a2ea48a5780b1f285413"
+    },
+    {
+      "file": "include/opencv4/opencv2/face.hpp",
+      "sha256": "46cf9fa849676be217a77c81546b26ee46f51cf2dafe3e9d5603f1e549803369"
+    },
+    {
+      "file": "include/opencv4/opencv2/features2d/features2d.hpp",
+      "sha256": "7a8c4b882ff82ee8d8aa892dccb13e26a0a091a18eadf17c64951490ee302689"
+    },
+    {
+      "file": "include/opencv4/opencv2/features2d/hal/interface.h",
+      "sha256": "4fe9c4fa48d06743b83af7f3b7cc4c66da1fa7d6c94a927381827e72454c77d3"
+    },
+    {
+      "file": "include/opencv4/opencv2/features2d.hpp",
+      "sha256": "8d3d58d79d760e431dc30c2ca95c8fe092fba537c5a4463efcd174843ca8d462"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/all_indices.h",
+      "sha256": "2c131b00b1ed7ee05af4c53dddf1a00892d34f23f87538a6bfa8513527aea320"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/allocator.h",
+      "sha256": "ebab6d628cec97c170904986fda475e31a2a48040d8a492cf891afa68ca4872b"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/any.h",
+      "sha256": "3b15f77754d790637d2ee5efd5ead1de2671717b87ce8d9852b1d40529040e4a"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/autotuned_index.h",
+      "sha256": "fd857bb2e3069b817c31225ffe7285d3f5512be3935404526ae501d8c0a03ec2"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/composite_index.h",
+      "sha256": "0051bf459ffb971cd73aa7be5e7901ea9a803591217d8eb75f1ad352908bec27"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/config.h",
+      "sha256": "49ed7d14da392b58d47d4a415acef4402205eb18303b2f3170d87004951720d2"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/defines.h",
+      "sha256": "31953087864c437d95320bf26efe97389e7fd62ee270774d677703b8cbb9795a"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/dist.h",
+      "sha256": "a094642d1c16efa9e43c209efc27be641edf7e6a5859da7b091a8ef1c03bccce"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/dummy.h",
+      "sha256": "751a24356b16b9016e02a33639261184c4e0ec98dfbfc91cfacf7113c25c1cc6"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/dynamic_bitset.h",
+      "sha256": "6899d64e113f09ca72ad99724df818841b86917f6e57c7488013dd233fa05d19"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/flann.hpp",
+      "sha256": "d6777a4b56eb6e146bfaea5c5b44a463fd3cabb4dea779ee1eee36b6f3dc145d"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/flann_base.hpp",
+      "sha256": "d72289ed979f27e18d7fa1ddc0e045906f357d68019fb7a2aee4ce4e57560662"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/general.h",
+      "sha256": "ebb99addd147a2029f13514b8f51e2afee0a01294022f2c661056a85a1b0030a"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/ground_truth.h",
+      "sha256": "5636a84a20e779b97d3cedc37d3eca6f32c1d456c8e8a534e6f12a08510ee8bb"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/heap.h",
+      "sha256": "adfdda97000266fef461eca40133cf3e639be97c6372d5fd68ddba17934b723b"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/hierarchical_clustering_index.h",
+      "sha256": "a9a17c9c658da96d7cde411c4be255028451add15384e4ffa51b2c14b12096b2"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/index_testing.h",
+      "sha256": "3fd061ce7ab4aba8c6c851a27266c5ed724236843720d702fad2b1b4b3e690d5"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/kdtree_index.h",
+      "sha256": "d0f8d3b3eef53e2ea963c68523d295027bddc604b8cdae96c7af2d2986a5dbf5"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/kdtree_single_index.h",
+      "sha256": "eac6d1789a62c8b7e43d4f05d57ef04751e153fd648a200717d970d811881cab"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/kmeans_index.h",
+      "sha256": "5e2b695d69414fb9a5ca7d93a4b14e4860c11f0b1314e2268e16ca7baf78efe5"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/linear_index.h",
+      "sha256": "c7eb336c6e6135b6bc5285a8e8a21fde2f9642fb6a61d9a5263d2c202124ed17"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/logger.h",
+      "sha256": "25e54ee147da535321720a48f354af259293173cf7d6edf725dd7ac3a45349fa"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/lsh_index.h",
+      "sha256": "4ca69de52d128f68a370044c7283805713a592b1fb0eff0826d3714d8adbfc70"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/lsh_table.h",
+      "sha256": "af1574873ec4b47b91e4fa03e48dc8a9562d5634f5858cfe6ca7035b4acadad4"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/matrix.h",
+      "sha256": "4a8cd605f32c4d17f80dadb3d318b906b50fceac7c383ef25444c9dc01eee483"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/miniflann.hpp",
+      "sha256": "03781603df865272cb64fbc9d451e5e923f6662ba6638a975077f0b032905bb0"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/nn_index.h",
+      "sha256": "2db931b91d4f31c2dcf09f68b94536ff8f75b9ab8450582f69460ea0f341e314"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/object_factory.h",
+      "sha256": "8cf03504dbd1044ef74199e7cea34321e621cc41d182109c91358a3013f5562e"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/params.h",
+      "sha256": "c05f352e60c2100695f2dbb95ca205d8f1330f7613609ba5dbc2d231192dd0e5"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/random.h",
+      "sha256": "887342e351ce25feaab2af7a339e24a3becf5c84f662a21d27e924d0be2867cc"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/result_set.h",
+      "sha256": "77cf8ba969509820a0cade411f86f52e5324861e199e75594f3ae58a33320044"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/sampling.h",
+      "sha256": "aa4c77b910328536f0bbf5137d48248163f8520dc708c1aa696d748de472326c"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/saving.h",
+      "sha256": "cc3f85aa53984cc472ff364fc26b054f222f3824c0d890d85c90cb6ce0ca8778"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/simplex_downhill.h",
+      "sha256": "d0bb3432120e46aef110001bce58319325567b75e0e496eaca3b36d519daafa6"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann/timer.h",
+      "sha256": "3521431be8f7b1f9064077be93e70f942c14565e6b002edf778219aad206cc18"
+    },
+    {
+      "file": "include/opencv4/opencv2/flann.hpp",
+      "sha256": "a92499056728a84fd1db1463945694472191e2dd222e321aeff0271ffad8fe53"
+    },
+    {
+      "file": "include/opencv4/opencv2/freetype.hpp",
+      "sha256": "76d36138fe022c62342e4ee965b291fab7bd51cdebb43031f09b3db9ed33124e"
+    },
+    {
+      "file": "include/opencv4/opencv2/fuzzy/fuzzy_F0_math.hpp",
+      "sha256": "525498274dd99a0036b6dcb0b03b1d7706f8fd7e116ef4d9c053e5be3da28a1d"
+    },
+    {
+      "file": "include/opencv4/opencv2/fuzzy/fuzzy_F1_math.hpp",
+      "sha256": "7c3e85432367b85fc0afecdb9656e12e0f3ba83381e7d17be53b51ca6f4971d7"
+    },
+    {
+      "file": "include/opencv4/opencv2/fuzzy/fuzzy_image.hpp",
+      "sha256": "433a8140bfe322888a50e49e215539497a090b9984763ae81a01f62525532f4b"
+    },
+    {
+      "file": "include/opencv4/opencv2/fuzzy/types.hpp",
+      "sha256": "f64aa5e5a4436f9d3ddab7e52dbfaa764fe2eb69fc8548ede9cd0d2867c5c0c9"
+    },
+    {
+      "file": "include/opencv4/opencv2/fuzzy.hpp",
+      "sha256": "2e24377f433d0a37b5001e63e84a07b4d8341040d0103c10da2254eb7d2172e6"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/core.hpp",
+      "sha256": "e684f8e835ab039bb406ad588af4cfbfbdce07e775f8c61daa6c581d8b2cd74b"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/cpu/core.hpp",
+      "sha256": "7817171ab0b56ac7eaa9733efe8d024349dc93f8c2c96481dd3e35eeb280b2f8"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/cpu/gcpukernel.hpp",
+      "sha256": "fa50b4ef881d73b78d0ed454bd4e186c215567ecdb839f0ad1d0e2da02489b96"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/cpu/imgproc.hpp",
+      "sha256": "6dadd02db9512dd92b15d15343a302dd06a6454dc4abd8319c06540c3f2cbdc4"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/cpu/ot.hpp",
+      "sha256": "24d5b9605c6ab58e2826f9fb7b7502bd0772364bc4538b62a492379c445b2ba2"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/cpu/stereo.hpp",
+      "sha256": "bcfca61a262655ac0d83484e68498299169d7b8e4c84a39b869fadf51c597a44"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/cpu/video.hpp",
+      "sha256": "d8344b940bdf5fa67f86f3c5a7b2fd0126eb7ce896407bd0f2f5df4226237dba"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/fluid/core.hpp",
+      "sha256": "a6eea260a4153cbb1f4455e15e11e9bb17ceb2e6d1521f6838b2dfdb7e93a80f"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/fluid/gfluidbuffer.hpp",
+      "sha256": "5b3869cf46b0b59738f6faeec42f09265a5c7fb1f2606aff58bdbe128a67dd5c"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/fluid/gfluidkernel.hpp",
+      "sha256": "163966c76880f9d87248055cd27aa848fc03a968bf44f39503ebc1106d39ad4e"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/fluid/imgproc.hpp",
+      "sha256": "ea88f7c802dbdc8dc49fbddcbbf0f7dda8933ece50f8212755d8dd84ff732a2d"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/garg.hpp",
+      "sha256": "74d847bac3cd1c9201f79eb28c6644d302a7956fb64b4300e010244fe933813b"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/garray.hpp",
+      "sha256": "30f82884ac7e1a3f82a28f5c587aad2ad3580b62fc7567485c73e71d1cf029d2"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gasync_context.hpp",
+      "sha256": "0157f5a40b3c1b5a4f428b7c394f13f9dd5726f43e8fee581ded5166725d2747"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gcall.hpp",
+      "sha256": "afcc27b2369193ad081491b488a432582b1cb614484b3b3a039470f174122d62"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gcommon.hpp",
+      "sha256": "7e9e687bca269f911399bd734a390eb9bdf9fe6f4164871d929b2a4186dbcf3b"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gcompiled.hpp",
+      "sha256": "7c6dd7181ce383b5cba9d21a786ef1bcc1e8a50007a22ab7913c13c26d0b86c7"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gcompiled_async.hpp",
+      "sha256": "56e4ac3c0d1b3903ef456b34b013efd8d721c447b855d9e894c3bcabe8aa0511"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gcompoundkernel.hpp",
+      "sha256": "5aaa66b39cd806f821f93b8f502ba3828112cb20d260779059a0bd6df033920c"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gcomputation.hpp",
+      "sha256": "41529d1ee2c868ee3ad578405a1e58a08772fd401b04177f29bb241c892b3af2"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gcomputation_async.hpp",
+      "sha256": "a325cc8d3abbde5a8ca48d089cf5e8439fdd7c6b024843c71238b89c36034fb9"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gframe.hpp",
+      "sha256": "6d07df8f64bdccaf6fa911f26b8d75b8acf3a63f0f70d2d7ff8d8ff6f4bbb3da"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gkernel.hpp",
+      "sha256": "2fbcba04d537adb9cffe8addcd9801ff96bab67f67fd60d783ff264665a417df"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gmat.hpp",
+      "sha256": "1b374ae541df22071813e1d383638724397d7485314cd4bbdc94a6e2d96e7267"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gmetaarg.hpp",
+      "sha256": "79730c6f704007182fd95cc38cfcd7714595b2553e6733aaffba9e8ff75618a3"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gopaque.hpp",
+      "sha256": "c48a30da5790e6a1d6c631b8f66ea153d181fba011689d0d8ccb7ea066ec7414"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gproto.hpp",
+      "sha256": "09a5c40a8dcedd19b137d3bc09658874c5edf03d6cebab19b6139804d83fe61a"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gpu/core.hpp",
+      "sha256": "7dcb7cc50bf9a5c1634ed887add936b21cdb1bd8c995a9f608d13de53aa3596f"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gpu/ggpukernel.hpp",
+      "sha256": "d23683d9b2bdca6f3b7f7f94303b3ffacb8263a11745bd4daf385d948b3c5dfa"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gpu/imgproc.hpp",
+      "sha256": "97dfa8b79d16330a42d30014587e063451d81075eda38a49fdbec653536562ab"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gscalar.hpp",
+      "sha256": "b3713db40ae06f3155892b57645944fb85c37c7ed4a1f3845d40040ae6378ac7"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gstreaming.hpp",
+      "sha256": "b61fa187d2abaa3f79a93b2ae764eccd84cf090092c0995fbf2514f8372a9429"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gtransform.hpp",
+      "sha256": "d4d08c81f40b5af2f4eefb11f35dec3315068d91cc2f706f757f8628a563f483"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gtype_traits.hpp",
+      "sha256": "43fc7a86921eb92d682e28a98e491be72bc7fea7affd99cae1dda59ba56a327c"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/gtyped.hpp",
+      "sha256": "b37db1b4313624b3f3ef9435f2d45eb0c947e370c8245e9c8c44dcaecf5e6e16"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/imgproc.hpp",
+      "sha256": "b9420907238af4b8dacbe9ae465ae973ff688e8612346a3acfc0d6a8475da876"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/infer/bindings_ie.hpp",
+      "sha256": "5f1a248b029a9acfa746c4cedb9bd2f0debc959f1f444530250c1689356417f6"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/infer/bindings_onnx.hpp",
+      "sha256": "0f5f01b827f875f6b1b62b1e86aa914b2aa864bfeb77dd1bb1bea14c14139144"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/infer/bindings_ov.hpp",
+      "sha256": "4d4c127d0039dd4cb4949f7e8ac2ae7f396a9b1eefaf0cfacd5c4ada707d9b2b"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/infer/ie.hpp",
+      "sha256": "072f2df6fc4a65fae3379f7c4a2406b44afaec44535e3b3ad9eab558924ae4d1"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/infer/onnx.hpp",
+      "sha256": "6dea95153642f4895dbb55318f227f24b314c5d356ec52a960f2c78b6582ec63"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/infer/ov.hpp",
+      "sha256": "aeebf7da65b48fb9469f14a79c1f3c561980affb94c086772da8a0eda8d09834"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/infer/parsers.hpp",
+      "sha256": "29ea78517c3a013ea22d71dac9aa7543e62d04f5616794afc26c5c5e4ef765c5"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/infer/workload_type.hpp",
+      "sha256": "33951d34b3aa561f7e8111ae6c2661f3063b26aa77d08d4870413e9d28c5827f"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/infer.hpp",
+      "sha256": "86b9e6d85baab9d67a1ba25e55f61a5404c4a7515fd874d145e5284c1f854d36"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/media.hpp",
+      "sha256": "2a7ed9a92ac8663e2be8df57469b6ad44526be816baecbb233d0aa5405a6cd56"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/oak/infer.hpp",
+      "sha256": "4b4f92586355664a4c8a36334269e6affb3926a6cba22d21504af408f14863ab"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/oak/oak.hpp",
+      "sha256": "0889fd7f4d969a181f6bad094a7d2597adb2c8d59af3cb130c965e0cda812549"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/ocl/core.hpp",
+      "sha256": "27f4ce2522e6812549e872a277c4f88a4ad872fe7a15f014bd2a2f435140a519"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/ocl/goclkernel.hpp",
+      "sha256": "3be744430dcac5b66c21630d1cfcd7c384af41e268a3ca771f421cc225594fb7"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/ocl/imgproc.hpp",
+      "sha256": "cfba5b68823e7889ebd9da7365c85664747108e935d2bb7cb6d95f09eb3e28bb"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/opencv_includes.hpp",
+      "sha256": "7cab2e88b666ceca812ee464c75e8bf3bed2a1ae302654275b5c6ad41a19aa2f"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/operators.hpp",
+      "sha256": "4e4142e063e4cd0b4761dbbcff37253a640f9080b27bb2b2065f0f07619e9981"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/ot.hpp",
+      "sha256": "362c30104b5aa432e9ec21331aa6cd35ae75cee42866f8cdf95546fa16a4fe48"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/own/assert.hpp",
+      "sha256": "f9415f38dfcf4b9263589635f89b34df011ea3831a1ecc03a16044916a85a127"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/own/convert.hpp",
+      "sha256": "8c8d3f75261760e0a22681114b85ea8720913792d6670bc2776247718a014fc4"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/own/cvdefs.hpp",
+      "sha256": "de568bd9c1eceaad6b129d70cb8093c6407e58a0cfca0562a1ff3b21b7871b87"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/own/exports.hpp",
+      "sha256": "5f970bbf5df87340af63a7a567a25e8d9958cfd2570b2715211365761f8b59fd"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/own/mat.hpp",
+      "sha256": "777f4b27174468b0833a44b4a6f588ccd3fff893a9ede60f3a1681920cfccec7"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/own/saturate.hpp",
+      "sha256": "0e8008a2e16101436fee0cedacad5fb0d90b79e0c2869c3484b5542420b036aa"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/own/scalar.hpp",
+      "sha256": "55ed6f57b99968297b3ab548341c804d88fdb5e6aa5478067a51f2a37566b884"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/own/types.hpp",
+      "sha256": "60d043bb71aa0ead98863b908a1918029577834cd161311b324b09b817c56f2a"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/plaidml/core.hpp",
+      "sha256": "cbc8388cc8802dd60dc0a69f8b5370d10f4f9db327f9e11effbd38c587526f3a"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/plaidml/gplaidmlkernel.hpp",
+      "sha256": "b516fa32a9d8591a831d9c5afd4abcf055d80bea152ede1cf96bf5a57047d88c"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/plaidml/plaidml.hpp",
+      "sha256": "d8176c989f7d284b97288351db4d216ca0a39e5c53bdd3f0c3fc2a830736271c"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/pysrc/python_stream_source.hpp",
+      "sha256": "3eda1d5260040b04065d4fa5baa681f08781a011c6bba233cc5a29f141bcb16a"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/python/python.hpp",
+      "sha256": "1886daa2e2079b59a34ec8d3ac67a61cf2ff649462c132d09f68d3fa465eed54"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/render/render.hpp",
+      "sha256": "00f629d9879512b2425598d55ed63755e1a3305398f76fa20d7511fce0b68ded"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/render/render_types.hpp",
+      "sha256": "424586843f1c4eea894e3d57da9e806cfb4853e06b7eb02da7565483cfaff0ab"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/render.hpp",
+      "sha256": "e30173220be4e1da12422767adb3bbe36a4a10c74cf449e61c99489c9e6e159a"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/rmat.hpp",
+      "sha256": "10ee737547daa40b832fdbb28f25cf6d5e148041ff13281184f3293781ea34cd"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/s11n/base.hpp",
+      "sha256": "d7f8aa69289ea64645d281365ea29c545c0b7ba5ec141d324a9f30feb203f237"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/s11n.hpp",
+      "sha256": "87bdaf727fbae75dd3e1d56dc559bed44a96274b464ce38479d6af12296a9492"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/stereo.hpp",
+      "sha256": "c1a73e17a0e303438fd9f9b6f917a0117a6e89ee2b8e9f349e30dc029ec87f59"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/streaming/cap.hpp",
+      "sha256": "63563268393bacb4c2f7e5ff9d7fec9cbc171b9e23d8305e87b09316658ab08d"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/streaming/desync.hpp",
+      "sha256": "b192630a972db387a93c037d64672d6b5822a2d139871ebd9f07f9c8bbd4146c"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/streaming/format.hpp",
+      "sha256": "9249bfb2ba8efa24ffdb48bc9cbe1875219395d6f4258a350ad924ab80f72f45"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/streaming/gstreamer/gstreamerpipeline.hpp",
+      "sha256": "5b80bda20d90be263635a849d3772df6886a933900be905f34c3ca11b960bb16"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/streaming/gstreamer/gstreamersource.hpp",
+      "sha256": "73141dde1304ee30018eea0f979b85162f2912c62423d05b497eb64f98f60246"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/streaming/meta.hpp",
+      "sha256": "cdcd71ac912d05921cf3a2d2a937cb2f7d17d470020a38c6d59679ba8cfe7660"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/streaming/onevpl/accel_types.hpp",
+      "sha256": "080d55818ff98389c0bd1b49f25d9e3a2f692b23d5d1c265115383fdeaa94751"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/streaming/onevpl/cfg_params.hpp",
+      "sha256": "9e24bc0c37164904f5718856ce27102b5af8f20964b08ead71a142d7c8871151"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/streaming/onevpl/data_provider_interface.hpp",
+      "sha256": "ce02ead0bffb8bcd8ccf2c2847cfff8f860e395f51615aee07631445dfb2c320"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/streaming/onevpl/default.hpp",
+      "sha256": "378e04bf74afc85dbb676b617ad66738f5e0309980943269472aec68899a0e51"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/streaming/onevpl/device_selector_interface.hpp",
+      "sha256": "706cdf670a58b185756c74f96322e71ba66c041b1f3538a06a0e0366f15afcc2"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/streaming/onevpl/source.hpp",
+      "sha256": "d5d190c19d259870861fa3c3e82d78330846940813c402390eb816e91387900a"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/streaming/queue_source.hpp",
+      "sha256": "5f01bf496715bb29fcdc4bc515bf8e1a0ca9aec01dd202cfbfd04adbd3c3754e"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/streaming/source.hpp",
+      "sha256": "ca52ffac986ec2e260c3c071775b64dd2495bc0fa36c381cf46d1283b1a144b8"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/streaming/sync.hpp",
+      "sha256": "17cf4366621ef6cb1bb25f9a54b4b3565e80a5d17349ccf5393195dec3fd3b71"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/util/any.hpp",
+      "sha256": "a5751fddab1f57dad1c6c2a9dc3d72a48cea3efd292b64801b6327cada957329"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/util/compiler_hints.hpp",
+      "sha256": "5ebb8abf5d37062c914638cc086a7d6ef325006aae1a2a37cb2d8f700b542aab"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/util/copy_through_move.hpp",
+      "sha256": "4d8fa5c29c5121310a8360b29a337483024e5e8380c3c59e04ff587faf065480"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/util/optional.hpp",
+      "sha256": "0d23e0af1d7ebc6f284466078fdf2faf7b7de870957cd3bab613c7fc579e74c2"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/util/throw.hpp",
+      "sha256": "f0f153ade6e441a4bb8c390ac3480df56e1137eff0510b96380f2e996f3b1427"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/util/type_traits.hpp",
+      "sha256": "a10dff975b534d06ce9818e4fee152b38b5e875a03c31d17292c9d2908735ffa"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/util/util.hpp",
+      "sha256": "b2ca2eb937eb514a2fc75077aff01202b231a84103b32e352a9ca5bdb25eec47"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/util/variant.hpp",
+      "sha256": "2c9ba52aedadcdedc4c31b12504678f528038c7d16aa4b996f4901b369625964"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi/video.hpp",
+      "sha256": "6e7bc2ec1c9a2e0809c49eea381c4e455c8a55937d4b128ad167a51c04c235b2"
+    },
+    {
+      "file": "include/opencv4/opencv2/gapi.hpp",
+      "sha256": "a2fc7efc14031754de8c92a0a8ce8c0f6140f52b772a8305de4a3be6ab221909"
+    },
+    {
+      "file": "include/opencv4/opencv2/hdf/hdf5.hpp",
+      "sha256": "ebcefbd958fc2e05b845e2be73d344c97f444972a2221fd6febc35d04508d460"
+    },
+    {
+      "file": "include/opencv4/opencv2/hdf.hpp",
+      "sha256": "7fe7c7793b7829efb5646fcaf9582f3595a11d2b1bd114f9d6db933a21952d18"
+    },
+    {
+      "file": "include/opencv4/opencv2/hfs.hpp",
+      "sha256": "0983f33226f7fb912be7ca43c747ee676b4fb197a7a70e7866a35996e41be899"
+    },
+    {
+      "file": "include/opencv4/opencv2/highgui/highgui.hpp",
+      "sha256": "2705134ada3002073de9d41704da25540f13248bbfc2325c3a597f117e63cf42"
+    },
+    {
+      "file": "include/opencv4/opencv2/highgui/highgui_c.h",
+      "sha256": "96f2ecd38bc086d8fd5645154537af247074c6ea2c21e6b6b514c3d1f2c5e7d4"
+    },
+    {
+      "file": "include/opencv4/opencv2/highgui.hpp",
+      "sha256": "dfe3ed66e27f080746421413eda36a68ad0974027a4e32c73d84155a096b5359"
+    },
+    {
+      "file": "include/opencv4/opencv2/img_hash/average_hash.hpp",
+      "sha256": "162ba43fce6d97e551784ed5b14b8a1e43d52d6e7b02522eb8f66971eb82ee95"
+    },
+    {
+      "file": "include/opencv4/opencv2/img_hash/block_mean_hash.hpp",
+      "sha256": "2a4c61a3d14dc1647ee3c8a451666b1f1881413e7a15eb43c1abb4da9aa68ad7"
+    },
+    {
+      "file": "include/opencv4/opencv2/img_hash/color_moment_hash.hpp",
+      "sha256": "516124d3336726f6ee09be305ef12f6c4a99850720e0f2be4953ee1ebc726ea2"
+    },
+    {
+      "file": "include/opencv4/opencv2/img_hash/img_hash_base.hpp",
+      "sha256": "4573f1cb9599d7de9fcf926f067452e5100b7bd44162954ca68d7085dbee0afe"
+    },
+    {
+      "file": "include/opencv4/opencv2/img_hash/marr_hildreth_hash.hpp",
+      "sha256": "f62b9b983ed051831bc8959f61c87c4bcbf72e5e80d9eeefe07dbc3b14ce31a4"
+    },
+    {
+      "file": "include/opencv4/opencv2/img_hash/phash.hpp",
+      "sha256": "0cd1239ed75d0397abea1442ab24bd7e6de2e36819a5b08d285c73b5391355d9"
+    },
+    {
+      "file": "include/opencv4/opencv2/img_hash/radial_variance_hash.hpp",
+      "sha256": "5427b08d86315137c27dc8aee34e77ae5a970bc3d5f611fdff9e10d51dca1f7e"
+    },
+    {
+      "file": "include/opencv4/opencv2/img_hash.hpp",
+      "sha256": "7270be2e3470e73a143239a6480f96dea737987a9f7fa79458d95bc80f4c7f25"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgcodecs/imgcodecs.hpp",
+      "sha256": "2d8c47550206d0b6e0c9eeb8a367cb79adcb2176a8f408b6612d90252a40c708"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgcodecs/imgcodecs_c.h",
+      "sha256": "cf95c0b78a6f2468638b85f213b097ab4dda05ac5d9ca4de34ee8e0a618846dc"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgcodecs/ios.h",
+      "sha256": "bf9ec7d5cf531e98d1d0169ca9e59374fc9fc1ad5479178baee2909ac4e3dbf1"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgcodecs/legacy/constants_c.h",
+      "sha256": "d61db5018d9af8cf14ad3cd7cde3627235255aa45ca33a542ff04b610870f39e"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgcodecs/macosx.h",
+      "sha256": "e52ae69039bdf1d69cad8191de866d754c0695e97e5f163162c818010654d3a8"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgcodecs.hpp",
+      "sha256": "abc49ad969a5b1f8a1f7b59220bd950c944b06cdaf0fd552884ce39c16f84cff"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgproc/bindings.hpp",
+      "sha256": "f65b79fb4d9e7abcd8aa9bb8bcc2a3410c42dae8f729b8679a71bb85c7b85ee0"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgproc/detail/gcgraph.hpp",
+      "sha256": "e9e67386e93dd84a428af70e31313a0240a4df982f6c184d50180d9d6c2ea2f9"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgproc/detail/legacy.hpp",
+      "sha256": "625ce2e2c4abca32c44815e8ea6ea0d19c7d6f7db2cd142bd7e19b3770d953c4"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgproc/hal/hal.hpp",
+      "sha256": "efecd002537f5d66489e05401dadca222785c8bd4c69d7d70e1e131fd69a0097"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgproc/hal/interface.h",
+      "sha256": "27dd95facd92c6ca8e6fe4b981c51dbdb22b9dafba133cf2be0f5a03f5d8152e"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgproc/imgproc.hpp",
+      "sha256": "f519aaf5d2676014d46f0f29719baaa98c14c84bcf2311c10325e210a4103e70"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgproc/imgproc_c.h",
+      "sha256": "c0b4bd7f7769c966dbfada1d3ae65f8ce214fce1038339245a174ac40140ca77"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgproc/segmentation.hpp",
+      "sha256": "1f27474710e792c7ff1f1a63bac86876f53ceb0f648d32eb30b99e67d3dd5fdf"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgproc/types_c.h",
+      "sha256": "c844682f2f7d8dcbce7acdac069b41203dd8a4309946b3d23dbe22663d74a012"
+    },
+    {
+      "file": "include/opencv4/opencv2/imgproc.hpp",
+      "sha256": "246c0d95a6bea416087ee5ce3294444756fb4c77351a1d4f3b48fb11bee953fe"
+    },
+    {
+      "file": "include/opencv4/opencv2/intensity_transform.hpp",
+      "sha256": "6d26afb5f6abc4dcfb1bbadd2d4b4b598b61e2dc24a97a143c60364963821f6a"
+    },
+    {
+      "file": "include/opencv4/opencv2/line_descriptor/descriptor.hpp",
+      "sha256": "d41409c44b90c2a92581be0e374fa2a32103286656878cf9b445cb480de08b23"
+    },
+    {
+      "file": "include/opencv4/opencv2/line_descriptor.hpp",
+      "sha256": "caf8c46e9d9911f2b5dda828f0062f3652dd45d41d89c4ce8d726772899730cc"
+    },
+    {
+      "file": "include/opencv4/opencv2/mcc/ccm.hpp",
+      "sha256": "ddaa3661aa43442dd561384968dba66e4dff0d9e50f8a725800eecbe9cf0fef7"
+    },
+    {
+      "file": "include/opencv4/opencv2/mcc/checker_detector.hpp",
+      "sha256": "85b2b822c9fe269f88f7e79b43d727bf86a1287455aa3ede2631f083a7f6cadd"
+    },
+    {
+      "file": "include/opencv4/opencv2/mcc/checker_model.hpp",
+      "sha256": "4ebb0b0a3a3c2152fee45a994bb113dcd953a75585f2587299dfabaf5499d91c"
+    },
+    {
+      "file": "include/opencv4/opencv2/mcc.hpp",
+      "sha256": "0c02aa0672989985f93b6b482656a987a3ecea7bafef9f88d97bc4be2e16991d"
+    },
+    {
+      "file": "include/opencv4/opencv2/ml/ml.hpp",
+      "sha256": "ecd859e8d7208cd22381444201be96654bd21f4701e0e51e3a803a9f6b3fed73"
+    },
+    {
+      "file": "include/opencv4/opencv2/ml/ml.inl.hpp",
+      "sha256": "09eec0d780367bf9f468872c7726713492b2768ff05aed53eec31176e2cf6920"
+    },
+    {
+      "file": "include/opencv4/opencv2/ml.hpp",
+      "sha256": "c41f7f03931dbbd80ee8668ea782fa4d401effd3bc582d582b648221f85069dd"
+    },
+    {
+      "file": "include/opencv4/opencv2/objdetect/aruco_board.hpp",
+      "sha256": "d37bf4e6110146a974f0237766c99b88acd7294b069c3a3da9b1b37ce687a3e3"
+    },
+    {
+      "file": "include/opencv4/opencv2/objdetect/aruco_detector.hpp",
+      "sha256": "0a2065fce8476e233c2c481085087bf3620d2a23c1a6cd010c079ecf3e812a1d"
+    },
+    {
+      "file": "include/opencv4/opencv2/objdetect/aruco_dictionary.hpp",
+      "sha256": "c7b2e28d50c6be38db248ad35a82cbf8f7ad41b6d3663b0736e7088f4613d26e"
+    },
+    {
+      "file": "include/opencv4/opencv2/objdetect/barcode.hpp",
+      "sha256": "7b6ef238bc14edaaa42eb9ad74919f999fbe9bc99e1c8263b27499ad78ca7e5c"
+    },
+    {
+      "file": "include/opencv4/opencv2/objdetect/charuco_detector.hpp",
+      "sha256": "38afbd4c3c05e49d0823d9138bfb61e9137d3296d22b3cbcb98170a1fbb02b6a"
+    },
+    {
+      "file": "include/opencv4/opencv2/objdetect/detection_based_tracker.hpp",
+      "sha256": "3da91f0817026b85bc8500d5a4030c83c5b510868cf1972b2dcff80a559c040b"
+    },
+    {
+      "file": "include/opencv4/opencv2/objdetect/face.hpp",
+      "sha256": "bd6e4500bbfc52b6bd9ceac2f3ba634c1cd918fabbe134bae929aab979bbebdb"
+    },
+    {
+      "file": "include/opencv4/opencv2/objdetect/graphical_code_detector.hpp",
+      "sha256": "c4b514e2fc49af7cfca7a634821036afb227ca24ea2d0109195423e9da218f4b"
+    },
+    {
+      "file": "include/opencv4/opencv2/objdetect/objdetect.hpp",
+      "sha256": "09989e76da51cb2f28b30dbd172e7f26cba9a79ec015ac32dfa4a3223419bba4"
+    },
+    {
+      "file": "include/opencv4/opencv2/objdetect.hpp",
+      "sha256": "a4e8f6394a8a69fde4326adca811e5edbdc2cb51e5063e8847544bc88b357b97"
+    },
+    {
+      "file": "include/opencv4/opencv2/opencv.hpp",
+      "sha256": "37df4ccc15f8a6ed06e2099910c63e486841ddbd5bc2d303405bc34f8fd44b66"
+    },
+    {
+      "file": "include/opencv4/opencv2/opencv_modules.hpp",
+      "sha256": "a891ddc6c476ceca1458f6ee7515f0f76548bb55fa7383be1bab1f1318767d26"
+    },
+    {
+      "file": "include/opencv4/opencv2/optflow/motempl.hpp",
+      "sha256": "eb184510d8676411c7e45d68367ca93bcff60271f504684c254ea54a895e4f37"
+    },
+    {
+      "file": "include/opencv4/opencv2/optflow/pcaflow.hpp",
+      "sha256": "7177edd21d8760c859060966b7a41ae45211f10c22606ebe806ee82afe475794"
+    },
+    {
+      "file": "include/opencv4/opencv2/optflow/rlofflow.hpp",
+      "sha256": "595fc93147154ba0838532d28a250f6eb36611bec2218bdad338f74734e88ade"
+    },
+    {
+      "file": "include/opencv4/opencv2/optflow/sparse_matching_gpc.hpp",
+      "sha256": "2cc5d6ce96ee04e68e807caaadd473455f9d69c4a82eaba6f4ed7339735f54db"
+    },
+    {
+      "file": "include/opencv4/opencv2/optflow.hpp",
+      "sha256": "50f41e0be6043b6460061fcac23ea96377baaee6bc4335c565b5ed639e0aac80"
+    },
+    {
+      "file": "include/opencv4/opencv2/phase_unwrapping/histogramphaseunwrapping.hpp",
+      "sha256": "38980fba5a37b36ccc5ff0064ff3649e9ca13cb974a6cd8b1eb2d30b9a48128a"
+    },
+    {
+      "file": "include/opencv4/opencv2/phase_unwrapping/phase_unwrapping.hpp",
+      "sha256": "d9db5f9f4ec7a6a82f99a75e9f4bfa22b68e7c471703f3c9ec1899ed391746cc"
+    },
+    {
+      "file": "include/opencv4/opencv2/phase_unwrapping.hpp",
+      "sha256": "6c2d5e3c996f0489b3a5c8949a3b837eccdfbc9821ce70a7d5185eecf8c334fa"
+    },
+    {
+      "file": "include/opencv4/opencv2/photo/cuda.hpp",
+      "sha256": "7beef7fc22becd12688e853bb983773b11dd8cec6faca4220c78c08affadf9fa"
+    },
+    {
+      "file": "include/opencv4/opencv2/photo/legacy/constants_c.h",
+      "sha256": "dd01c6afe89743ebfd863d7b8c17b80c7fa5c9f676ea69e372836cc26f0c0403"
+    },
+    {
+      "file": "include/opencv4/opencv2/photo/photo.hpp",
+      "sha256": "18b6aed6db6c14d4295e89f7c9bb8931c44320d97195921fff3c16ea4174d67f"
+    },
+    {
+      "file": "include/opencv4/opencv2/photo.hpp",
+      "sha256": "065317df350d13ec1eddb3e153a2836b2ac0d554eb5ff5a564f2224e0d26c945"
+    },
+    {
+      "file": "include/opencv4/opencv2/plot.hpp",
+      "sha256": "9f92ce9db5adc36070cbdd43264c49622e1812f40d6f5eb59f0ef2bb87e8ffaf"
+    },
+    {
+      "file": "include/opencv4/opencv2/quality/quality_utils.hpp",
+      "sha256": "233e0ddbe02b936c4f9cbae20002b711f292814f4948e5b39a583397538c4584"
+    },
+    {
+      "file": "include/opencv4/opencv2/quality/qualitybase.hpp",
+      "sha256": "d36d584e453d78b11f01ee71fe3103ac5370f902ed0576aa837167aec25c1a31"
+    },
+    {
+      "file": "include/opencv4/opencv2/quality/qualitybrisque.hpp",
+      "sha256": "ae7dd64b9028fb5a0cc46c05a67962fa5d395575bc31389eead8898d025236ca"
+    },
+    {
+      "file": "include/opencv4/opencv2/quality/qualitygmsd.hpp",
+      "sha256": "d95de800a9eea3a18b19d33e6290cd3365f2f17072564c9239f12209b0dcdd5a"
+    },
+    {
+      "file": "include/opencv4/opencv2/quality/qualitymse.hpp",
+      "sha256": "dfb587d64b30c096ae74885c1dab06d46a77d2ffd4486d04e42962aff82445f9"
+    },
+    {
+      "file": "include/opencv4/opencv2/quality/qualitypsnr.hpp",
+      "sha256": "058b8e3ebe8c9e18250a0a6042bea3a58cf6ec84f8b35b09856e35f6a787bb7c"
+    },
+    {
+      "file": "include/opencv4/opencv2/quality/qualityssim.hpp",
+      "sha256": "14a92b51b056a0ade06c5ee52f91284e130dc140a56e1ea00b7d071e9b1d64be"
+    },
+    {
+      "file": "include/opencv4/opencv2/quality.hpp",
+      "sha256": "ab5aadbea65f20e926484b0c47c5e87c48ec019664c3cf5874abd14a88773a83"
+    },
+    {
+      "file": "include/opencv4/opencv2/rapid.hpp",
+      "sha256": "d24295a9c5358c5179cc2c4812943ee64cf56698166408f5cb266e7161eaa04e"
+    },
+    {
+      "file": "include/opencv4/opencv2/reg/map.hpp",
+      "sha256": "978369540ed1537aa026708212435623dd36191925e65bb03ae23fd1236ec4a4"
+    },
+    {
+      "file": "include/opencv4/opencv2/reg/mapaffine.hpp",
+      "sha256": "bcf9bfb03212834b810d28b4deb8d17381f89a0e85539a0a5b0c476540103a35"
+    },
+    {
+      "file": "include/opencv4/opencv2/reg/mapper.hpp",
+      "sha256": "8ee5202439589cce9413a1e91d18a6bfb75ce051d719169697c3f2fa36ad7608"
+    },
+    {
+      "file": "include/opencv4/opencv2/reg/mappergradaffine.hpp",
+      "sha256": "f594b75ef7efc032456957aa664276f580c3d912c29443b2826a02ba157ae085"
+    },
+    {
+      "file": "include/opencv4/opencv2/reg/mappergradeuclid.hpp",
+      "sha256": "6a05ac627beddf5c6b62e5d65232895d9db539805b1c55d60606d3bdd54d459e"
+    },
+    {
+      "file": "include/opencv4/opencv2/reg/mappergradproj.hpp",
+      "sha256": "3bbfef273c4e07f8e50125f2fc2356f8fedf395a9625c557022e8d209bce6eb6"
+    },
+    {
+      "file": "include/opencv4/opencv2/reg/mappergradshift.hpp",
+      "sha256": "e885936df19e9dd827486acdaec0411d4f3f26058a1d4c51d29c19f6ae72fed1"
+    },
+    {
+      "file": "include/opencv4/opencv2/reg/mappergradsimilar.hpp",
+      "sha256": "6aa855f8f7daf7ed17154eb6a5de2ee75d7edb7e480712b65490db171fb1bf63"
+    },
+    {
+      "file": "include/opencv4/opencv2/reg/mapperpyramid.hpp",
+      "sha256": "411367dfa86891752627261edff3a8e6121a7c3b9ef338965d82b317572ea8fa"
+    },
+    {
+      "file": "include/opencv4/opencv2/reg/mapprojec.hpp",
+      "sha256": "66e5c0d1f57ea2aea65792a1fa50aeb8ee02b96a0f422a7d4561b7cc21ba41d3"
+    },
+    {
+      "file": "include/opencv4/opencv2/reg/mapshift.hpp",
+      "sha256": "2bc0f93a654d557e96f8c45a948ece75796c6ca0a7b45ff4bab39da55ded882f"
+    },
+    {
+      "file": "include/opencv4/opencv2/rgbd/colored_kinfu.hpp",
+      "sha256": "168c1db605332aa5eba9743c5f9a77fc8beabeca3dd747a2697b67b3674a8f3b"
+    },
+    {
+      "file": "include/opencv4/opencv2/rgbd/depth.hpp",
+      "sha256": "8c86797ec66563fb10ab506562f58a70a1659dbd5e7892eb3ade8e3d0cf7918e"
+    },
+    {
+      "file": "include/opencv4/opencv2/rgbd/detail/pose_graph.hpp",
+      "sha256": "be1bb2d934a99040c4debfa102607e162e94a88c31090c019b209c6f9843f74f"
+    },
+    {
+      "file": "include/opencv4/opencv2/rgbd/dynafu.hpp",
+      "sha256": "386ed80d31ca912ce61a980228d90d28da1e0630fc6bbda28e6ff0e70b9be9de"
+    },
+    {
+      "file": "include/opencv4/opencv2/rgbd/intrinsics.hpp",
+      "sha256": "f87ab7f9eb205985046a476ba4e2b5efe6ae9fc8305b7bd8b0a52fac9ad00ce5"
+    },
+    {
+      "file": "include/opencv4/opencv2/rgbd/kinfu.hpp",
+      "sha256": "d2de26b3ac015aa9f46013fdd0ed36c01192853129100bc234738c9acaa3e589"
+    },
+    {
+      "file": "include/opencv4/opencv2/rgbd/large_kinfu.hpp",
+      "sha256": "9d92545147fb62abd37e96a236e1e69fca5ac1896b4590b0628f9cc66a1ffbf1"
+    },
+    {
+      "file": "include/opencv4/opencv2/rgbd/linemod.hpp",
+      "sha256": "b6ae28343e1376e4b173aaddcd5df5f80a982008f0cb462780c29f8d22359310"
+    },
+    {
+      "file": "include/opencv4/opencv2/rgbd/volume.hpp",
+      "sha256": "7439fd1d45de008458d625f8555086160d9231287ffb5a6f5a3a7ac09495e5c6"
+    },
+    {
+      "file": "include/opencv4/opencv2/rgbd.hpp",
+      "sha256": "08627fd46170fb36eab7aa341dcb5c857ad6207e05c7c22e6486ae8f5a6774e0"
+    },
+    {
+      "file": "include/opencv4/opencv2/saliency/saliencyBaseClasses.hpp",
+      "sha256": "e8f709e1cb2775be8fc938de99ce16e2a407abede7554de24cbfbb62f88a6547"
+    },
+    {
+      "file": "include/opencv4/opencv2/saliency/saliencySpecializedClasses.hpp",
+      "sha256": "89ea6b1e8f38b29428a467468437054cb9aee44c15897b74a906077f67d1115a"
+    },
+    {
+      "file": "include/opencv4/opencv2/saliency.hpp",
+      "sha256": "ee3cd04ba34adf02eb1dedd4e6b37b5b35848e050485589e0d85c26b9c8415f5"
+    },
+    {
+      "file": "include/opencv4/opencv2/shape/emdL1.hpp",
+      "sha256": "842fa1cd1876c66619fdd7b87c2856a0745baa5bf54c627fbebe6901b3e16a81"
+    },
+    {
+      "file": "include/opencv4/opencv2/shape/hist_cost.hpp",
+      "sha256": "fc08c02c864ff47619507d1d289e874a8f783bba7c1e86817d12c4b48e974cb5"
+    },
+    {
+      "file": "include/opencv4/opencv2/shape/shape.hpp",
+      "sha256": "0132dcd4c9879db8f721e1944b0158449173460f2692d6288bd135445fa33677"
+    },
+    {
+      "file": "include/opencv4/opencv2/shape/shape_distance.hpp",
+      "sha256": "f5b7dbcb2a3040bcff4a90a8e27eee700bff24621943a783a3c00ef7668ee640"
+    },
+    {
+      "file": "include/opencv4/opencv2/shape/shape_transformer.hpp",
+      "sha256": "20420c9c3a28b3810ccc6e370e9de4a87cb2574495645647607a1347926b5f23"
+    },
+    {
+      "file": "include/opencv4/opencv2/shape.hpp",
+      "sha256": "d4c7286a626a7db3518f9b5c163f65713dc0e68b4e39b6a4623287c01de5f85f"
+    },
+    {
+      "file": "include/opencv4/opencv2/signal/signal_resample.hpp",
+      "sha256": "b94eee8cd60eb57c1c07aaea370193f5230726d2651236884e57bbae8ce8a5ec"
+    },
+    {
+      "file": "include/opencv4/opencv2/signal.hpp",
+      "sha256": "30a5e4986320a13b91b6711142cd4242bac94db4a135235a2b5ca2aef911292a"
+    },
+    {
+      "file": "include/opencv4/opencv2/stereo/descriptor.hpp",
+      "sha256": "b15c8cc2028d93efe1497929d4ff7022403f611cf49297c0d425c6dd25984a18"
+    },
+    {
+      "file": "include/opencv4/opencv2/stereo/quasi_dense_stereo.hpp",
+      "sha256": "35694c015f99d873ae59506017e85eb78431bfb0c480f98c48f2a2c9d447c2c9"
+    },
+    {
+      "file": "include/opencv4/opencv2/stereo/stereo.hpp",
+      "sha256": "57d5056002ed1990fb67e2b34a3de476e717196599828909b3197a54cb9303a5"
+    },
+    {
+      "file": "include/opencv4/opencv2/stereo.hpp",
+      "sha256": "c73e50820b57d31871b4d25d19ba40e095b605c8d09190cfe040f7c5e73a6963"
+    },
+    {
+      "file": "include/opencv4/opencv2/stitching/detail/autocalib.hpp",
+      "sha256": "2c4107e72bf872061c41659e85914ff644778a0ecaac57f1252274aa54af8301"
+    },
+    {
+      "file": "include/opencv4/opencv2/stitching/detail/blenders.hpp",
+      "sha256": "ff361d24611c38f1963d1dd59c980f21cb514730baf1300ff5bfe23dde1805eb"
+    },
+    {
+      "file": "include/opencv4/opencv2/stitching/detail/camera.hpp",
+      "sha256": "b1a5d84045121ddd6db63a2045679e58e21e83a5224214a71791420dd17b2c79"
+    },
+    {
+      "file": "include/opencv4/opencv2/stitching/detail/exposure_compensate.hpp",
+      "sha256": "522b6a0b15187808b807cd8eaef5384a0eb116d0ae65b89046c784bbb7a06fa5"
+    },
+    {
+      "file": "include/opencv4/opencv2/stitching/detail/matchers.hpp",
+      "sha256": "05c403322055d58e4c193e7dec41ba22b1e778512ab99d074d0a21a5c38961cf"
+    },
+    {
+      "file": "include/opencv4/opencv2/stitching/detail/motion_estimators.hpp",
+      "sha256": "2e34fe92b9a8cd37976e5623956f7bd137c55fe23e61f6f97e81b8760bb9c885"
+    },
+    {
+      "file": "include/opencv4/opencv2/stitching/detail/seam_finders.hpp",
+      "sha256": "1b99fcb3a7aa88d98945261c4b66e0fa8871bfe1eca2bee156f08a05428ad811"
+    },
+    {
+      "file": "include/opencv4/opencv2/stitching/detail/timelapsers.hpp",
+      "sha256": "8e13a2225415e9e4a633b3d0ce539e038271aedaeb7242afc0dfb58e55aa6771"
+    },
+    {
+      "file": "include/opencv4/opencv2/stitching/detail/util.hpp",
+      "sha256": "6dfdc25654c4363868f778e338f65ee8e530d6012567f722d5ea458b0d06725a"
+    },
+    {
+      "file": "include/opencv4/opencv2/stitching/detail/util_inl.hpp",
+      "sha256": "75ad5d758c607f78151db4e9485791d8ef5dda0d5e2b9e2b11d9675b81e97559"
+    },
+    {
+      "file": "include/opencv4/opencv2/stitching/detail/warpers.hpp",
+      "sha256": "af1cf71ae2346f1903a8e70b6f101e72246a361dfe5d5a6411c74d62bacc66c0"
+    },
+    {
+      "file": "include/opencv4/opencv2/stitching/detail/warpers_inl.hpp",
+      "sha256": "40b095deb217b04ffe19971a12892d5f898a3a6e7eb0f25cfd93110d31e11fde"
+    },
+    {
+      "file": "include/opencv4/opencv2/stitching/warpers.hpp",
+      "sha256": "373cc82bb85e8525a5ce4b0f72beb0a7c64f56386244f0b943a0c5ec331df13a"
+    },
+    {
+      "file": "include/opencv4/opencv2/stitching.hpp",
+      "sha256": "225c40b86c903de1a8c8c6292d1e9f93999958a3d3e8ec9e595686593824cfc0"
+    },
+    {
+      "file": "include/opencv4/opencv2/structured_light/graycodepattern.hpp",
+      "sha256": "b883f1c0fc2e29531bb3244b9031807055fc27f6041a135beb9bed56ea8b5917"
+    },
+    {
+      "file": "include/opencv4/opencv2/structured_light/sinusoidalpattern.hpp",
+      "sha256": "72fc35a732eea81f14494f1348c250498a32d10b86d7878d2c20cea542bc43a2"
+    },
+    {
+      "file": "include/opencv4/opencv2/structured_light/structured_light.hpp",
+      "sha256": "5a8be515e6084ddb17f7a4e9c56de9b0e0b429b12742cc4de27387b03ecf05cd"
+    },
+    {
+      "file": "include/opencv4/opencv2/structured_light.hpp",
+      "sha256": "13279ebf29a58f49f324553fdad6ff720c1a7e7ced331e56cf9f422403d3af99"
+    },
+    {
+      "file": "include/opencv4/opencv2/superres/optical_flow.hpp",
+      "sha256": "9ffabc8c6efa08bc3ac0fe1e3da55c1c7a0ad415fab6c47beec641a1e922491a"
+    },
+    {
+      "file": "include/opencv4/opencv2/superres.hpp",
+      "sha256": "6bdc0d3ed0c3e89810c6c57eb25319b6340a47344f5526c6baf5c001ccbcbdac"
+    },
+    {
+      "file": "include/opencv4/opencv2/surface_matching/icp.hpp",
+      "sha256": "fb8b49d8425561cd9c8acf8ecb19efb8b81d211c05c59c7a4c57884ff3191f85"
+    },
+    {
+      "file": "include/opencv4/opencv2/surface_matching/pose_3d.hpp",
+      "sha256": "1ed5a016005f55f4fb80fbef46387d685e0d2b5bbe8d8dbf818f241517869c00"
+    },
+    {
+      "file": "include/opencv4/opencv2/surface_matching/ppf_helpers.hpp",
+      "sha256": "bbf3c5e1c5c105e7991fa62ec3b1876f61de78063b020df9da4ab0f95f5ae819"
+    },
+    {
+      "file": "include/opencv4/opencv2/surface_matching/ppf_match_3d.hpp",
+      "sha256": "07e0d714c32f35089d63bda9f24883ff9275e811026fd46253ab756b9b7aee3f"
+    },
+    {
+      "file": "include/opencv4/opencv2/surface_matching/t_hash_int.hpp",
+      "sha256": "0ed2ed342f3eabbb22e565195040dabecfed7ebeefb7fc4c7b07fe8fc11c1594"
+    },
+    {
+      "file": "include/opencv4/opencv2/surface_matching.hpp",
+      "sha256": "b4e9f36ab9066a03f0103e33e6702f3c6ae2b6797ea73b3147b3958ab86f8103"
+    },
+    {
+      "file": "include/opencv4/opencv2/text/erfilter.hpp",
+      "sha256": "9d6adc90b2db4ef309c42394c80faf28bf53379145c1ff21751a49f5c5644924"
+    },
+    {
+      "file": "include/opencv4/opencv2/text/ocr.hpp",
+      "sha256": "4791a6ab4e3a81f1174f88742bf8c297b8637d5df21ea5c7b2c5cc4c99d47678"
+    },
+    {
+      "file": "include/opencv4/opencv2/text/swt_text_detection.hpp",
+      "sha256": "d9d77cf03052a864bd536510c91a832ce0dd35990e5ccfd909a37f2d5d079887"
+    },
+    {
+      "file": "include/opencv4/opencv2/text/textDetector.hpp",
+      "sha256": "46c22a28d1d283214da48bf52c508f20af4a4c4cf097619d8551fe5a8cd46eb5"
+    },
+    {
+      "file": "include/opencv4/opencv2/text.hpp",
+      "sha256": "edc2fc32dfcd5f1359832e4366356fb00fb6b103a7c295d89d9334de909a6f3b"
+    },
+    {
+      "file": "include/opencv4/opencv2/tracking/feature.hpp",
+      "sha256": "94cf125b4951a7ba4ae962e216235870f78a721155e91b4b8ecb6e4ca13068cb"
+    },
+    {
+      "file": "include/opencv4/opencv2/tracking/kalman_filters.hpp",
+      "sha256": "275d3746b7f726a5d259844856f1baf66a5e239efa3c6e6dc2b82489f201bd8a"
+    },
+    {
+      "file": "include/opencv4/opencv2/tracking/onlineBoosting.hpp",
+      "sha256": "b2217a579bcf9830ddc9ae0324de3c8f1c6b94d8f7c3ea4e2740c9d1e484f149"
+    },
+    {
+      "file": "include/opencv4/opencv2/tracking/tldDataset.hpp",
+      "sha256": "d2f3127c8fe8885e234a89b51a0cf0120105ef23878efd3dbfd6793e759b6d1e"
+    },
+    {
+      "file": "include/opencv4/opencv2/tracking/tracking.hpp",
+      "sha256": "2d24fd6e1b888adff08aedda96ddeb39a7173c1dacee1e08236f43ab9c62e129"
+    },
+    {
+      "file": "include/opencv4/opencv2/tracking/tracking_by_matching.hpp",
+      "sha256": "30a99427ab8402256b314863752ce84128f374e83aab8cf03f1e999dc412d4a2"
+    },
+    {
+      "file": "include/opencv4/opencv2/tracking/tracking_internals.hpp",
+      "sha256": "159032629ff20c33f6bf470763a5806a0ce850e90ae9cb5f4951fa146be14342"
+    },
+    {
+      "file": "include/opencv4/opencv2/tracking/tracking_legacy.hpp",
+      "sha256": "5cede69fda30e6c70d37b2cbb7fe03df3bd883ce09d8ac9df03974a945b76053"
+    },
+    {
+      "file": "include/opencv4/opencv2/tracking/twist.hpp",
+      "sha256": "b19687379afe0d053684ac2c6230bd7244367c8e51b6901d78fe7c98d9ca1a27"
+    },
+    {
+      "file": "include/opencv4/opencv2/tracking.hpp",
+      "sha256": "5362366c9e9f96f9ffca16fc1d796b0eac4d5975e465d12e7018fa4aaad73170"
+    },
+    {
+      "file": "include/opencv4/opencv2/video/background_segm.hpp",
+      "sha256": "f544ebb11d693ebc3a22fad5df5b55185821e33c40080fd675bd7899d43ecfed"
+    },
+    {
+      "file": "include/opencv4/opencv2/video/detail/tracking.detail.hpp",
+      "sha256": "81f3eea460ec6c87e851435c0fedf38b4fe6a46f6982531cdac916e078255246"
+    },
+    {
+      "file": "include/opencv4/opencv2/video/legacy/constants_c.h",
+      "sha256": "5c523ca5b04e4bb98a1ef77c87ae0ca87b6a4f3142f28737ef50115abb326299"
+    },
+    {
+      "file": "include/opencv4/opencv2/video/tracking.hpp",
+      "sha256": "04578c8c54c06c131017a01cddba28a77b960d46eaa361a44230d53473c51f63"
+    },
+    {
+      "file": "include/opencv4/opencv2/video/video.hpp",
+      "sha256": "67e31defa256825bb977d4126d7b00f53c90cb49638b8a9e43ec121568167e36"
+    },
+    {
+      "file": "include/opencv4/opencv2/video.hpp",
+      "sha256": "5c1d80d5edbb3c681d4c17e01d34c541fa341f0a270ccd427e59601c5a4ed625"
+    },
+    {
+      "file": "include/opencv4/opencv2/videoio/legacy/constants_c.h",
+      "sha256": "8a719953ee483167b24033a99e2492b4f715996d85cc3e9365f3bff1a57c6897"
+    },
+    {
+      "file": "include/opencv4/opencv2/videoio/registry.hpp",
+      "sha256": "8471f25b7c501b797ab01e8531d36b4250c929d1533da7e75da2024cbf46180c"
+    },
+    {
+      "file": "include/opencv4/opencv2/videoio/videoio.hpp",
+      "sha256": "d38fe912bef4af8a587bf820e2316202c1253c60fca72a339a32f94e85ac2c81"
+    },
+    {
+      "file": "include/opencv4/opencv2/videoio/videoio_c.h",
+      "sha256": "48ad598cb1609b34ed1f8663a3839b49a65c9ea5998803aa026a42e5dfdab112"
+    },
+    {
+      "file": "include/opencv4/opencv2/videoio.hpp",
+      "sha256": "8089595960247d65d0c84d292c617ce5343bdd870d695a65a64fa08b8ea20399"
+    },
+    {
+      "file": "include/opencv4/opencv2/videostab/deblurring.hpp",
+      "sha256": "eb6de0d78b5639bc740826fe69d0111fb2e5b7a4ae009c8246beacf1d038fc09"
+    },
+    {
+      "file": "include/opencv4/opencv2/videostab/fast_marching.hpp",
+      "sha256": "0046b83157984dc58b087d45daedc1955fb61a19eb6b73645c15ccc5a33be70f"
+    },
+    {
+      "file": "include/opencv4/opencv2/videostab/fast_marching_inl.hpp",
+      "sha256": "68e447cefb8e1cd736c65098acccbfa23c75c5768ce4120e7b445e86ae7765e7"
+    },
+    {
+      "file": "include/opencv4/opencv2/videostab/frame_source.hpp",
+      "sha256": "e2be29adbf92d779d238ef2cf64e450e2bec229c06ea11f644ff571e7e1aec96"
+    },
+    {
+      "file": "include/opencv4/opencv2/videostab/global_motion.hpp",
+      "sha256": "234cbcac0366c066813674a8cc3eec10848afb337ba2693fab5a796e2df89144"
+    },
+    {
+      "file": "include/opencv4/opencv2/videostab/inpainting.hpp",
+      "sha256": "5aecb663b4a731bd6d7529e8aec698cbad19ea0b247c1fd2ef6d67ed6930517d"
+    },
+    {
+      "file": "include/opencv4/opencv2/videostab/log.hpp",
+      "sha256": "7bf72dd243d5508f638c0c0b3bd9f4d0bc3aa70b226dd7f3cb88a608b63670c0"
+    },
+    {
+      "file": "include/opencv4/opencv2/videostab/motion_core.hpp",
+      "sha256": "ddcba5788d59ca724107b8feac5a7a042ebf61e2520f212592a249147119f808"
+    },
+    {
+      "file": "include/opencv4/opencv2/videostab/motion_stabilizing.hpp",
+      "sha256": "722b986a143f8c1fe44b44e4305f4285214142219aa8fdff9735e5540ccc2b4f"
+    },
+    {
+      "file": "include/opencv4/opencv2/videostab/optical_flow.hpp",
+      "sha256": "c1ec5dcd1038f7ed3391663c1d87ff86d056a98775dbe01b1027ea7f6dcf79a3"
+    },
+    {
+      "file": "include/opencv4/opencv2/videostab/outlier_rejection.hpp",
+      "sha256": "a1858d173bddfcf9da945849890b4ec35c0cbd84262fabccbcfe993461776022"
+    },
+    {
+      "file": "include/opencv4/opencv2/videostab/ring_buffer.hpp",
+      "sha256": "00608847b25889172025b0f4246a404fa686a6affc711734739580d131e39c17"
+    },
+    {
+      "file": "include/opencv4/opencv2/videostab/stabilizer.hpp",
+      "sha256": "712875083e7d153025e792bf48be691d4869cb3cb04ac44aa660174dbb461c83"
+    },
+    {
+      "file": "include/opencv4/opencv2/videostab/wobble_suppression.hpp",
+      "sha256": "88dd6ad6a750322ccf2dd65b43fa1d60006708085fcb92fa79007ddb5418274c"
+    },
+    {
+      "file": "include/opencv4/opencv2/videostab.hpp",
+      "sha256": "cd83d1cfd491ac1f9352f6b0721c9b1d916bd84187945b89a4891ccbec43ce04"
+    },
+    {
+      "file": "include/opencv4/opencv2/viz/types.hpp",
+      "sha256": "a7f7851da62a2d0168139df69f9562feac2140992602cc7d8b6e3e12f9d4531d"
+    },
+    {
+      "file": "include/opencv4/opencv2/viz/viz3d.hpp",
+      "sha256": "f487e03ff244d55d582028b1ba40e8a3fa0ca11125ef75a431a4fd4c0b9a030e"
+    },
+    {
+      "file": "include/opencv4/opencv2/viz/vizcore.hpp",
+      "sha256": "1a7e30f880adb8b61f085ffb22e985d12e0c0af39b19d48e1e6e9ad4024ebdcb"
+    },
+    {
+      "file": "include/opencv4/opencv2/viz/widget_accessor.hpp",
+      "sha256": "a63e171e411037a14c380cc0e21aa6b939fe292d92c8732134fb920fbf87c93d"
+    },
+    {
+      "file": "include/opencv4/opencv2/viz/widgets.hpp",
+      "sha256": "06c57cb3e2728b3ce68b1264fb69710c54403bf2a2ce576ca66f1cf1a06971b5"
+    },
+    {
+      "file": "include/opencv4/opencv2/viz.hpp",
+      "sha256": "f1e9aedb81fe0967ebb0a2b524706f89ba548d8b14a3d883373f1df53efe685d"
+    },
+    {
+      "file": "include/opencv4/opencv2/wechat_qrcode.hpp",
+      "sha256": "62cfcf2e1ff0a51bd2d28bdf51789f6532f0cd42eb7574a6ec46482f9236f073"
+    },
+    {
+      "file": "include/opencv4/opencv2/xfeatures2d/cuda.hpp",
+      "sha256": "23d8f8a214e9da6e3aabd9f4da6c3d7b9050eea918e5cb6af0cc087a48205565"
+    },
+    {
+      "file": "include/opencv4/opencv2/xfeatures2d/nonfree.hpp",
+      "sha256": "c55b7edd450153d05fd63dbafdf3eade6b504b6c28a0ef610e4a3c4c8418c1c2"
+    },
+    {
+      "file": "include/opencv4/opencv2/xfeatures2d.hpp",
+      "sha256": "746a83feaec221a15791adcbecd0a7acd549b9fd04cb47e76974044310332f77"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/brightedges.hpp",
+      "sha256": "298434f38dc179f2d52015c615b224396925f2f99790b918d3c0cb95a963512e"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/color_match.hpp",
+      "sha256": "724929e4e2f09ddc9098197bd7b6495005b7c538bbac40189103fab943c708be"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/deriche_filter.hpp",
+      "sha256": "00c717702f3c5bdc91e93dbfd036d4f740443bc356ee462394f019601f130a8e"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/disparity_filter.hpp",
+      "sha256": "ea3595554a67f381ebdb6c41590575ecb8f7c51e8d6ca8d4e06fb07fbccc2c09"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/edge_drawing.hpp",
+      "sha256": "1f6b627c3e9f3a308c210fefc9ab968d05297e607f0d6a8e7a741740bd444f1e"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/edge_filter.hpp",
+      "sha256": "6abf61c4c4798fffc939d42c1dc77b6ce01f002f5596d996c08430d1ac0a9146"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/edgeboxes.hpp",
+      "sha256": "7ce02b969ec1a3f4adca5d8124795b5da395cca4433ab39a781929cbaa06f288"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/edgepreserving_filter.hpp",
+      "sha256": "7c050328a2534dd507cdce06abd5fd68c844a96bbe46dc8745bc3b2b6688c5a7"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/estimated_covariance.hpp",
+      "sha256": "126eee3143567287c133c87fa901a3b31ec242e39d0a0d600fe5e7792b583fac"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/fast_hough_transform.hpp",
+      "sha256": "b70ffac357af762cd8012e40de286b6df42c19390ed3ed35ed7cb9a4f35db27b"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/fast_line_detector.hpp",
+      "sha256": "059aef6fa96d9c72c1351ba02e72bf4522b2540874e20a8b12e7b4326ac426d2"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/find_ellipses.hpp",
+      "sha256": "c042c2946abf978685fc155c6b84965ea52e75c7bc8df641cf7dba8fcd047965"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/fourier_descriptors.hpp",
+      "sha256": "71401bf9c73bfa49b673cd1c55465f16c8b8b89afd9190ed1ff82dddd14fe769"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/lsc.hpp",
+      "sha256": "99a86fcdabba3c18637168438ada2e64c44cd4e0cc2f5ab6ee651ac38324b7be"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/paillou_filter.hpp",
+      "sha256": "39ca45703a7bd0faeeb0d8c8f5988a4fadd95a84e07413d4e2b1bfb9d0275359"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/peilin.hpp",
+      "sha256": "3e2820906e9844fe83845b45e740680de261efc3100218dc8878a8df83f20432"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/radon_transform.hpp",
+      "sha256": "39125fd07605fb92e0a66a808190275486cea2a9e793de62b4141eb9d20386fd"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/ridgefilter.hpp",
+      "sha256": "98d7e2fd8e76b4d62b2e612a03516c7b09c7f18d732955aa99b5d1ac3cc6a724"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/run_length_morphology.hpp",
+      "sha256": "04753bbcd68da5450b63deb244dcfe00a2b78c0cc8b64579787b5f163112656f"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/scansegment.hpp",
+      "sha256": "5ce725a0e560f70bfba00d8da534bef7f14652040e1a40e673241c9567d249f6"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/seeds.hpp",
+      "sha256": "f5c52c82f76069fdb025a88769faab6e6db96f8cb79a13c57ec375f40c13a4ce"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/segmentation.hpp",
+      "sha256": "ce2c98297ae51360590191ec826f4f63ce654cacc017756dbd51aec183603b75"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/slic.hpp",
+      "sha256": "e081f71f73e6c6a9c86e486bcfbb4d9ecdca0a51e3b885c097580ffbcd1a6e03"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/sparse_match_interpolator.hpp",
+      "sha256": "efb3e3905cc39d79a438d8f4ecc8b33217e9482ed9abb66322a51a6300a7f003"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/structured_edge_detection.hpp",
+      "sha256": "4d4b773245a020f9ba350a53629edd16ecfa923504ea7c82e5eae92b7186c0b1"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc/weighted_median_filter.hpp",
+      "sha256": "7ed2cc0bc4e2a37cbcc2ebf38b458fedc07cd9d9040981d0e107dfafc3e00106"
+    },
+    {
+      "file": "include/opencv4/opencv2/ximgproc.hpp",
+      "sha256": "8271392f21eabf56ce89faaaf1a93b7113c6b671955f0e77902c2e8efb70c5c7"
+    },
+    {
+      "file": "include/opencv4/opencv2/xobjdetect.hpp",
+      "sha256": "14f45ba0f1eff4d98e636bd6db97d2712c42013119d0dc612b503b9868140f4d"
+    },
+    {
+      "file": "include/opencv4/opencv2/xphoto/bm3d_image_denoising.hpp",
+      "sha256": "f469d6d72e84f247ee1fce24414fefde9c31b4e02b63e8e6ec79da7370da7138"
+    },
+    {
+      "file": "include/opencv4/opencv2/xphoto/dct_image_denoising.hpp",
+      "sha256": "ecc1f6518d639905f1dd25db7662247ccc41522ab3f8223cb465c98c2292307f"
+    },
+    {
+      "file": "include/opencv4/opencv2/xphoto/inpainting.hpp",
+      "sha256": "c4c148d636ce46741025cf9c0027c470b7af4bf430600e06b41dbda7c09a2384"
+    },
+    {
+      "file": "include/opencv4/opencv2/xphoto/oilpainting.hpp",
+      "sha256": "2ab0b4e5a8e4a6cdf3b925c58779e2bdc9f729fc657793190d93f63c6f7f4cde"
+    },
+    {
+      "file": "include/opencv4/opencv2/xphoto/tonemap.hpp",
+      "sha256": "b4bedc62e15eedc4e9c2b85968c47b273ae6d8cf695d1d5e20e2c42a846b1018"
+    },
+    {
+      "file": "include/opencv4/opencv2/xphoto/white_balance.hpp",
+      "sha256": "30fae76a70bd2a6776fcecf1cc01d54538845e4dad80cdfa61b8a10832bda88f"
+    },
+    {
+      "file": "include/opencv4/opencv2/xphoto.hpp",
+      "sha256": "fd60f384fe26dcb16a3a7e7e8003676dd385b8a755c753fb3b24093cff179050"
+    }
+  ],
+  "system_dependencies": "Ubuntu 24.04 compiler/Fortran/OpenMP runtime, compression and X11/GL libraries remain system-provided. Predictor dependencies are separate."
+}
