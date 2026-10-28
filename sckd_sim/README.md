@@ -5,6 +5,16 @@
 设计文档: [`docs/SIM_SYSTEM_DESIGN.md`](../docs/SIM_SYSTEM_DESIGN.md)(契约与决策的唯一来源)。
 当前里程碑:**M0 内核**——模型管线、电机模型、HAL in-process、确定性、四项验收。
 
+X4_950 已另增 `x4_native_replay` 首跑入口：按时序输入实测球轨迹，由 `ball-mlp`
+预测固定高度交点，通过工程内 `libnmpc.so.1` 的 C++ 直连接口驱动 X4 动力学。
+从任意目录执行 `python3 /home/ubuntu/works/mojuco-mpc/mpc-github/tools/run_x4_native_replay.py`，
+将构建两个独立进程并在 `outputs/x4_native_replay/` 下保存本轮记录。
+上述命令默认无窗口；添加 `--view` 会先打开 MuJoCo 窗口，再启动仿真并实时显示当前状态，
+默认按 0.25 倍墙钟节奏推进（`--view-speed 0.1` 可进一步放慢）。鼠标旋转/缩放，结束后保留最后一帧，
+关闭窗口会停止尚在运行的仿真；不会自动播放已完成的记录。
+本机依赖、配置、回放方法及已知跟踪误差见 [首跑记录](../docs/X4_950_原生MPC首跑_20261028.md)。
+此入口的球为无碰撞的测量参考，不包含拍球冲量；下文关于旧 X4/NMPC 入口的阻断仍有效。
+
 ## 环境
 
 - C++17:g++ ≥13 / CMake ≥3.16;MuJoCo 3.14.0 与 CasADi 3.8.0 的头文件和库默认位于工程根目录 `deps/mujoco`、`deps/casadi`,可用 `-DMUJOCO_DIR=`、`-DCASADI_DIR=` 覆盖
