@@ -17,6 +17,7 @@
 #include "control/native_mpc_bridge.h"
 #include "estimation/shuttle_prediction_client.h"
 #include "hal/sim_backend.h"
+#include "sim/hit_position_error.h"
 
 namespace fs = std::filesystem;
 using Json = nlohmann::json;
@@ -120,6 +121,7 @@ int main(int argc, char** argv) try {
   const int ball_j = Named(m, mjOBJ_JOINT, "ball_free");
   const int ball_qa = m->jnt_qposadr[ball_j], ball_va = m->jnt_dofadr[ball_j];
   const int ball_g = Named(m, mjOBJ_GEOM, "ball_geom"), face = Named(m, mjOBJ_GEOM, "racket_face");
+  const int racket_center = Named(m, mjOBJ_SITE, "racket_center");
   if (m->geom_contype[ball_g] || m->geom_conaffinity[ball_g])
     throw std::runtime_error("measured ball must have physical collision disabled");
   const auto initial_base = cfg.at("initial_base_xy_m").get<std::array<double, 2>>();
@@ -169,12 +171,32 @@ int main(int argc, char** argv) try {
   Json forecast = {{"target", {{"valid", false}}},
                    {"predicted_trajectory", Json::array()},
                    {"stats", Json::object()}};
+  HitPositionErrorTracker hit_position_error;
+  Json hit_position_error_json = nullptr;
   const auto wall_start = std::chrono::steady_clock::now();
   for (int tick = 0; tick <= ticks; ++tick) {
     const double t = d->time, replay_t = t - settle;
     const bool active = replay_t >= -1e-10 && replay_t <= rows.back().t + 1e-10;
     SetReference(rows, replay_t, d, ball_qa, ball_va);
     mj_forward(m, d);
+    HitPositionSample hit_sample;
+    hit_sample.trajectory_time_s = replay_t;
+    hit_sample.simulation_time_s = t;
+    for (int axis = 0; axis < 3; ++axis) {
+      hit_sample.ball_position_m[axis] = d->qpos[ball_qa + axis];
+      hit_sample.racket_center_m[axis] = d->site_xpos[3 * racket_center + axis];
+    }
+    if (hit_position_error.Observe(hit_sample)) {
+      const auto& captured = *hit_position_error.captured();
+      hit_position_error_json = {{"hit_time_s", captured.hit_time_s},
+          {"simulation_time_s", captured.simulation_time_s},
+          {"ball_position_m", captured.ball_position_m},
+          {"racket_center_m", captured.racket_center_m}, {"delta_m", captured.delta_m},
+          {"distance_m", captured.distance_m},
+          {"sampling_interval_s", captured.sampling_interval_s}};
+      events << Json{{"kind", "hit_position_error"},
+                     {"hit_position_error", hit_position_error_json}}.dump() << '\n';
+    }
     if (active && (tick % predict_ticks == 0 || replay_t + dt > rows.back().t)) {
       forecast = predictor.Update(std::clamp(replay_t, 0.0, rows.back().t));
       if (forecast.at("target").at("valid").get<bool>()) ++predictions;
@@ -185,6 +207,9 @@ int main(int argc, char** argv) try {
     const bool target_current = active && current_target.at("valid").get<bool>() &&
         current_target.at("t_hit_s").get<double>() > replay_t &&
         current_target.at("t_hit_s").get<double>() <= rows.back().t;
+    hit_position_error.UpdatePendingHit(
+        target_current ? std::optional<double>(current_target.at("t_hit_s").get<double>())
+                       : std::nullopt);
     // A failed solve may retain a valid prior plan, but an invalid/expired
     // observation must stop that plan. Execution limits ramp velocity to zero.
     if (!target_current) plan.success = false;
@@ -248,7 +273,8 @@ int main(int argc, char** argv) try {
       trace << Json{{"t", t}, {"replay_t", replay_t}, {"phase", active ? "replay" : replay_t < 0 ? "settle" : "stop"},
           {"qpos", std::vector<double>(d->qpos, d->qpos+m->nq)}, {"qvel", std::vector<double>(d->qvel, d->qvel+m->nv)},
           {"target", forecast.at("target")}, {"predicted_trajectory", forecast.at("predicted_trajectory")},
-          {"input", forecast.at("stats")}, {"executing", executing},
+          {"input", forecast.at("stats")}, {"hit_position_error", hit_position_error_json},
+          {"executing", executing},
           {"q_command", qcmd}, {"dq_command", dqcmd}, {"surface_gap_m", gap}}.dump() << '\n';
       if (realtime) trace.flush();
     }
@@ -269,6 +295,7 @@ int main(int argc, char** argv) try {
       {"max_mpc_joint_motion_rad", max_mpc_joint_motion}, {"input_policy", cfg.value("preassociated_replay", false) ? "preassociated_forced" : "normal_association"},
       {"physical_hit", nullptr}, {"ball_mode", "measured_reference_no_collision_no_bounce"}, {"end_reason", "recording_end_then_stop"},
       {"max_solve_ms", max_solve_ms}, {"max_prediction_ms", max_prediction_ms}, {"input_stats", forecast.at("stats")},
+      {"hit_position_error", hit_position_error_json},
       {"execution_mode", realtime ? "wall_clock_paced" : "unpaced"},
       {"realtime_speed_multiplier", realtime ? Json(realtime_speed) : Json(nullptr)},
       {"wall_s", std::chrono::duration<double>(std::chrono::steady_clock::now()-wall_start).count()}};

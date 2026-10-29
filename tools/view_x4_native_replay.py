@@ -91,6 +91,10 @@ def display_frame(viewer, model, data, frame, heading, status, controls):
     hit_sim_time = frame['t'] - frame['replay_t'] + target['t_hit_s'] if current else None
     ball_qadr = model.jnt_qposadr[model.joint('ball_free').id]
     trajectory = frame.get('predicted_trajectory', []) if frame['phase'] != 'settle' else []
+    hit_error = frame.get('hit_position_error')
+    hit_error_status = 'Waiting for hit time' if 'hit_position_error' in frame else 'Not recorded'
+    if frame['phase'] == 'stop' and not hit_error and 'hit_position_error' in frame:
+        hit_error_status = 'No hit time reached'
     with viewer.lock():
         data.qpos[:] = pose
         data.qvel[:] = velocity
@@ -118,6 +122,11 @@ def display_frame(viewer, model, data, frame, heading, status, controls):
         ('Hit time (trajectory s)', f'{target["t_hit_s"]:.3f}' if current else '--'),
         ('Hit time (simulation s)', f'{hit_sim_time:.3f}' if current else '--'),
         ('Remaining (simulation s)', f'{remaining:.3f}' if current else '--'),
+        ('Hit sample time (simulation s)', f'{hit_error["simulation_time_s"]:.6f}' if hit_error else hit_error_status),
+        ('Ball at hit (world m)', '(' + ', '.join(f'{v:.4f}' for v in hit_error['ball_position_m']) + ')' if hit_error else '--'),
+        ('Racket center at hit (world m)', '(' + ', '.join(f'{v:.4f}' for v in hit_error['racket_center_m']) + ')' if hit_error else '--'),
+        ('Ball - racket at hit (m)', '(' + ', '.join(f'{v:+.4f}' for v in hit_error['delta_m']) + ')' if hit_error else '--'),
+        ('Center distance at hit (m)', f'{hit_error["distance_m"]:.4f}' if hit_error else '--'),
         ('Markers', 'Yellow: ball; pink: predicted hit'),
         ('Predicted trajectory', f'Cyan: full forecast ({len(trajectory)} points)' if trajectory else 'Not available'),
         ('Controls', controls),

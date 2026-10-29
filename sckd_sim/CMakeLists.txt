@@ -167,6 +167,10 @@ target_include_directories(test_runtime_supervision PRIVATE third_party/doctest)
 target_link_libraries(test_runtime_supervision PRIVATE sckd_runtime_contracts)
 add_test(NAME runtime_supervision COMMAND test_runtime_supervision)
 
+add_executable(test_hit_position_error cpp/tests/test_hit_position_error.cc)
+target_include_directories(test_hit_position_error PRIVATE third_party/doctest cpp)
+add_test(NAME hit_position_error COMMAND test_hit_position_error)
+
 # Opt-in native X4 replay. Keep the predictor's OpenCV/TensorRT runtime in a
 # separate process from the supplied MPC library's OpenCV/CasADi runtime.
 option(SCKD_BUILD_X4_NATIVE_REPLAY "Build supplied-library X4 measured replay" OFF)

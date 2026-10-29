@@ -88,6 +88,43 @@ class X4NativeViewerTests(unittest.TestCase):
             with self.subTest(points=points), self.assertRaisesRegex(ValueError, 'invalid predicted trajectory'):
                 view.add_predicted_trajectory(self.viewer.user_scn, points)
 
+    def overlay(self):
+        texts = self.viewer.set_texts.call_args.args[0]
+        return dict(zip(texts[2].splitlines(), texts[3].splitlines()))
+
+    def test_hit_error_waiting_and_legacy_frames_are_distinguished(self):
+        self.display()
+        self.assertEqual(self.overlay()['Hit sample time (simulation s)'], 'Not recorded')
+        self.frame['hit_position_error'] = None
+        self.display()
+        self.assertEqual(self.overlay()['Hit sample time (simulation s)'], 'Waiting for hit time')
+        self.assertEqual(self.overlay()['Center distance at hit (m)'], '--')
+        self.frame['phase'] = 'stop'
+        self.display()
+        self.assertEqual(self.overlay()['Hit sample time (simulation s)'], 'No hit time reached')
+
+    def test_hit_error_uses_frozen_same_time_positions_even_after_target_expires(self):
+        self.frame['target'] = {'valid': False}
+        self.frame['hit_position_error'] = {
+            'simulation_time_s': .685494, 'hit_time_s': .185494,
+            'ball_position_m': [1.1, 2.2, .8], 'racket_center_m': [.8, 2.6, .8],
+            'delta_m': [.3, -.4, 0], 'distance_m': .5, 'sampling_interval_s': .001,
+        }
+        self.display()
+        expected = self.overlay()
+        self.assertEqual(expected['Hit sample time (simulation s)'], '0.685494')
+        self.assertEqual(expected['Ball at hit (world m)'], '(1.1000, 2.2000, 0.8000)')
+        self.assertEqual(expected['Racket center at hit (world m)'], '(0.8000, 2.6000, 0.8000)')
+        self.assertEqual(expected['Ball - racket at hit (m)'], '(+0.3000, -0.4000, +0.0000)')
+        self.assertEqual(expected['Center distance at hit (m)'], '0.5000')
+        self.frame['phase'] = 'stop'
+        self.frame['qpos'][:3] = [10, 20, 30]
+        self.display()
+        for label in ('Hit sample time (simulation s)', 'Ball at hit (world m)',
+                      'Racket center at hit (world m)', 'Ball - racket at hit (m)',
+                      'Center distance at hit (m)'):
+            self.assertEqual(self.overlay()[label], expected[label])
+
 
 if __name__ == '__main__':
     unittest.main()
