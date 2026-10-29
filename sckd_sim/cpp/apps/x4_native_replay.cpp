@@ -166,7 +166,9 @@ int main(int argc, char** argv) try {
   std::array<double, 5> first_execution_q{};
   int attempts = 0, successes = 0, command_ticks = 0, clipped = 0, predictions = 0;
   bool geometric_contact = false;
-  Json forecast = {{"target", {{"valid", false}}}, {"stats", Json::object()}};
+  Json forecast = {{"target", {{"valid", false}}},
+                   {"predicted_trajectory", Json::array()},
+                   {"stats", Json::object()}};
   const auto wall_start = std::chrono::steady_clock::now();
   for (int tick = 0; tick <= ticks; ++tick) {
     const double t = d->time, replay_t = t - settle;
@@ -245,7 +247,8 @@ int main(int argc, char** argv) try {
     if (tick % 5 == 0 || tick == ticks) {
       trace << Json{{"t", t}, {"replay_t", replay_t}, {"phase", active ? "replay" : replay_t < 0 ? "settle" : "stop"},
           {"qpos", std::vector<double>(d->qpos, d->qpos+m->nq)}, {"qvel", std::vector<double>(d->qvel, d->qvel+m->nv)},
-          {"target", forecast.at("target")}, {"input", forecast.at("stats")}, {"executing", executing},
+          {"target", forecast.at("target")}, {"predicted_trajectory", forecast.at("predicted_trajectory")},
+          {"input", forecast.at("stats")}, {"executing", executing},
           {"q_command", qcmd}, {"dq_command", dqcmd}, {"surface_gap_m", gap}}.dump() << '\n';
       if (realtime) trace.flush();
     }

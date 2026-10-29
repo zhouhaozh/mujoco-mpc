@@ -126,6 +126,7 @@ Json TargetResponse(const sckd::MeasuredShuttlePredictor& predictor) {
             {"v_in_m_s", target.incoming_velocity_m_s},
             {"t_hit_s", target.hit_time_s},
             {"prediction_ms", target.prediction_ms}}},
+          {"predicted_trajectory", predictor.predicted_trajectory()},
           {"stats",
            {{"received", stats.received},
             {"accepted", stats.accepted},

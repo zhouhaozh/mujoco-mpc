@@ -44,6 +44,30 @@ def configure_camera(viewer, model, pose):
     viewer.cam.elevation = -15
 
 
+def add_predicted_trajectory(scene, samples):
+    """Draw the full forecast [relative seconds, world x/y/z metres]."""
+    if not samples:
+        return
+    points = np.asarray(samples, dtype=float)
+    if (points.ndim != 2 or points.shape[1] != 4 or not np.isfinite(points).all()
+            or (np.diff(points[:, 0]) <= 0).any()):
+        raise ValueError('invalid predicted trajectory')
+    # Preserve both endpoints even when the scene cannot fit every sample.
+    count = min(len(points), max(0, scene.maxgeom - scene.ngeom) + 1)
+    indices = np.linspace(0, len(points) - 1, count, dtype=int)
+    for left, right in zip(indices[:-1], indices[1:]):
+        start, end = points[left, 1:], points[right, 1:]
+        if np.linalg.norm(end - start) < 1e-9:
+            continue
+        geom = scene.geoms[scene.ngeom]
+        mujoco.mjv_initGeom(geom, mujoco.mjtGeom.mjGEOM_CAPSULE,
+                           np.zeros(3), np.zeros(3), np.eye(3).ravel(),
+                           np.array([0.05, 0.9, 1.0, 1.0], dtype=np.float32))
+        mujoco.mjv_connector(geom, mujoco.mjtGeom.mjGEOM_CAPSULE, .008, start, end)
+        geom.category = int(mujoco.mjtCatBit.mjCAT_DECOR)
+        scene.ngeom += 1
+
+
 def display_frame(viewer, model, data, frame, heading, status, controls):
     pose = np.asarray(frame['qpos'], dtype=float)
     velocity = np.asarray(frame['qvel'], dtype=float)
@@ -66,6 +90,7 @@ def display_frame(viewer, model, data, frame, heading, status, controls):
     # time using the frame's actual offset, never the wall clock or view speed.
     hit_sim_time = frame['t'] - frame['replay_t'] + target['t_hit_s'] if current else None
     ball_qadr = model.jnt_qposadr[model.joint('ball_free').id]
+    trajectory = frame.get('predicted_trajectory', []) if frame['phase'] != 'settle' else []
     with viewer.lock():
         data.qpos[:] = pose
         data.qvel[:] = velocity
@@ -81,6 +106,7 @@ def display_frame(viewer, model, data, frame, heading, status, controls):
                                np.full(3, radius), np.asarray(position), np.eye(3).ravel(),
                                np.asarray(color, dtype=np.float32))
             scene.ngeom += 1
+        add_predicted_trajectory(scene, trajectory)
     rows = [
         (heading, 'Measured ball; no physical impact'),
         ('Simulation time / phase', f'{frame["t"]:.3f}s / {frame["phase"]}'),
@@ -93,6 +119,7 @@ def display_frame(viewer, model, data, frame, heading, status, controls):
         ('Hit time (simulation s)', f'{hit_sim_time:.3f}' if current else '--'),
         ('Remaining (simulation s)', f'{remaining:.3f}' if current else '--'),
         ('Markers', 'Yellow: ball; pink: predicted hit'),
+        ('Predicted trajectory', f'Cyan: full forecast ({len(trajectory)} points)' if trajectory else 'Not available'),
         ('Controls', controls),
     ]
     viewer.set_texts((mujoco.mjtFont.mjFONT_NORMAL, mujoco.mjtGridPos.mjGRID_TOPLEFT,

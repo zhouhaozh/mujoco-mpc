@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace sckd {
 
@@ -53,6 +54,8 @@ class MeasuredShuttlePredictor {
   bool UpdateUntil(double relative_time_s);
 
   const Target& target() const;
+  // Rows are {relative_time_s, x_m, y_m, z_m} from the current model forecast.
+  const std::vector<std::array<double, 4>>& predicted_trajectory() const;
   const Stats& stats() const;
   double end_time_s() const;
 

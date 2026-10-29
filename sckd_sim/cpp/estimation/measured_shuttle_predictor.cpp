@@ -136,6 +136,7 @@ struct MeasuredShuttlePredictor::Impl {
 
   void RefreshTarget() {
     last_target = {};
+    predicted_trajectory.clear();
     if (stats.accepted < 21 || !track->isValid()) return;
 
     stats.last_error.clear();
@@ -148,22 +149,46 @@ struct MeasuredShuttlePredictor::Impl {
       const auto& hit = track->chooseHitPointByHeight(target_cm, tolerance_cm);
       const double latest_observation_ms = rows[next_row - 1].timestamp_ms;
       std::array<double, 3> velocity_m_s{};
-      if (!std::isfinite(hit.ts) || hit.ts <= latest_observation_ms ||
-          !std::isfinite(hit.pos.x) || !std::isfinite(hit.pos.y) ||
-          !std::isfinite(hit.pos.z) ||
-          std::abs(hit.pos.z - target_cm) > tolerance_cm + 1e-3f ||
-          !PredictedVelocityMps(hit.ts, velocity_m_s) || velocity_m_s[2] >= 0.0)
-        return;
-      last_target.valid = true;
-      last_target.position_m = {hit.pos.x / 100.0, hit.pos.y / 100.0, hit.pos.z / 100.0};
-      // Derive velocity from the same generated position samples. This keeps
-      // SI output stable across ball-mlp's analytic and Taylor3 backends.
-      last_target.incoming_velocity_m_s = velocity_m_s;
-      last_target.hit_time_s = (hit.ts - first_timestamp_ms) / 1000.0;
-      last_valid_hit_time_s = last_target.hit_time_s;
+      if (std::isfinite(hit.ts) && hit.ts > latest_observation_ms &&
+          std::isfinite(hit.pos.x) && std::isfinite(hit.pos.y) &&
+          std::isfinite(hit.pos.z) &&
+          std::abs(hit.pos.z - target_cm) <= tolerance_cm + 1e-3f &&
+          PredictedVelocityMps(hit.ts, velocity_m_s) && velocity_m_s[2] < 0.0) {
+        last_target.valid = true;
+        last_target.position_m = {hit.pos.x / 100.0, hit.pos.y / 100.0, hit.pos.z / 100.0};
+        // Derive velocity from the same generated position samples. This keeps
+        // SI output stable across ball-mlp's analytic and Taylor3 backends.
+        last_target.incoming_velocity_m_s = velocity_m_s;
+        last_target.hit_time_s = (hit.ts - first_timestamp_ms) / 1000.0;
+        last_valid_hit_time_s = last_target.hit_time_s;
+      }
     } catch (const std::exception& error) {
       stats.last_error = error.what();
       last_target = {};
+    }
+
+    try {
+      // Generate the display curve after selecting the MPC target: this replaces
+      // the track's narrow height-window cache without changing the saved target.
+      track->generatePredictedRpts(0.0f, 0.0f,
+                                   static_cast<float>(config.prediction_stride_ms),
+                                   config.max_prediction_samples);
+      const auto& samples = track->getRpts();
+      predicted_trajectory.reserve(samples.size());
+      for (const auto& sample : samples) {
+        if (!std::isfinite(sample.ts) || !std::isfinite(sample.pos.x) ||
+            !std::isfinite(sample.pos.y) || !std::isfinite(sample.pos.z))
+          continue;
+        predicted_trajectory.push_back({
+            (sample.ts - first_timestamp_ms) / 1000.0,
+            sample.pos.x / 100.0,
+            sample.pos.y / 100.0,
+            sample.pos.z / 100.0,
+        });
+      }
+    } catch (const std::exception& error) {
+      stats.last_error = error.what();
+      predicted_trajectory.clear();
     }
   }
 
@@ -200,7 +225,11 @@ struct MeasuredShuttlePredictor::Impl {
         }
         ++next_row;
       }
-      if (changed) RefreshTarget();
+      if (changed) {
+        RefreshTarget();
+      } else if (!track->isValid()) {
+        predicted_trajectory.clear();
+      }
       record_duration();
       return last_target.valid;
     } catch (...) {
@@ -241,6 +270,7 @@ struct MeasuredShuttlePredictor::Impl {
   std::unique_ptr<ball::mlp::BallMLP> predictor;
   std::unique_ptr<ball::mlp::SingleTrack> track;
   Target last_target;
+  std::vector<std::array<double, 4>> predicted_trajectory;
   std::optional<double> last_valid_hit_time_s;
   Stats stats;
 };
@@ -259,6 +289,10 @@ bool MeasuredShuttlePredictor::UpdateUntil(double relative_time_s) {
 
 const MeasuredShuttlePredictor::Target& MeasuredShuttlePredictor::target() const {
   return impl_->last_target;
+}
+
+const std::vector<std::array<double, 4>>& MeasuredShuttlePredictor::predicted_trajectory() const {
+  return impl_->predicted_trajectory;
 }
 
 const MeasuredShuttlePredictor::Stats& MeasuredShuttlePredictor::stats() const {

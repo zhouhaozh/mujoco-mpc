@@ -68,7 +68,7 @@ class ShuttlePredictionClient {
   }
 
  private:
-  static constexpr std::size_t kMaxResponseBytes = 64 * 1024;
+  static constexpr std::size_t kMaxResponseBytes = 1024 * 1024;
 
   static std::string SystemError(const char* operation) {
     return std::string(operation) + ": " + std::strerror(errno);
@@ -94,7 +94,7 @@ class ShuttlePredictionClient {
       if (received == 0) throw std::runtime_error("prediction service closed the socket");
       buffer_.append(chunk, static_cast<std::size_t>(received));
       if (buffer_.size() > kMaxResponseBytes) {
-        throw std::runtime_error("prediction response exceeds 64 KiB");
+        throw std::runtime_error("prediction response exceeds 1 MiB");
       }
       newline = buffer_.find('\n');
     }
