@@ -137,7 +137,7 @@
                 <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="Link5" contype="0" conaffinity="0" />
                 <body name="Link6" pos="0 0.93 0">
                   <inertial pos="0 0 0" quat="0.000281656 0.706825 -0.000281432 0.707388" mass="0.0005" diaginertia="4.17e-06 2.51e-06 1.67e-06" />
-                  <geom name="racket_face" size="0.1225 0.1 0.005" quat="0.500398 0.5 0.499602 0.5" type="box" mass="0" />
+                  <geom name="racket_face" size="0.1225 0.1 0.005" quat="0.500398 0.5 0.499602 0.5" type="box" mass="0" rgba="0.5 0.5 0.5 0" />
                   <site name="racket_center" pos="0 0 0" />
                 </body>
               </body>

@@ -173,6 +173,8 @@ def build(variant: str) -> int:
         face = bodies["Link6"].find("geom")
         face.set("name", "racket_face")
         face.set("mass", "0")
+        # Hide the contact proxy while retaining its geometry and collision settings.
+        face.set("rgba", "0.5 0.5 0.5 0")
         ET.SubElement(bodies["Link6"], "site", name="racket_center", pos="0 0 0")
         edits.append({"edit": "name_link6_racket_face_and_center",
                       "reason": "保留固定 Link6 与原拍面旋转/尺寸；site 位于 Link6 原点，未添加主动拍腕"})
