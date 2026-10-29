@@ -131,9 +131,9 @@ TEST_CASE("wbmpc face-normal rejection remains caller managed") {
 TEST_CASE("due schedules are simulation tick predicates without wall clock state") {
   CHECK(SynchronousSchedule::kMaxTicks == 6000);
   CHECK(SynchronousSchedule::Time(6000) == doctest::Approx(6.));
-  CHECK_FALSE(SynchronousSchedule::Replan(19));
-  CHECK(SynchronousSchedule::Replan(20));
-  CHECK_FALSE(SynchronousSchedule::Replan(21));
+  CHECK(SynchronousSchedule::Replan(3));
+  CHECK(SynchronousSchedule::Replan(4));
+  CHECK(SynchronousSchedule::Replan(5));
   CHECK(SynchronousSchedule::StateTrace(5));
   CHECK_FALSE(SynchronousSchedule::StateTrace(6));
   CHECK(SynchronousSchedule::Viewer(17));
@@ -148,7 +148,18 @@ TEST_CASE("due schedules are simulation tick predicates without wall clock state
     traces += SynchronousSchedule::StateTrace(tick);
     views += SynchronousSchedule::Viewer(tick);
   }
-  CHECK(replans == 300);
+  CHECK(replans == 6000);
   CHECK(traces == 1200);
   CHECK(views == 352);
+}
+
+TEST_CASE("explicit fixed-period replay remains available beside continuous solving") {
+  CHECK(SynchronousSchedule::Replan(0, 0));
+  CHECK_FALSE(SynchronousSchedule::Replan(3, 4));
+  CHECK(SynchronousSchedule::Replan(4, 4));
+  CHECK_FALSE(SynchronousSchedule::Replan(5, 4));
+  int replans = 0;
+  for (int tick = 1; tick <= SynchronousSchedule::kMaxTicks; ++tick)
+    replans += SynchronousSchedule::Replan(tick, 4);
+  CHECK(replans == 1500);
 }

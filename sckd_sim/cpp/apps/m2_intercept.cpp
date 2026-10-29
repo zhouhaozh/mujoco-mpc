@@ -867,7 +867,7 @@ int main(int argc, char** argv) {
     std::printf("全身MPC: %d 解 %d 拒收 %d 失败,最大单解 %.2fms(20Hz 拍,研究口径) 回退 %d trial\n",
                 wb_solves, wb_rejects, wb_fails, wb_ms_max, wb_fallbacks);
   if (n6_mode)
-    std::printf("旧机NMPC: %d 解 %d 拒收 平均 %.2fms 最大单解 %.2fms(50Hz 重解,守门口径) 回退 %d trial\n",
+    std::printf("旧机NMPC: %d 解 %d 拒收 平均 %.2fms 最大单解 %.2fms(同步连续重解,守门口径) 回退 %d trial\n",
                 n6_solves_t, n6_rejects_t,
                 n6_solves_t ? n6_ms_sum_t / n6_solves_t : 0.0,
                 n6_ms_max_t, n6_fallbacks_t);

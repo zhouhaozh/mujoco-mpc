@@ -157,7 +157,7 @@ ExecutionFrame ExecuteTrajectory(ExecutionContext c, int t, double ts) {
         n6_vbase[0] = n6_vbase[1] = 0.0;
     }
   }
-  // 底盘就位:MPC(50Hz 重解,到位目标 = 锁止前 0.15s 到达;非解算拍保持上一拍
+  // 底盘就位:MPC(同步连续重解,到位目标 = 锁止前 0.15s 到达;非解算拍保持上一拍
   // twist)或 P 控(argv[6]="mpc" 切换;P 控解算失败时兜底)
   if (planned && plan.feasible) {
     const BaseState bs = be.base_state();

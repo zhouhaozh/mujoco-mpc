@@ -160,7 +160,7 @@ void UpdatePlanning(PlanningContext c, int t, double ts) {
                   ts, plan.p_hit[0], plan.p_hit[1], plan.p_hit[2],
                   plan.base_target[0], plan.base_target[1], plan.t_hit);
   }
-  // 重规划(50Hz):t_hit 锚定,RefineAt 仅精化 p_hit/base_target
+  // 同步连续重规划:t_hit 锚定,RefineAt 仅精化 p_hit/base_target
   // (评分比较会拒绝精化:高度偏好偏爱陈旧高 z 计划 —— 见 hit_planner 注)
   // QP 路径锁止后仍调用(UpdatePlan 内部按 §6.5 限微调幅度,大改自拒);
   // 五次基线保持锁止即冻结。aswing 未激活时 locked() 恒真,须判活
@@ -174,10 +174,10 @@ void UpdatePlanning(PlanningContext c, int t, double ts) {
     // 拉偏触球几何,随机族 plan_err 0.94/1.05 反例,2026-10-07);臂仍可微调
     // ocpfly:终点=OCP 终端(下方 RunOcp 后更新),非 ocp 模式随精化走 base_target
     if (n6_mode && !n6_dead) {
-      // nmpc6 50Hz 重解(旧机 MpcThread 同口径:状态=实测,dt=剩余/3,
+      // nmpc6 同步连续重解(旧机 MpcThread 同口径:状态=实测,dt=剩余/3,
       // 目标=p_hit/法向=plan.n_face/拍速=|plan.v_racket|)。末段 <100ms
       // 仅接受 严格+成功+<10ms 新解,否则保持旧轨迹(原语义);从未有解
-      // 连败 >15 拍(0.75s)→ 本 trial 永久回退 B′
+      // 连败 >15 拍→ 本 trial 永久回退 B′
       // 目标锁止:lock 后(t_hit−0.15,与 B′/wbmpc 同窗)目标/时刻用快照,
       // 不再吃 RefineAt 精化 —— 末段 p_hit 随下坠球快速漂移,NMPC 终端在
       // 速度/角窗约束下追不上(末段 e 0.005→0.225 解退化 loose/拒收,计划

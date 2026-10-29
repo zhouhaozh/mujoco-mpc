@@ -17,6 +17,7 @@
 #include "control/native_mpc_bridge.h"
 #include "estimation/shuttle_prediction_client.h"
 #include "hal/sim_backend.h"
+#include "runtime/synchronous_schedule.h"
 #include "sim/hit_position_error.h"
 
 namespace fs = std::filesystem;
@@ -156,7 +157,7 @@ int main(int argc, char** argv) try {
   const double dt = m->opt.timestep;
   const double settle = cfg.at("settle_s"), stop = cfg.at("stop_s");
   const int predict_ticks = cfg.at("prediction_period_ms"), mpc_ticks = cfg.at("mpc_period_ms");
-  if (std::abs(dt - .001) > 1e-12 || predict_ticks < 1 || mpc_ticks < 1 || settle < 0 || stop < 0)
+  if (std::abs(dt - .001) > 1e-12 || predict_ticks < 1 || mpc_ticks < 0 || settle < 0 || stop < 0)
     throw std::runtime_error("invalid schedule");
   const double end = settle + rows.back().t + stop;
   const int ticks = static_cast<int>(std::ceil(end / dt));
@@ -175,6 +176,7 @@ int main(int argc, char** argv) try {
   Json hit_position_error_json = nullptr;
   const auto wall_start = std::chrono::steady_clock::now();
   for (int tick = 0; tick <= ticks; ++tick) {
+    bool solved_this_tick = false;
     const double t = d->time, replay_t = t - settle;
     const bool active = replay_t >= -1e-10 && replay_t <= rows.back().t + 1e-10;
     SetReference(rows, replay_t, d, ball_qa, ball_va);
@@ -213,7 +215,7 @@ int main(int argc, char** argv) try {
     // A failed solve may retain a valid prior plan, but an invalid/expired
     // observation must stop that plan. Execution limits ramp velocity to zero.
     if (!target_current) plan.success = false;
-    if (target_current && tick % mpc_ticks == 0) {
+    if (target_current && runtime::SynchronousSchedule::Replan(tick, mpc_ticks)) {
       const auto& target = forecast.at("target");
       const double hit_t = target.at("t_hit_s");
       const double remaining = hit_t - replay_t;
@@ -228,13 +230,18 @@ int main(int argc, char** argv) try {
         }
         auto goal = target.at("p_hit_m").get<std::array<double, 3>>();
         goal[0] -= initial_base[0]; goal[1] -= initial_base[1];
+        const auto solve_start = std::chrono::steady_clock::now();
         auto next = controller.Solve(state, goal, remaining);
+        const auto solve_end = std::chrono::steady_clock::now();
+        solved_this_tick = true;
         ++attempts; max_solve_ms = std::max(max_solve_ms, next.solve_ms);
         events << Json{{"kind", "solve"}, {"t", t}, {"replay_t", replay_t}, {"target", target},
             {"state", state}, {"goal_local", goal}, {"success", next.success},
             {"solver_success", next.solver_success}, {"accuracy_success", next.accuracy_success},
             {"control_semantics", "acceleration"}, {"accelerations", next.accelerations},
             {"segment_dt_s", next.segment_dt_s},
+            {"solve_start_wall_s", std::chrono::duration<double>(solve_start-wall_start).count()},
+            {"solve_end_wall_s", std::chrono::duration<double>(solve_end-wall_start).count()},
             {"solve_ms", next.solve_ms}, {"error", next.error}, {"velocities", next.velocities}}.dump() << '\n';
         if (next.success) { plan = next; plan_start = t; plan_end = settle + hit_t; ++successes; }
       }
@@ -279,7 +286,9 @@ int main(int argc, char** argv) try {
       if (realtime) trace.flush();
     }
     if (tick < ticks && !be.run(1)) throw std::runtime_error("simulation step failed");
-    if (realtime && tick < ticks) {
+    // Continuous solving must not wait for the viewer's slow-motion clock.
+    // Keep pacing outside the solve window and for explicitly periodic MPC.
+    if (realtime && tick < ticks && !(mpc_ticks == 0 && solved_this_tick)) {
       const auto deadline = wall_start + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
           std::chrono::duration<double>(d->time / realtime_speed));
       std::this_thread::sleep_until(deadline);
@@ -297,6 +306,8 @@ int main(int argc, char** argv) try {
       {"max_solve_ms", max_solve_ms}, {"max_prediction_ms", max_prediction_ms}, {"input_stats", forecast.at("stats")},
       {"hit_position_error", hit_position_error_json},
       {"execution_mode", realtime ? "wall_clock_paced" : "unpaced"},
+      {"mpc_schedule", mpc_ticks == 0 ? "continuous_synchronous" : "fixed_simulation_period"},
+      {"mpc_period_ms", mpc_ticks},
       {"realtime_speed_multiplier", realtime ? Json(realtime_speed) : Json(nullptr)},
       {"wall_s", std::chrono::duration<double>(std::chrono::steady_clock::now()-wall_start).count()}};
   std::ofstream(output / "summary.json") << summary.dump(2) << '\n';
