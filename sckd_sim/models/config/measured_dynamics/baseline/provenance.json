@@ -1,0 +1,10 @@
+{
+  "profile": "baseline",
+  "source_sha256": {
+    "x4_950.json": "dc7fa495fda59a0548be6f8ab58335418f73c084f3896a22ef604d5ad6c9e450",
+    "motors_x4_950.json": "675a90e10c7689ac1e5b0798f8defcf32a7d03cf55ce32a3012534f53c12b2f9",
+    "chassis_x4_950.json": "4036352c64f8059a70c7921c87600caffc9fbc21064018d0b3c6d0103fe74610",
+    "scene.mjcf": "3a63e0d430ecb2e030138d7aef8af788c83abc40f8ccbe6330ca2527ad8cb5dc"
+  },
+  "description": "Original pre-fit configuration"
+}

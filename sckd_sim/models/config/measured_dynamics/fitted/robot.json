@@ -1,0 +1,241 @@
+{
+  "schema_version": 1,
+  "variant": "x4_950",
+  "purpose": "model_with_actuators_controller_disabled",
+  "source_urdf": "source/x4_950/X4_950.urdf",
+  "collision_reference": "source/x4_950/X4_950_collision.urdf",
+  "motor_config": "fitted/motors.json",
+  "racket_geometry": {
+    "effective_length_m": 0.865,
+    "note": "与原生MPC racket_len统一；Link5相对Link4的Y偏置为-0.065m，因此Link6相对Link5的Y距离为0.930m。仅覆盖生成模型，归档源URDF不改。"
+  },
+  "confirmed_joint_position_limits_rad": {
+    "Joint2": [
+      -3.14,
+      0.5
+    ],
+    "Joint3": [
+      -3.14,
+      0.5
+    ]
+  },
+  "confirmation_source": "2026-10-28 用户确认电机型号及J2/J3行程；RS05 48V数据仅为授权的仿真假设。",
+  "joints": [
+    {
+      "joint": "FL_steer_joint",
+      "motor": "RS06",
+      "mechanism_limit_nm": 36
+    },
+    {
+      "joint": "FL_wheel_left_joint",
+      "motor": "RS06",
+      "mechanism_limit_nm": 36
+    },
+    {
+      "joint": "FL_wheel_right_joint",
+      "motor": "RS06",
+      "mechanism_limit_nm": 36
+    },
+    {
+      "joint": "FR_steer_joint",
+      "motor": "RS06",
+      "mechanism_limit_nm": 36
+    },
+    {
+      "joint": "FR_wheel_left_joint",
+      "motor": "RS06",
+      "mechanism_limit_nm": 36
+    },
+    {
+      "joint": "FR_wheel_right_joint",
+      "motor": "RS06",
+      "mechanism_limit_nm": 36
+    },
+    {
+      "joint": "RL_steer_joint",
+      "motor": "RS06",
+      "mechanism_limit_nm": 36
+    },
+    {
+      "joint": "RL_wheel_left_joint",
+      "motor": "RS06",
+      "mechanism_limit_nm": 36
+    },
+    {
+      "joint": "RL_wheel_right_joint",
+      "motor": "RS06",
+      "mechanism_limit_nm": 36
+    },
+    {
+      "joint": "RR_steer_joint",
+      "motor": "RS06",
+      "mechanism_limit_nm": 36
+    },
+    {
+      "joint": "RR_wheel_left_joint",
+      "motor": "RS06",
+      "mechanism_limit_nm": 36
+    },
+    {
+      "joint": "RR_wheel_right_joint",
+      "motor": "RS06",
+      "mechanism_limit_nm": 36
+    },
+    {
+      "joint": "Joint1",
+      "motor": "RS04",
+      "mechanism_limit_nm": 120
+    },
+    {
+      "joint": "Joint2",
+      "motor": "RS04",
+      "mechanism_limit_nm": 120
+    },
+    {
+      "joint": "Joint3",
+      "motor": "RS06",
+      "mechanism_limit_nm": 36
+    },
+    {
+      "joint": "Joint4",
+      "motor": "RS06",
+      "mechanism_limit_nm": 36
+    },
+    {
+      "joint": "Joint5",
+      "motor": "RS05",
+      "mechanism_limit_nm": 5.5
+    }
+  ],
+  "joint_limit_note": "构建器将confirmed_joint_position_limits_rad应用于生成MJCF的J2/J3；归档源URDF保留全零原值。控制器执行阻断不变。",
+  "mechanism_limit_note": "joints.mechanism_limit_nm为现有接口要求的仿真裁剪上限：16轴沿用旧值，J5取RS05峰值5.5；不表示已确认实际机构强度。真实额外限矩仍为null。",
+  "wheel_collision": {
+    "radius_m": 0.0825,
+    "half_width_m": 0.0225,
+    "center_in_wheel_frame": {
+      "left": [
+        0.0,
+        -0.0805,
+        0.0
+      ],
+      "right": [
+        0.0,
+        0.0805,
+        0.0
+      ]
+    },
+    "note": "来自 collision_reference 的轮子圆柱；轴旋转用精确 pi/2 对齐 URDF 轮轴，代替参考文件近似值 1.57。摩擦未标定，不指定硬件摩擦参数。"
+  },
+  "keyframe_home": {
+    "base_z_m": 0.0,
+    "note": "轮心 z=0.2514-0.1689=0.0825，减去轮半径 0.0825 后为地面；关节零位仅用于几何检查。"
+  },
+  "missing_hardware_parameters": {
+    "arm_velocity_limits_rad_s": null,
+    "arm_acceleration_limits_rad_s2": null,
+    "chassis_velocity_and_acceleration_limits": null,
+    "continuous_joint_cable_travel_limits": null,
+    "actual_supply_and_drive_versions": null,
+    "additional_transmission_and_mechanism_limits": null,
+    "RS05_braking_torque_nm": null,
+    "servo_gains_and_command_delay": null,
+    "joint_friction_and_reflected_inertia": null,
+    "wheel_ground_friction": null
+  },
+  "missing_badminton_parameters": {
+    "shuttle_mass_kg": null,
+    "shuttle_collision_shape_and_dimensions": null,
+    "shuttle_aerodynamic_model_and_coefficients": null,
+    "effective_racket_restitution": null,
+    "contact_closing_threshold_m_s": null,
+    "contact_depth_tolerance_m": null
+  },
+  "missing_geometry_constraints": {
+    "collision_clearance_and_workspace": null
+  },
+  "notes": [
+    "独立电机配置为motors_x4_950.json；生成17个gear=1执行器，ctrlrange取机构裁剪、所选力矩档及制动裁剪最小值。MJCF不实现T-N/伺服/延迟，控制器入口仍阻断。",
+    "源URDF的J2/J3 limit仍全零；生成MJCF已应用用户确认的两轴行程[-3.14,0.5] rad，并显式启用限位。",
+    "保留源质量和惯量（MJCF 导出存在数值舍入），未进行硬件辨识。",
+    "原网格仅视觉，碰撞只保留八个轮子和 Link6 原有拍面；车体、臂及自碰撞不在本阶段验证范围。",
+    "Link6 原点是拍心；racket_face 保留源旋转和尺寸，薄轴为 geom 局部 Z，接近 Link6 局部 X。",
+    "NMPC 仅提供五轴 FK/法向/Jacobian 几何分支，保持 yaw=0；完整 NLP 生成、求解器初始化及拍球冲量被代码阻止，填写本清单不会自动启用。",
+    "不套用旧 z>=0.35 避碰阈值、网球回弹/气动参数或速度折减；未来最小羽毛球场景按落地结束，不使用网球反弹。"
+  ],
+  "arm_servo": {
+    "kp": [
+      232.8544149266415,
+      148.8177621625614,
+      47.80013531469877,
+      39.00702806721519,
+      1.0096853971320798e-05
+    ],
+    "kd": [
+      99.15108710522154,
+      99.74150906228016,
+      10.185965087890214,
+      5.215329007865006,
+      0.08533256513621164
+    ],
+    "standby_q_rad": [
+      0.0,
+      -0.61086524,
+      -0.34906585,
+      -1.57079633,
+      0.0
+    ],
+    "reference_diagonal_inertia_kg_m2": [
+      1.0345132208527879,
+      1.4123440354593526,
+      0.022565667237870804,
+      0.039300068995778266,
+      0.0001423099994673077
+    ],
+    "calibrated": false,
+    "source": "Offline parameter fit; original initialization is retained in baseline_snapshot/x4_950.json.",
+    "feedforward_note": "仅用当前模型重力前馈；不套用网球惯量前馈、辨识增益或自适应加速度前馈。准备姿态为仿真假设，不是实机home。"
+  },
+  "parameter_fit": {
+    "source": "/home/ubuntu/works/mojuco-mpc/mpc-github/sckd_sim/models/config/x4_950_measured_fit.json",
+    "parameter_sha256": "fedcb2d261e03a3f14ca9b7e9f466f1fcb0df872c9bd9fdc80c0daff3176eb79",
+    "scope": "Five short measured motion logs; simulation fit only; no hardware calibration claim.",
+    "training_groups": [
+      1,
+      3,
+      4
+    ],
+    "validation_groups": [
+      2,
+      5
+    ],
+    "acceptance_thresholds": {
+      "per_group_joint_angle_rmse_deg": 5,
+      "per_group_joint_velocity_rmse_rad_s": 0.5
+    },
+    "acceptance_status": "Not certified by installer; inspect the independent replay report.",
+    "runtime_logic_changed": false
+  },
+  "fitted_joint_dynamics": {
+    "armature": [
+      4.9256104369436654e-05,
+      0.0015170188214235032,
+      0.012412940380012059,
+      0.006235001399179067,
+      0.002383865439760338
+    ],
+    "damping": [
+      1.0107672420857402e-06,
+      0.0006148162044033986,
+      0.4126206104297769,
+      0.04482610813659325,
+      1.0084580377172693e-06
+    ],
+    "frictionloss": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  }
+}

@@ -1,12 +1,47 @@
 """Build and run one X4 measured replay with isolated predictor/MPC libraries."""
 import argparse
 from datetime import datetime
+import hashlib
 import json
 import os
 from pathlib import Path
 import subprocess
 import tempfile
 import time
+
+from measured_dynamics_profiles import CURRENT_CONFIGS, snapshot_profile
+
+
+def prepare_run_config(config, output, profile):
+    """Freeze mechanics and build a reference-ball scene inside this run only."""
+    config, output = Path(config).resolve(), Path(output).resolve()
+    cfg = json.loads(config.read_text())
+    project = (config.parent / cfg['project_root']).resolve()
+    current_paths = {key: (project / cfg[key]).resolve() for key in CURRENT_CONFIGS}
+    # The default replay was historically rebuilt from the current robot scene.
+    # Keep that behavior without rewriting either global generated model.
+    if current_paths['scene_path'] == project / 'models/generated/x4_950_replay.mjcf':
+        current_paths['scene_path'] = project / CURRENT_CONFIGS['scene_path']
+    paths = snapshot_profile(profile, output / 'config', project=project,
+                             current_paths=current_paths)
+    replay = output / 'config/replay.mjcf'
+    python = Path(__file__).resolve().parents[1] / '.venv/bin/python'
+    subprocess.run([str(python), str(project / 'models/build_x4_replay.py'),
+                    '--source', paths['scene_path'], '--output', str(replay)],
+                   check=True, stdout=subprocess.DEVNULL)
+    paths['scene_path'] = str(replay)
+    cfg.update(paths, project_root=str(project), parameter_profile=profile)
+    for key in ('native_mpc_library', 'trajectory_path', 'ball_mlp_model_path',
+                'ball_mlp_normalizer_path'):
+        cfg[key] = str((project / cfg[key]).resolve())
+    runtime = output / 'config/runtime.json'
+    runtime.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n')
+    manifest = {'parameter_profile': profile, 'source_config': str(config),
+                'runtime_config': str(runtime), 'config_paths': paths,
+                'snapshot_sha256': {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+                                    for p in sorted(runtime.parent.iterdir()) if p.is_file()}}
+    (output / 'profile_manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    return runtime, cfg
 
 
 def native_environment(cfg):
@@ -35,8 +70,10 @@ def main():
     repo = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', type=Path, default=repo / 'sckd_sim/models/config/runtime_x4_950_replay.json')
+    parser.add_argument('--profile', choices=('baseline', 'fitted', 'current'), default='current',
+                        help='mechanical parameter set; every run saves its own snapshot (default: current)')
     parser.add_argument('--output', type=Path)
-    parser.add_argument('--no-build', action='store_true')
+    parser.add_argument('--no-build', action='store_true', help='reuse native binaries; still create an isolated model snapshot')
     parser.add_argument('--view', action='store_true', help='open the window first, then display the simulation as it runs')
     parser.add_argument('--view-speed', type=float, default=0.25, help='live simulation speed multiplier (default: 0.25, four times slower)')
     parser.add_argument('--timeout', type=float, default=180)
@@ -48,16 +85,15 @@ def main():
     if not 0 < args.timeout < float('inf'):
         parser.error('--timeout must be finite and positive')
     config = args.config.resolve()
-    cfg = json.loads(config.read_text())
-    output = (args.output or repo / 'outputs/x4_native_replay' / datetime.now().strftime('%Y%m%d_%H%M%S')).resolve()
+    output = (args.output or repo / 'outputs/x4_native_replay' / datetime.now().strftime('%Y%m%d_%H%M%S_%f')).resolve()
     output.mkdir(parents=True, exist_ok=True)
     if any(output.iterdir()):
         raise RuntimeError(f'Output directory must be empty: {output}')
-    project = (config.parent / cfg['project_root']).resolve()
-    cfg['native_mpc_library'] = str((project / cfg['native_mpc_library']).resolve())
+    config, cfg = prepare_run_config(config, output, args.profile)
+    project = Path(cfg['project_root'])
+    print(f'Parameter profile: {args.profile}\nRun model: {cfg["scene_path"]}', flush=True)
     build = project / 'build'
     if not args.no_build:
-        subprocess.run([str(repo / '.venv/bin/python'), str(project / 'models/build_x4_replay.py')], check=True, cwd=project)
         subprocess.run(['cmake', '-S', str(project), '-B', str(build), '-DSCKD_BUILD_X4_NATIVE_REPLAY=ON'], check=True)
         subprocess.run(['cmake', '--build', str(build), '--target', 'x4_native_replay', 'x4_shuttle_predictor', '-j4'], check=True)
     predictor_env = os.environ.copy()

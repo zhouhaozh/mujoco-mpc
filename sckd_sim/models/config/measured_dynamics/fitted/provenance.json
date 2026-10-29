@@ -1,0 +1,10 @@
+{
+  "profile": "fitted",
+  "source_sha256": {
+    "x4_950.json": "0ab8a07a01e5a5e1d2347e1517156ad6dc4bedd954da8d826e90a4f7c1e07a48",
+    "motors_x4_950.json": "064bd438e85ec8b97b414dbfd4e55d0f5535df1f267ed375dd84341124c30bc6",
+    "chassis_x4_950.json": "35f45e43e56d1f0ba1ef933fa3455a16b5c22670098fb2daa9b268066521076d",
+    "scene.mjcf": "64fbd2ab4875dafc9ce80a9ac3e59844745e4200eed82f7a59137121c4f6e6b6"
+  },
+  "description": "Fitted against five short records; not hardware calibration; RS04 120 Nm effective cap has no thermal/time limit"
+}
