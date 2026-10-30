@@ -333,8 +333,11 @@ def run_profile(args, profile, output, prepared):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--data-dir', type=Path, default=DEFAULT_DATA,
+    inputs = parser.add_mutually_exclusive_group()
+    inputs.add_argument('--data-dir', type=Path, default=DEFAULT_DATA,
                         help='recording directory containing CSVs, or parent containing 下位机轨迹')
+    inputs.add_argument('--trajectory-file', type=Path,
+                        help='generate a replay for this single trajectory CSV')
     parser.add_argument('--output', type=Path, default=ROOT/'outputs/measured_dynamics'/datetime.now().strftime('%Y%m%d_%H%M%S_%f'))
     profiles = parser.add_mutually_exclusive_group()
     profiles.add_argument('--profile', choices=['current', 'baseline', 'fitted'],
@@ -350,12 +353,13 @@ def main():
                         help='use the original cold-start/immediate policy with the current profile')
     parser.add_argument('--view', action='store_true')
     parser.add_argument('--view-run', type=Path, help='view an existing comparison without rerunning dynamics')
-    parser.add_argument('--group', type=int, default=1, help='initial viewer group; analysis always covers all logs')
+    parser.add_argument('--group', type=int, default=1,
+                        help='initial viewer group; does not filter trajectory files')
     parser.add_argument('--speed', type=float, default=.25)
     args = parser.parse_args()
     args.output = args.output.resolve()
-    if args.view_run and (args.profile or args.compare_profiles or args.view):
-        parser.error('--view-run only views saved results; use --profile/--compare-profiles for fresh dynamics')
+    if args.view_run and (args.profile or args.compare_profiles or args.view or args.trajectory_file):
+        parser.error('--view-run cannot be combined with --trajectory-file, --profile, --compare-profiles or --view')
     if args.compare_profiles and args.view:
         parser.error('view each completed comparison with --view-run OUTPUT/baseline or OUTPUT/fitted')
     if not math.isfinite(args.speed) or args.speed <= 0:
@@ -368,9 +372,15 @@ def main():
         return
     if args.output.exists() and any(args.output.iterdir()):
         parser.error('--output must be new or empty')
-    paths = sorted(args.data_dir.glob('*.csv'))
-    if not paths:
-        paths = sorted((args.data_dir/'下位机轨迹').glob('*.csv'))
+    if args.trajectory_file:
+        path = args.trajectory_file.resolve()
+        if not path.is_file() or path.suffix.lower() != '.csv':
+            parser.error('--trajectory-file must point to an existing CSV file')
+        paths = [path]
+    else:
+        paths = sorted(args.data_dir.glob('*.csv'))
+        if not paths:
+            paths = sorted((args.data_dir/'下位机轨迹').glob('*.csv'))
     if not paths:
         parser.error('no lower-level CSV logs found')
     args.output.mkdir(parents=True, exist_ok=True)
