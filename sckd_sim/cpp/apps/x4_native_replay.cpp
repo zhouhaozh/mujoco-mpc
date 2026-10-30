@@ -250,7 +250,8 @@ int main(int argc, char** argv) try {
     const bool executing = target_current && plan.success && t < plan_end;
     if (executing) {
       if (!command_ticks) for (int j = 0; j < 5; ++j) first_execution_q[j] = be.joint(AxisArm(j)).q;
-      desired = plan.VelocityAt(t-plan_start); ++command_ticks;
+      // Command the upcoming tick's end velocity so each new plan applies a*dt.
+      desired = plan.VelocityAt(t-plan_start+dt); ++command_ticks;
     }
     ArmHybridCmd cmd;
     for (int j = 0; j < 5; ++j) {
