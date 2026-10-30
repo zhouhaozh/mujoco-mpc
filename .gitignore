@@ -24,6 +24,7 @@ deps/
 *.dylib
 .DS_Store
 ._*
+outputs/*
 
 # 运行日志和视频；不要整体忽略 artifacts 或必要模型权重
 *.log

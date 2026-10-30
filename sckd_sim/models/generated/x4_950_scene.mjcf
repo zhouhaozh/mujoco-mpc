@@ -112,27 +112,27 @@
       </body>
       <body name="Link1" pos="0 0 0.7954">
         <inertial pos="0.0006446 0.0492283 0.0881217" quat="0.687273 -0.161902 0.182825 0.684119" mass="2.30911" diaginertia="0.00783923 0.00642811 0.00414716" />
-        <joint name="Joint1" axis="0 0 -1" />
+        <joint name="Joint1" axis="0 0 -1" armature="4.9256104369436654e-05" damping="1.0107672420857402e-06" frictionloss="0.0" />
         <geom quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="Link1" />
         <geom quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="Link1" contype="0" conaffinity="0" />
         <body name="Link2" pos="0 -0.0105 0.105">
           <inertial pos="0.512722 0.0205509 0.0001174" quat="0.503827 0.506364 0.493379 0.496317" mass="1.59513" diaginertia="0.105711 0.105481 0.00119109" />
-          <joint name="Joint2" axis="0 1 0" limited="true" range="-3.14 0.5" />
+          <joint name="Joint2" axis="0 1 0" limited="true" range="-3.14 0.5" armature="0.0015170188214235032" damping="0.0006148162044033986" frictionloss="0.0" />
           <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="Link2" />
           <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="Link2" contype="0" conaffinity="0" />
           <body name="Link3" pos="0.705 0.0445 0">
             <inertial pos="-0.0001361 -0.0307382 0.0895608" quat="0.98424 0.176829 0.000789135 -0.00136917" mass="1.06686" diaginertia="0.0021794 0.001948 0.0015205" />
-            <joint name="Joint3" axis="0 -1 0" limited="true" range="-3.14 0.5" />
+            <joint name="Joint3" axis="0 -1 0" limited="true" range="-3.14 0.5" armature="0.012412940380012059" damping="0.4126206104297769" frictionloss="0.0" />
             <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="Link3" />
             <geom type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="Link3" contype="0" conaffinity="0" />
             <body name="Link4" pos="3.5678e-05 -0.034015 0.0685">
               <inertial pos="-2.1e-06 -0.0161677 0.0908131" quat="0.777735 0.628592 0 0" mass="0.310335" diaginertia="0.0007151 0.000673839 0.000156961" />
-              <joint name="Joint4" axis="0 0 -1" />
+              <joint name="Joint4" axis="0 0 -1" armature="0.006235001399179067" damping="0.04482610813659325" frictionloss="0.0" />
               <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="Link4" />
               <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="Link4" contype="0" conaffinity="0" />
               <body name="Link5" pos="0 -0.065 0.102">
                 <inertial pos="0 0.500744 0" quat="0.707104 0.707104 0.00207963 -0.00207963" mass="0.134122" diaginertia="0.0128723 0.0127363 0.0001398" />
-                <joint name="Joint5" axis="0 -1 0" />
+                <joint name="Joint5" axis="0 -1 0" armature="0.002383865439760338" damping="1.0084580377172693e-06" frictionloss="0.0" />
                 <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="Link5" />
                 <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="Link5" contype="0" conaffinity="0" />
                 <body name="Link6" pos="0 0.93 0">
@@ -185,8 +185,8 @@
     <motor name="RR_steer_joint" joint="RR_steer_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
     <motor name="RR_wheel_left_joint" joint="RR_wheel_left_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
     <motor name="RR_wheel_right_joint" joint="RR_wheel_right_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
-    <motor name="Joint1" joint="Joint1" gear="1" ctrllimited="true" ctrlrange="-40 40" />
-    <motor name="Joint2" joint="Joint2" gear="1" ctrllimited="true" ctrlrange="-40 40" />
+    <motor name="Joint1" joint="Joint1" gear="1" ctrllimited="true" ctrlrange="-120 120" />
+    <motor name="Joint2" joint="Joint2" gear="1" ctrllimited="true" ctrlrange="-120 120" />
     <motor name="Joint3" joint="Joint3" gear="1" ctrllimited="true" ctrlrange="-11 11" />
     <motor name="Joint4" joint="Joint4" gear="1" ctrllimited="true" ctrlrange="-11 11" />
     <motor name="Joint5" joint="Joint5" gear="1" ctrllimited="true" ctrlrange="-1.6 1.6" />

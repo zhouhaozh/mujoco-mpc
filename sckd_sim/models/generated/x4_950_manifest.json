@@ -5,12 +5,12 @@
     "urdf": "source/x4_950/X4_950.urdf",
     "urdf_sha256": "1f2e3e6f174ff3089cc41d0143136020ad8a3ce56acd3dbf6c13c96ccc3606b4",
     "motors": "config/motors_x4_950.json",
-    "motors_sha256": "675a90e10c7689ac1e5b0798f8defcf32a7d03cf55ce32a3012534f53c12b2f9",
+    "motors_sha256": "064bd438e85ec8b97b414dbfd4e55d0f5535df1f267ed375dd84341124c30bc6",
     "torque_profile": "continuous",
     "collision_reference": "source/x4_950/X4_950_collision.urdf",
     "collision_reference_sha256": "f42ecd1d16d6364a94b50f1cc2bb9aa3a439a74c3a16b74df21fbfa428266cc2",
     "config": "config/x4_950.json",
-    "config_sha256": "dc7fa495fda59a0548be6f8ab58335418f73c084f3896a22ef604d5ad6c9e450",
+    "config_sha256": "0ab8a07a01e5a5e1d2347e1517156ad6dc4bedd954da8d826e90a4f7c1e07a48",
     "mujoco_version": "3.14.0"
   },
   "edits": [
@@ -70,6 +70,10 @@
     {
       "edit": "keyframe_home_and_timestep",
       "reason": "base_z=0.0;轮心 0.2514−0.1689=0.0825 m，半径 0.0825 m；零位仅几何检查"
+    },
+    {
+      "edit": "apply_measured_parameter_fit",
+      "reason": "Five short measured motion logs; simulation fit only; no hardware calibration claim."
     }
   ],
   "controller_execution_enabled": false,
@@ -213,8 +217,8 @@
       "actuator_id": 12,
       "motor": "RS04",
       "ctrlrange_nm": [
-        -40.0,
-        40.0
+        -120.0,
+        120.0
       ]
     },
     {
@@ -224,8 +228,8 @@
       "actuator_id": 13,
       "motor": "RS04",
       "ctrlrange_nm": [
-        -40.0,
-        40.0
+        -120.0,
+        120.0
       ]
     },
     {
@@ -332,5 +336,49 @@
     "Link6 原点是拍心；racket_face 保留源旋转和尺寸，薄轴为 geom 局部 Z，接近 Link6 局部 X。",
     "NMPC 仅提供五轴 FK/法向/Jacobian 几何分支，保持 yaw=0；完整 NLP 生成、求解器初始化及拍球冲量被代码阻止，填写本清单不会自动启用。",
     "不套用旧 z>=0.35 避碰阈值、网球回弹/气动参数或速度折减；未来最小羽毛球场景按落地结束，不使用网球反弹。"
-  ]
+  ],
+  "parameter_fit": {
+    "source": "/home/ubuntu/works/mojuco-mpc/mpc-github/sckd_sim/models/config/x4_950_measured_fit.json",
+    "parameter_sha256": "fedcb2d261e03a3f14ca9b7e9f466f1fcb0df872c9bd9fdc80c0daff3176eb79",
+    "scope": "Five short measured motion logs; simulation fit only; no hardware calibration claim.",
+    "training_groups": [
+      1,
+      3,
+      4
+    ],
+    "validation_groups": [
+      2,
+      5
+    ],
+    "acceptance_thresholds": {
+      "per_group_joint_angle_rmse_deg": 5,
+      "per_group_joint_velocity_rmse_rad_s": 0.5
+    },
+    "acceptance_status": "Not certified by installer; inspect the independent replay report.",
+    "runtime_logic_changed": false,
+    "applied_model_sha256": "64fbd2ab4875dafc9ce80a9ac3e59844745e4200eed82f7a59137121c4f6e6b6",
+    "joint_dynamics": {
+      "armature": [
+        4.9256104369436654e-05,
+        0.0015170188214235032,
+        0.012412940380012059,
+        0.006235001399179067,
+        0.002383865439760338
+      ],
+      "damping": [
+        1.0107672420857402e-06,
+        0.0006148162044033986,
+        0.4126206104297769,
+        0.04482610813659325,
+        1.0084580377172693e-06
+      ],
+      "frictionloss": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  }
 }

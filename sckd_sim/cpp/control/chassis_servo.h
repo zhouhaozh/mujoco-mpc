@@ -19,6 +19,9 @@ class ChassisServo {
   // 仿真实验开关:分别控制平移方向角限率和舵速度前馈钳位;默认保持原行为。
   // 不改变车体 yaw 斜坡、轮目标斜坡或电机物理保护。
   void set_steering_rate_limits(bool direction_limited, bool feedforward_limited);
+  // 回放边界的可选一致性初始化；必须在首次 update() 前调用。
+  // 轮目标/舵向历史从当前舵角和 ramp 状态构造，PI 积分保持零。
+  void initialize_consistent_state(const Twist& ramped_body_twist);
   void update(double now_s);          // 每 1 ms 调用(与物理步同步)
 
   const Twist& ramped() const { return cur_; }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare measured motion with dynamics driven by the original logged setpoints.
 
-Uses current simulation gains, limits and gravity feedforward, not identified hardware
+Selects current, baseline or fitted simulation parameters, not identified hardware
 settings. Only initial measured state and commands are passed to the native process.
 """
 import argparse
@@ -13,19 +13,19 @@ import math
 import os
 from pathlib import Path
 import queue
+import shutil
 import subprocess
 import time
 
 import numpy as np
 
 from replay_measured_robot import DEFAULT_DATA, DEFAULT_MAPPING, ROOT, interpolate, read_record
+from measured_dynamics_profiles import CURRENT_CONFIGS, command_identity, replay_scene, snapshot_profile
+from measured_replay_initialization import DEFAULT_SETTINGS, apply_initialization
 
 PROJECT = ROOT / 'sckd_sim'
 BINARY = PROJECT / 'build/x4_command_replay'
-CONFIGS = {'scene_path': 'models/generated/x4_950_scene.mjcf',
-           'motors_path': 'models/config/motors_x4_950.json',
-           'robot_variant_path': 'models/config/x4_950.json',
-           'chassis_path': 'models/config/chassis_x4_950.json'}
+CONFIGS = CURRENT_CONFIGS
 
 
 def world_velocity(values, yaw, frame):
@@ -117,6 +117,9 @@ def compare(directory, record, measured_dq, measured_base_v, payload):
     for j in range(5):
         values[f'cmd_q_j{j+1}_rad'] = expected_q[:, j]
         values[f'cmd_dq_j{j+1}_rad_s'] = expected_dq[:, j]
+        values[f'applied_cmd_q_j{j+1}_rad'] = [f.get('applied_q_command', f['q_command'])[j] for f in frames]
+        values[f'applied_cmd_dq_j{j+1}_rad_s'] = [f.get('applied_dq_command', f['dq_command'])[j] for f in frames]
+        values[f'arm_active_j{j+1}'] = [int(f.get('arm_axis_command_active', [True]*5)[j]) for f in frames]
     for j, axis in enumerate('xyz'):
         values[f'vicon_racket_{axis}_m'] = vicon[:, j]
     with (directory/'comparison.csv').open('w') as f:
@@ -144,8 +147,10 @@ def compare(directory, record, measured_dq, measured_base_v, payload):
 
 
 def write_report(output, manifest, reports):
-    lines = ['# 实测命令驱动的动力学基线对照', '',
-             '以实测底盘/机械臂位置和速度初始化；后续只向仿真输入日志中的位置、速度与底盘命令，使用当前仿真增益、限矩和重力前馈。', '',
+    lines = ['# 实测命令驱动的动力学对照', '',
+             f'参数配置：{manifest["profile"]}。本轮重新执行原生动力学计算。', '',
+             '以实测底盘/机械臂位置和速度初始化，按原始日志命令及记录的起始控制规则运行；不再写入后续实测状态。', '',
+             f'起始控制设置：{manifest.get("initialization_mode", "legacy")}。逐条设置来源、前缀长度及底盘初态保存在 manifest.json 的 initialization_by_group 中。', '',
              '本结果不是实际驱动器完整命令的复刻：日志没有 Kp/Kd、模式、前馈和各轮反馈。J5 位置命令恒为零，控制模式及姿态方向未确认。', '',
              '| 组 | 底盘 XY RMSE (m) | 拍心 vs 日志 FK RMSE (m) | 拍心 vs Vicon RMSE (m) | J1–J5 角度 RMSE (deg) |',
              '|---|---:|---:|---:|---|']
@@ -155,9 +160,9 @@ def write_report(output, manifest, reports):
     lines += ['', '## 已检查', '', '- 初始可观测位置和速度一致；命令严格零阶保持，没有读取未来命令。',
               '- 原生进程输入仅包含初始状态与命令，不包含后续实测状态；1 ms 步长由实际 MuJoCo 动力学推进。',
               '- 每步状态有限、时钟连续，MuJoCo BADQPOS/BADQVEL/BADQACC 警告为零。',
-              '- 对比阶段才插值实测状态，不平移时间、不拟合参数、不对齐终点。', '',
+              '- 本次回放不重新拟合参数或初态；已有初态可能来自该记录前缀估计，整段误差用于回放对照，不是新的独立验证。', '',
               '## 限制', '', *['- '+s for s in manifest['assumptions']], '',
-              '每组 comparison.png 为五轴位置/速度对照，paths.png 为底盘、拍心轨迹误差；comparison.csv 和 frames.jsonl 保留数值。',
+              '每组 comparison.png 为五轴位置/速度对照，paths.png 为底盘、拍心轨迹误差；comparison.csv 和 frames.jsonl 分别保留原始命令、应用目标和逐轴激活状态。',
               'tau_* 字段对应前一个积分区间，详见 torque_interval_start_s/torque_command_index；不将日志 motor*_torque 当作下发前馈。']
     (output/'report.md').write_text('\n'.join(lines)+'\n')
     (output/'metrics.json').write_text(json.dumps(reports, indent=2, ensure_ascii=False)+'\n')
@@ -181,8 +186,11 @@ def view_result(output, group=1, speed=.25):
         all_frames.append([json.loads(s) for s in (d/'frames.jsonl').read_text().splitlines()])
         with (d/'comparison.csv').open() as f:
             observed.append([{k: float(v) for k, v in row.items()} for row in csv.DictReader(f)])
-    sim = Robot(PROJECT/CONFIGS['scene_path'])
-    real = Robot(PROJECT/CONFIGS['scene_path'])
+    scene_path = replay_scene(output)
+    manifest = json.loads((output/'manifest.json').read_text())
+    profile_label = manifest.get('profile', output.name)
+    sim = Robot(scene_path)
+    real = Robot(scene_path)
     keys, cursor, paused, last = queue.SimpleQueue(), 0., False, time.monotonic()
     index = next((i for i, d in enumerate(directories) if d.name == f'group_{group}'), 0)
     option, perturb = mujoco.MjvOption(), mujoco.MjvPerturb()
@@ -232,25 +240,124 @@ def view_result(output, group=1, speed=.25):
                     scene.ngeom += 1
             viewer.set_texts((mujoco.mjtFont.mjFONT_NORMAL, mujoco.mjtGridPos.mjGRID_TOPLEFT,
                               'Dynamics vs measured\nRobot\nRacket markers\nTime\nControls\nLimit',
-                              f'{directories[index].name}\nSolid = simulated; cyan ghost = measured\nRed = simulated; pink = Vicon\n{frame["t"]:.3f}s / {speed:g}x\nSpace pause | R restart | 1..5 select\nCurrent simulation gains; hardware modes unknown'))
+                              f'{directories[index].name}\nSolid = simulated; cyan ghost = measured\nRed = simulated; pink = Vicon\n{frame["t"]:.3f}s / {speed:g}x\nSpace pause | R restart | 1..5 select\nRecorded profile: {profile_label}; hardware modes unknown'))
             viewer.sync()
             time.sleep(1/60)
 
 
+def write_profile_comparison(output):
+    manifests = {p: json.loads((output/p/'manifest.json').read_text()) for p in ('baseline', 'fitted')}
+    same_inputs = manifests['baseline']['experiment_sha256'] == manifests['fitted']['experiment_sha256']
+    if not same_inputs:
+        raise AssertionError('Profile comparison initial states/commands/settings differ')
+    results = {p: json.loads((output/p/'metrics.json').read_text()) for p in manifests}
+    comparison = {'profiles': ['baseline', 'fitted'], 'same_experiment_inputs': same_inputs,
+                  'experiment_sha256': manifests['baseline']['experiment_sha256'], 'metrics': results}
+    (output/'comparison.json').write_text(json.dumps(comparison, indent=2, ensure_ascii=False)+'\n')
+    lines = ['# 新旧参数重新仿真对照', '',
+             '两套配置均重新执行原生动力学步进，共用同一次解析的初始状态和命令；输入 SHA-256 一致。', '',
+             '|组|配置|底盘 XY RMSE / m|J1–J5 角度 RMSE / °|J1–J5 速度 RMSE / rad/s|',
+             '|---|---|---:|---|---|']
+    for old, new in zip(results['baseline'], results['fitted']):
+        for profile, metrics in [('baseline', old), ('fitted', new)]:
+            q = ', '.join(f'{v:.3f}' for v in metrics['joint_angle_deg']['rmse_per_axis'])
+            dq = ', '.join(f'{v:.3f}' for v in metrics['joint_velocity_rad_s']['rmse_per_axis'])
+            lines.append(f'|{metrics["group"]}|{profile}|{metrics["base_xy_m"]["vector_rmse"]:.4f}|{q}|{dq}|')
+    lines += ['', '逐组轨迹图、实测叠加和模型快照分别保存在 baseline/、fitted/ 子目录。',
+              'fitted 的 RS04 120 N·m 是短轨迹有效限矩，没有热或持续时间模型，不代表连续额定能力。',
+              '相同初始状态指相同的可观测状态及相同初始化规则；真机记录前的控制器内部状态仍未知。']
+    (output/'comparison.md').write_text('\n'.join(lines)+'\n')
+    print(f'Fresh profile comparison: {output/"comparison.md"}', flush=True)
+
+
+def run_profile(args, profile, output, prepared):
+    output = output.resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    config_paths = snapshot_profile(profile, output/'config')
+    initialization_settings = None
+    if profile == 'current' and not getattr(args, 'legacy_initialization', False):
+        initialization_settings = output/'config/replay_initialization.json'
+        shutil.copy2(DEFAULT_SETTINGS, initialization_settings)
+    print(f'Running fresh dynamics: profile={profile}, output={output}', flush=True)
+    manifest = {'profile': profile, 'config_paths': {k: str(Path(v).relative_to(output)) for k,v in config_paths.items()},
+                'experiment_sha256': {}, 'mapping': DEFAULT_MAPPING, 'base_command_frame': args.base_command_frame,
+                'base_feedback_frame': args.base_feedback_frame, 'arm_mode': args.arm_mode,
+                'gravity_feedforward': not args.no_gravity_feedforward,
+                'initialization_mode': 'current_settings' if initialization_settings else 'legacy',
+                'initialization_by_group': {},
+                'binary_sha256': hashlib.sha256(BINARY.read_bytes()).hexdigest(),
+                'config_sha256': {k: hashlib.sha256(Path(v).read_bytes()).hexdigest() for k,v in config_paths.items()},
+                'config_contents': {k: json.loads(Path(v).read_text()) for k,v in config_paths.items() if v.endswith('.json')},
+                'assumptions': [
+                    '使用选定配置的仿真 Kp/Kd、连续档限矩、T-N 包络、底盘斜坡和指定重力前馈开关，不代表采集时的实际驱动器参数。',
+                    'J5 位置命令恒为零，其实际模式与姿态方向尚未确认；仿真执行模式记录在 arm_mode 中。',
+                    f'底盘反馈采用 {args.base_feedback_frame} 系，命令采用 {args.base_command_frame} 系；默认 world 由数据支持但无生产源码确认。',
+                    '位置度转弧度，关节速度按 rad/s；底盘位置 cm 转 m、速度 mm/s 转 m/s、角速度按 rad/s。',
+                    '原始日志约 2.1 ms 采样；仿真 1 ms 步长在下一物理拍消费已到达命令，最大额外取样滞后小于 1 ms。',
+                    '仅可观测初始状态相同：缺失的舵角/轮速按平面无滑动重建；底盘高度/roll/pitch采用模型 home。',
+                    '底盘控制初态遵循逐条 initialization 设置；未记录的 PI 积分仍为零，真实截取前历史未知。',
+                    '起始保持属于已选择的仿真控制假设，不代表确认了采集时的真机驱动模式。',
+                    'J5 位置对照依赖暂定方向；实测轮状态、真实模式、前馈、控制增益和延迟未包含于本批日志。',
+                ]}
+    if initialization_settings:
+        manifest['initialization_settings'] = {
+            'path': str(initialization_settings.relative_to(output)),
+            'sha256': hashlib.sha256(initialization_settings.read_bytes()).hexdigest()}
+    reports = []
+    for number, (record, dq, base_v, original) in enumerate(prepared, 1):
+        payload = {**original, 'project_root': str(output/'config'),
+                   **{k: Path(v).name for k,v in config_paths.items()}}
+        if initialization_settings:
+            payload, metadata = apply_initialization(payload, record.path, settings_path=initialization_settings)
+        else:
+            metadata = {'status': 'legacy', 'arm_start_policy': payload.get('arm_start_policy', 'immediate'),
+                        'chassis_servo_state': payload['initial'].get('chassis_servo_state')}
+        manifest['initialization_by_group'][str(number)] = metadata
+        manifest['experiment_sha256'][str(number)] = command_identity(payload)
+        input_path = output/f'group_{number}_input.json'
+        input_path.write_text(json.dumps(payload, indent=2)+'\n')
+        directory = output/f'group_{number}'
+        with (output/f'group_{number}_run.log').open('w') as f:
+            subprocess.run([str(BINARY), str(input_path.resolve()), str(directory.resolve())], stdout=f, stderr=subprocess.STDOUT, check=True)
+        metrics = compare(directory, record, dq, base_v, payload)
+        metrics['group'] = number
+        metrics['initialization'] = metadata
+        reports.append(metrics)
+        print(f'Group {number}: base XY RMSE {metrics["base_xy_m"]["vector_rmse"]:.3f}m, '
+              f'racket RMSE {metrics["racket_vs_vicon_m"]["vector_rmse"]:.3f}m', flush=True)
+    (output/'manifest.json').write_text(json.dumps(manifest, indent=2, ensure_ascii=False)+'\n')
+    write_report(output, manifest, reports)
+    subprocess.run(['/usr/bin/python3', str(ROOT/'tools/plot_command_dynamics.py'), str(output.resolve())], check=True)
+    print(f'Report: {output.resolve()/"report.md"}', flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--data-dir', type=Path, default=DEFAULT_DATA)
+    parser.add_argument('--data-dir', type=Path, default=DEFAULT_DATA,
+                        help='recording directory containing CSVs, or parent containing 下位机轨迹')
     parser.add_argument('--output', type=Path, default=ROOT/'outputs/measured_dynamics'/datetime.now().strftime('%Y%m%d_%H%M%S_%f'))
+    profiles = parser.add_mutually_exclusive_group()
+    profiles.add_argument('--profile', choices=['current', 'baseline', 'fitted'],
+                          help='parameter configuration for fresh dynamics (default: current)')
+    profiles.add_argument('--compare-profiles', action='store_true',
+                          help='rerun baseline and fitted from the same prepared initial states and commands')
     parser.add_argument('--no-build', action='store_true')
     parser.add_argument('--base-command-frame', choices=['world','body'], default='world')
     parser.add_argument('--base-feedback-frame', choices=['world','body'], default='world')
     parser.add_argument('--arm-mode', choices=['hybrid','j5_velocity'], default='hybrid')
     parser.add_argument('--no-gravity-feedforward', action='store_true')
+    parser.add_argument('--legacy-initialization', action='store_true',
+                        help='use the original cold-start/immediate policy with the current profile')
     parser.add_argument('--view', action='store_true')
     parser.add_argument('--view-run', type=Path, help='view an existing comparison without rerunning dynamics')
     parser.add_argument('--group', type=int, default=1, help='initial viewer group; analysis always covers all logs')
     parser.add_argument('--speed', type=float, default=.25)
     args = parser.parse_args()
+    args.output = args.output.resolve()
+    if args.view_run and (args.profile or args.compare_profiles or args.view):
+        parser.error('--view-run only views saved results; use --profile/--compare-profiles for fresh dynamics')
+    if args.compare_profiles and args.view:
+        parser.error('view each completed comparison with --view-run OUTPUT/baseline or OUTPUT/fitted')
     if not math.isfinite(args.speed) or args.speed <= 0:
         parser.error('--speed must be positive and finite')
     if args.view or args.view_run:
@@ -261,7 +368,9 @@ def main():
         return
     if args.output.exists() and any(args.output.iterdir()):
         parser.error('--output must be new or empty')
-    paths = sorted((args.data_dir/'下位机轨迹').glob('*.csv'))
+    paths = sorted(args.data_dir.glob('*.csv'))
+    if not paths:
+        paths = sorted((args.data_dir/'下位机轨迹').glob('*.csv'))
     if not paths:
         parser.error('no lower-level CSV logs found')
     args.output.mkdir(parents=True, exist_ok=True)
@@ -269,40 +378,14 @@ def main():
         with (args.output/'build.log').open('w') as f:
             subprocess.run(['cmake', '-S', str(PROJECT), '-B', str(PROJECT/'build')], stdout=f, stderr=subprocess.STDOUT, check=True)
             subprocess.run(['cmake', '--build', str(PROJECT/'build'), '--target', 'x4_command_replay', '-j4'], stdout=f, stderr=subprocess.STDOUT, check=True)
-    manifest = {'mapping': DEFAULT_MAPPING, 'base_command_frame': args.base_command_frame,
-                'base_feedback_frame': args.base_feedback_frame, 'arm_mode': args.arm_mode,
-                'gravity_feedforward': not args.no_gravity_feedforward,
-                'binary_sha256': hashlib.sha256(BINARY.read_bytes()).hexdigest(),
-                'config_sha256': {k: hashlib.sha256((PROJECT/v).read_bytes()).hexdigest() for k,v in CONFIGS.items()},
-                'config_contents': {k: json.loads((PROJECT/v).read_text()) for k,v in CONFIGS.items() if v.endswith('.json')},
-                'assumptions': [
-                    '使用当前未标定的仿真 Kp/Kd、连续档限矩、T-N 包络、底盘斜坡和重力前馈，不代表采集时的实际驱动器参数。',
-                    '基线将五轴位置和速度同时送入混合控制；J5 位置命令恒为零，其实际模式与姿态方向尚未确认。',
-                    f'底盘反馈采用 {args.base_feedback_frame} 系，命令采用 {args.base_command_frame} 系；默认 world 由数据支持但无生产源码确认。',
-                    '位置度转弧度，关节速度按 rad/s；底盘位置 cm 转 m、速度 mm/s 转 m/s、角速度按 rad/s。',
-                    '原始日志约 2.1 ms 采样；仿真 1 ms 步长在下一物理拍消费已到达命令，最大额外取样滞后小于 1 ms。',
-                    '仅可观测初始状态相同：缺失的舵角/轮速按平面无滑动重建；底盘高度/roll/pitch采用模型 home。',
-                    '截取前的底盘斜坡、积分器及驱动器内部状态未知，当前从默认控制器历史启动，不能视作完整内部状态相同。',
-                    'J5 位置对照依赖暂定方向；实测轮状态、真实模式、前馈、控制增益和延迟未包含于本批日志。',
-                ]}
-    (args.output/'manifest.json').write_text(json.dumps(manifest, indent=2, ensure_ascii=False)+'\n')
-    reports = []
-    for number, path in enumerate(paths, 1):
-        record, dq, base_v, payload = prepare(path, args.base_command_frame, args.base_feedback_frame,
-                                             args.arm_mode, not args.no_gravity_feedforward)
-        input_path = args.output/f'group_{number}_input.json'
-        input_path.write_text(json.dumps(payload, indent=2)+'\n')
-        directory = args.output/f'group_{number}'
-        with (args.output/f'group_{number}_run.log').open('w') as f:
-            subprocess.run([str(BINARY), str(input_path.resolve()), str(directory.resolve())], stdout=f, stderr=subprocess.STDOUT, check=True)
-        metrics = compare(directory, record, dq, base_v, payload)
-        metrics['group'] = number
-        reports.append(metrics)
-        print(f'Group {number}: base XY RMSE {metrics["base_xy_m"]["vector_rmse"]:.3f}m, '
-              f'racket RMSE {metrics["racket_vs_vicon_m"]["vector_rmse"]:.3f}m', flush=True)
-    write_report(args.output, manifest, reports)
-    subprocess.run(['/usr/bin/python3', str(ROOT/'tools/plot_command_dynamics.py'), str(args.output.resolve())], check=True)
-    print(f'Report: {args.output.resolve()/"report.md"}', flush=True)
+    prepared = [prepare(path, args.base_command_frame, args.base_feedback_frame,
+                        args.arm_mode, not args.no_gravity_feedforward) for path in paths]
+    if args.compare_profiles:
+        for profile in ('baseline', 'fitted'):
+            run_profile(args, profile, args.output/profile, prepared)
+        write_profile_comparison(args.output)
+    else:
+        run_profile(args, args.profile or 'current', args.output, prepared)
     if args.view:
         view_result(args.output, args.group, args.speed)
 

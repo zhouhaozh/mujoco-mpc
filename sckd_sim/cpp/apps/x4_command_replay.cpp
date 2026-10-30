@@ -105,6 +105,10 @@ int main(int argc, char** argv) try {
   const std::string arm_mode = config.at("arm_mode").get<std::string>();
   if (arm_mode != "hybrid" && arm_mode != "j5_velocity")
     throw std::runtime_error("arm_mode must be 'hybrid' or 'j5_velocity'");
+  const std::string arm_start_policy = config.value("arm_start_policy", "immediate");
+  if (arm_start_policy != "immediate" && arm_start_policy != "hold_until_fresh_command")
+    throw std::runtime_error(
+        "arm_start_policy must be 'immediate' or 'hold_until_fresh_command'");
   const bool gravity_feedforward = config.at("gravity_feedforward").get<bool>();
 
   const Json& command_json = config.at("commands");
@@ -207,6 +211,21 @@ int main(int argc, char** argv) try {
 
   backend.enable(-1, true);
   ChassisServo chassis_servo(chassis_config, &backend);
+  bool servo_state_initialized = false;
+  Twist initial_ramped = initial_body;
+  if (config.at("initial").contains("chassis_servo_state")) {
+    const Json& state = config.at("initial").at("chassis_servo_state");
+    if (!state.is_object())
+      throw std::runtime_error("initial.chassis_servo_state must be an object");
+    if (state.contains("ramped_body_velocity")) {
+      const auto ramped = FiniteArray<2>(state.at("ramped_body_velocity"),
+                                         "initial.chassis_servo_state.ramped_body_velocity");
+      initial_ramped.vx = ramped[0];
+      initial_ramped.vy = ramped[1];
+    }
+    chassis_servo.initialize_consistent_state(initial_ramped);
+    servo_state_initialized = true;
+  }
   const ArmServoConfig& arm_servo = backend.motor_config().arm_servo;
   const double dt = model->opt.timestep;
   const int physics_steps = static_cast<int>(std::floor(duration / dt + 1e-12));
@@ -219,6 +238,28 @@ int main(int argc, char** argv) try {
       data->warning[mjWARN_BADQVEL].number,
       data->warning[mjWARN_BADQACC].number};
   std::size_t previous_command_index = 0;
+  constexpr double kFreshArmPositionRad = 0.5 * std::acos(-1.0) / 180.0;
+  constexpr double kFreshArmVelocityRadS = 0.05;
+  constexpr double kStaleArmPositionRad = 2.0 * std::acos(-1.0) / 180.0;
+  std::array<bool, 5> arm_axis_hold_candidate{}, arm_axis_pending_initial{};
+  std::array<bool, 5> arm_axis_command_active{};
+  std::array<double, 5> arm_axis_activation_time{};
+  for (int j = 0; j < 5; ++j) {
+    arm_axis_hold_candidate[j] =
+        std::abs(initial_dq[j]) < 0.1 &&
+        std::abs(commands.front().dq[j]) < kFreshArmVelocityRadS &&
+        std::abs(commands.front().q[j] - initial_q[j]) > kStaleArmPositionRad;
+    arm_axis_pending_initial[j] =
+        arm_start_policy == "hold_until_fresh_command" && arm_axis_hold_candidate[j];
+    arm_axis_command_active[j] = !arm_axis_pending_initial[j];
+    arm_axis_activation_time[j] = arm_axis_command_active[j] ? 0.0 : -1.0;
+  }
+  const bool arm_hold_eligible =
+      std::any_of(arm_axis_hold_candidate.begin(), arm_axis_hold_candidate.end(),
+                  [](bool value) { return value; });
+  const bool arm_hold_entered =
+      std::any_of(arm_axis_pending_initial.begin(), arm_axis_pending_initial.end(),
+                  [](bool value) { return value; });
 
   for (int step = 0; step <= physics_steps; ++step) {
     // mj_step leaves derived geometry at the pre-integration configuration.
@@ -230,14 +271,26 @@ int main(int argc, char** argv) try {
       ++command_index;
     const ReplayCommand& command = commands[command_index];
 
+    for (int j = 0; j < 5; ++j) {
+      if (!arm_axis_command_active[j] &&
+          (std::abs(command.q[j] - commands.front().q[j]) > kFreshArmPositionRad ||
+           std::abs(command.dq[j]) > kFreshArmVelocityRadS)) {
+        arm_axis_command_active[j] = true;
+        arm_axis_activation_time[j] = t;
+      }
+    }
+    const bool arm_command_active =
+        std::all_of(arm_axis_command_active.begin(), arm_axis_command_active.end(),
+                    [](bool value) { return value; });
+
     ArmHybridCmd arm_command;
     for (int j = 0; j < 5; ++j) {
-      arm_command.q[j] = command.q[j];
-      arm_command.dq[j] = command.dq[j];
+      arm_command.q[j] = arm_axis_command_active[j] ? command.q[j] : initial_q[j];
+      arm_command.dq[j] = arm_axis_command_active[j] ? command.dq[j] : 0.0;
       arm_command.kp[j] = arm_servo.kp[j];
       arm_command.kd[j] = arm_servo.kd[j];
     }
-    if (arm_mode == "j5_velocity") arm_command.kp[4] = 0;
+    if (arm_axis_command_active[4] && arm_mode == "j5_velocity") arm_command.kp[4] = 0;
     if (gravity_feedforward && !backend.arm_gravity(arm_command.q, arm_command.tau_ff))
       throw std::runtime_error("gravity feedforward failed");
     backend.set_arm_hybrid(arm_command);
@@ -278,6 +331,10 @@ int main(int argc, char** argv) try {
                    {"torque_interval_start_s", step == 0 ? Json(nullptr) : Json(t - dt)},
                    {"torque_command_index", step == 0 ? Json(nullptr) : Json(previous_command_index)},
                    {"q_command", ArrayJson(command.q)}, {"dq_command", ArrayJson(command.dq)},
+                   {"applied_q_command", VectorJson(arm_command.q, 5)},
+                   {"applied_dq_command", VectorJson(arm_command.dq, 5)},
+                   {"arm_command_active", arm_command_active},
+                   {"arm_axis_command_active", arm_axis_command_active},
                    {"base_twist_input", {command.base.vx, command.base.vy, command.base.wz}},
                    {"base_twist_ramped", {ramped.vx, ramped.vy, ramped.wz}},
                    {"tau_raw", ArrayJson(raw)}, {"tau_applied", ArrayJson(applied)},
@@ -297,6 +354,15 @@ int main(int argc, char** argv) try {
       data->warning[mjWARN_BADQVEL].number - warning_start[1],
       data->warning[mjWARN_BADQACC].number - warning_start[2]};
   const bool time_ok = time_mismatch_count == 0 && std::abs(data->time - expected_end) <= 1e-9;
+  Json arm_axis_activation_times = Json::array();
+  for (double activation_time : arm_axis_activation_time)
+    arm_axis_activation_times.push_back(
+        activation_time >= 0 ? Json(activation_time) : Json(nullptr));
+  const bool all_arm_axes_active =
+      std::all_of(arm_axis_command_active.begin(), arm_axis_command_active.end(),
+                  [](bool value) { return value; });
+  const double last_arm_activation =
+      *std::max_element(arm_axis_activation_time.begin(), arm_axis_activation_time.end());
   const Json summary = {
       {"schema", "X4_COMMAND_REPLAY_RESULT/1"}, {"physics_steps", physics_steps},
       {"integration_dt", dt}, {"duration", data->time}, {"requested_duration", duration},
@@ -305,12 +371,32 @@ int main(int argc, char** argv) try {
       {"warnings", {{"BADQPOS", warning_count[0]}, {"BADQVEL", warning_count[1]},
                      {"BADQACC", warning_count[2]}}},
       {"initial_state_copied", true}, {"wheel_state_inferred", true},
-      {"servo_history_unknown", true}, {"future_measured_state_copied", false},
+      {"servo_history_unknown", true},
+      {"servo_state_initialized_consistently", servo_state_initialized},
+      {"servo_initialization",
+       {{"source", servo_state_initialized ? "measured_twist_or_input_override" : "cold_start"},
+        {"initial_ramped_body_twist", servo_state_initialized
+            ? Json{initial_ramped.vx, initial_ramped.vy, initial_ramped.wz} : Json(nullptr)},
+        {"wheel_integral_source", servo_state_initialized ? "zero" : "cold_start"}}},
+      {"future_measured_state_copied", false},
       {"base_command_frame", base_frame}, {"arm_mode", arm_mode},
+      {"arm_start_policy", arm_start_policy},
+      {"arm_hold_eligible", arm_hold_eligible},
+      {"arm_hold_entered", arm_hold_entered},
+      {"arm_axis_hold_candidate", arm_axis_hold_candidate},
+      {"arm_axis_pending_initial", arm_axis_pending_initial},
+      {"arm_axis_command_active_final", arm_axis_command_active},
+      {"arm_axis_activation_times_s", arm_axis_activation_times},
+      {"arm_activation_time_s", all_arm_axes_active ? Json(last_arm_activation) : Json(nullptr)},
       {"gravity_feedforward", gravity_feedforward},
       {"notes", {"Wheel steer angles and wheel speeds were reconstructed from the initial planar base twist.",
-                   "Chassis ramp and controller history before the first recorded command are unavailable.",
+                   servo_state_initialized
+                       ? "Chassis ramp, wheel targets, and steering history were initialized consistently at the recording boundary; the true controller history remains unknown."
+                       : "Chassis ramp and controller history before the first recorded command are unavailable.",
                    "Commands use zero-order hold; no measured state is copied after initialization.",
+                   arm_start_policy == "hold_until_fresh_command"
+                       ? "The arm start hold is an experimental shared control-semantics assumption, not a confirmed hardware mode."
+                       : "Arm commands are applied immediately using the legacy replay policy.",
                    "Torque fields describe the preceding physics interval; tick zero has no preceding interval."}}};
   std::ofstream(output / "summary.json") << summary.dump(2) << '\n';
   std::cout << summary.dump(2) << '\n';

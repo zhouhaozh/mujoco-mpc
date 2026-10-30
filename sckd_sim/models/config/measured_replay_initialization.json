@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "enabled": true,
+  "arm_start_policy": "hold_until_fresh_command",
+  "identification_source": "2026-10-30 ten-trajectory prefix-conditioned initialization; outputs/multitrajectory_sysid_20261030/activation_model",
+  "scope": "Effective replay-boundary controller initialization for the exact recorded CSV contents; not identified hardware state or shared dynamics parameters.",
+  "chassis_state_note": "null means cold chassis-controller start; an empty object initializes from the measured t0 body twist; ramped_body_velocity overrides only the internal planar ramp state. Wheel PI integrals remain zero.",
+  "records_by_source_sha256": {
+    "a91dfca117ca4d66b1ec83f1ff3fcccd728a357f25949372fe1887c3dc225821": {
+      "label": "S1",
+      "source_file": "下位机轨迹/r20261020_135606_877000.csv",
+      "chassis_servo_state": {"ramped_body_velocity": [0.0, 0.0]},
+      "prefix_end_s": 0.048614013671875
+    },
+    "52fb7b5538dd0be9f8e0731c6117a83fbe5949c875caf412afcea3f565568a57": {
+      "label": "S2",
+      "source_file": "下位机轨迹/r20261020_135844_699000.csv",
+      "chassis_servo_state": null,
+      "prefix_end_s": 0.048845947265625
+    },
+    "4cd023d564bdac50f82ddf247e65e5706959fdf051798a9e099d980f012d070d": {
+      "label": "S3",
+      "source_file": "下位机轨迹/r20261020_140015_737000.csv",
+      "chassis_servo_state": {"ramped_body_velocity": [0.0, 0.0]},
+      "prefix_end_s": 0.0484189453125
+    },
+    "4cde4375f597da31f10dc663f1a6d393308e5631f0c0911a35eee09f9dbc72b1": {
+      "label": "S4",
+      "source_file": "下位机轨迹/r20261020_140415_825000.csv",
+      "chassis_servo_state": {"ramped_body_velocity": [0.0, 0.0]},
+      "prefix_end_s": 0.048872802734375
+    },
+    "f672adc69f2d7686a07c9b5340269ff16baef38a14b102631068d3e34eb630ef": {
+      "label": "S5",
+      "source_file": "下位机轨迹/r20261020_140548_248000.csv",
+      "chassis_servo_state": null,
+      "prefix_end_s": 0.04897802734375
+    },
+    "a4c2f8b7ca58c3a77ba79e2487cec24d3340f2fabacb97ec405cd56be7c9675e": {
+      "label": "P1",
+      "source_file": "和平球轨迹/r20261020_135559_155000.csv",
+      "chassis_servo_state": null,
+      "prefix_end_s": 0.048809814453125
+    },
+    "79409ad3fbeb5f5e09614fc5145f57737372e8efb8b227e649c3129ca1aa6a2d": {
+      "label": "P2",
+      "source_file": "和平球轨迹/r20261020_135727_606000.csv",
+      "chassis_servo_state": {},
+      "prefix_end_s": 0.049367919921875
+    },
+    "3ce5e9f213162d2e602fd1c7e600a49ae71b265ff2d4881db5290a8d89ef1544": {
+      "label": "P3",
+      "source_file": "和平球轨迹/r20261020_135751_498000.csv",
+      "chassis_servo_state": {},
+      "prefix_end_s": 0.04868896484375
+    },
+    "2a4d263a65a4ce944cb5c412372add18155b0c02f98a35ab3884fc02930e453b": {
+      "label": "P4",
+      "source_file": "和平球轨迹/r20261020_135802_958000.csv",
+      "chassis_servo_state": {},
+      "prefix_end_s": 0.048505126953125
+    },
+    "1338a09db48a622149efca4d9fc284b8efeb7a1105fd7a2e35cc773a45bb5b71": {
+      "label": "P5",
+      "source_file": "和平球轨迹/r20261020_135813_037000.csv",
+      "chassis_servo_state": {},
+      "prefix_end_s": 0.04852294921875
+    }
+  }
+}

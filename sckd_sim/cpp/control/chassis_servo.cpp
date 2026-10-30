@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace sckd {
 
@@ -14,6 +15,35 @@ void ChassisServo::set_steering_rate_limits(bool direction_limited,
                                            bool feedforward_limited) {
   direction_limited_ = direction_limited;
   feedforward_limited_ = feedforward_limited;
+}
+
+void ChassisServo::initialize_consistent_state(const Twist& ramped_body_twist) {
+  if (started_)
+    throw std::logic_error("chassis servo state must be initialized before the first update");
+  if (!std::isfinite(ramped_body_twist.vx) || !std::isfinite(ramped_body_twist.vy) ||
+      !std::isfinite(ramped_body_twist.wz))
+    throw std::invalid_argument("chassis servo ramp state must be finite");
+
+  cur_ = ramped_body_twist;
+  cmd_ = ramped_body_twist;
+  double steer_meas[kSwerveCorners];
+  for (int i = 0; i < kSwerveCorners; ++i)
+    steer_meas[i] = hw_->joint_measured(AxisSteer(i)).q;
+
+  CornerCmd cc[kSwerveCorners];
+  kin_.Allocate(cur_, steer_meas, reversed_, cc);
+  for (int i = 0; i < kSwerveCorners; ++i) {
+    prev_steer_[i] = cc[i].steer_target;
+    double wheel_speed[kDrivesPerCorner];
+    SwerveKinematics::DualWheel(cc[i].drive_mps[0], cur_.wz, 0.0,
+                                cfg_.dual_offset, wheel_speed);
+    for (int j = 0; j < kDrivesPerCorner; ++j) {
+      const int idx = kDrivesPerCorner * i + j;
+      alloc_lin_[idx] = wheel_speed[j];
+      target_lin_[idx] = wheel_speed[j];
+      wheel_int_[idx] = 0.0;
+    }
+  }
 }
 
 double ChassisServo::MoveToward(double v, double target, double max_dv) const {
