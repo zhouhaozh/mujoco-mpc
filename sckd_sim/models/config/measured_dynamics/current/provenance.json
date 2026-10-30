@@ -1,0 +1,11 @@
+{
+  "profile": "current",
+  "source_sha256": {
+    "x4_950.json": "0ab8a07a01e5a5e1d2347e1517156ad6dc4bedd954da8d826e90a4f7c1e07a48",
+    "motors_x4_950.json": "064bd438e85ec8b97b414dbfd4e55d0f5535df1f267ed375dd84341124c30bc6",
+    "chassis_x4_950.json": "35f45e43e56d1f0ba1ef933fa3455a16b5c22670098fb2daa9b268066521076d",
+    "measured_replay_initialization.json": "fe4c68460618312c654a430a57c178cb80057097439a5770549a6193a033951c",
+    "x4_950_scene.mjcf": "dc24be836465d49953b26d778dc237b8f488dd43850dc2fa228eba65b6e214fe"
+  },
+  "description": "Current measured-replay configuration at directory migration"
+}

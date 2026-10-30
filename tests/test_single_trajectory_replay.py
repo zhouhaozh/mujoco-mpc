@@ -11,6 +11,7 @@ import test_measured_dynamics
 from run_measured_dynamics import BINARY, group_directories
 
 SCRIPT = ROOT/'tools/run_measured_dynamics.py'
+CONFIG_DIR = ROOT/'sckd_sim/models/config/measured_dynamics/current'
 
 
 class SingleTrajectoryReplayTests(unittest.TestCase):
@@ -26,13 +27,13 @@ class SingleTrajectoryReplayTests(unittest.TestCase):
             # This sibling would fail parsing if single-file selection fell back to the directory.
             (root/'other.csv').write_text('invalid sibling recording\n')
             output = root/'replay'
-            result = self.invoke('--trajectory-file', source, '--no-build', '--output', output)
+            result = self.invoke('--config-dir', CONFIG_DIR, '--trajectory-file', source, '--no-build', '--output', output)
             self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
             self.assertEqual([p.name for p in group_directories(output)], ['group_1'])
             self.assertFalse((output/'group_2_input.json').exists())
             manifest = json.loads((output/'manifest.json').read_text())
             self.assertEqual(list(manifest['experiment_sha256']), ['1'])
-            self.assertEqual(manifest['initialization_mode'], 'current_settings')
+            self.assertEqual(manifest['initialization_mode'], 'directory_settings')
             self.assertEqual(manifest['initialization_by_group']['1']['source_path'], str(source.resolve()))
             native = json.loads((output/'group_1/summary.json').read_text())
             self.assertEqual(native['arm_start_policy'], 'hold_until_fresh_command')
@@ -45,7 +46,7 @@ class SingleTrajectoryReplayTests(unittest.TestCase):
             root = Path(directory)
             for source in (root/'missing.csv', root):
                 output = root/'replay'
-                result = self.invoke('--trajectory-file', source, '--no-build', '--output', output)
+                result = self.invoke('--config-dir', CONFIG_DIR, '--trajectory-file', source, '--no-build', '--output', output)
                 self.assertEqual(result.returncode, 2)
                 self.assertIn('existing CSV file', result.stderr)
                 self.assertFalse(output.exists())

@@ -2,6 +2,7 @@
 """Build an isolated X4_950 reference-only ball replay scene."""
 import argparse
 import json
+import os
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -32,7 +33,8 @@ def build_replay(source: Path, output: Path) -> dict:
     root = tree.getroot()
     compiler = root.find("compiler")
     if compiler is not None and compiler.get("meshdir"):
-        compiler.set("meshdir", str((source.parent / compiler.get("meshdir")).resolve()))
+        meshdir = (source.parent / compiler.get("meshdir")).resolve()
+        compiler.set("meshdir", os.path.relpath(meshdir, output.parent))
 
     world = root.find("worldbody")
     if world is None:

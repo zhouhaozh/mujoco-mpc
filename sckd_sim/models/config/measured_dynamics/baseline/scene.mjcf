@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <mujoco model="X4_950">
-  <compiler angle="radian" meshdir="../../../source/x4_950" />
+  <compiler angle="radian" meshdir="." />
   <asset>
     <mesh name="base_link" file="meshes/base_link.STL" />
     <mesh name="FL_steer_link" file="meshes/FL_steer_link.STL" />

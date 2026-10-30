@@ -3,6 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import shutil
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -15,12 +16,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'tools'))
 import test_measured_dynamics
 from measured_replay_initialization import DEFAULT_SETTINGS
-from run_measured_dynamics import BINARY, prepare, run_profile
+from run_measured_dynamics import BINARY, prepare, run_config
 
 
 class CurrentReplayInitializationTests(unittest.TestCase):
     @unittest.skipUnless(BINARY.exists(), 'build x4_command_replay first')
-    def test_current_default_applies_settings_and_legacy_restores_original_start(self):
+    def test_directory_settings_apply_regardless_of_name_and_disabled_restores_original_start(self):
         native_run = subprocess.run
 
         def replay_only(command, **kwargs):
@@ -44,13 +45,20 @@ class CurrentReplayInitializationTests(unittest.TestCase):
                              arm_mode='hybrid', no_gravity_feedforward=False)
             with patch('run_measured_dynamics.subprocess.run', side_effect=replay_only):
                 for legacy in (False, True):
-                    args = SimpleNamespace(**base_args, legacy_initialization=legacy)
-                    run_profile(args, 'current', root/str(legacy), prepared)
+                    args = SimpleNamespace(**base_args)
+                    config_dir = root/f'custom_{legacy}'
+                    shutil.copytree(ROOT/'sckd_sim/models/config/measured_dynamics/current', config_dir)
+                    settings_file = config_dir/'replay_initialization.json'
+                    settings = json.loads(settings_file.read_text())
+                    if legacy:
+                        settings['enabled'] = False
+                        settings_file.write_text(json.dumps(settings))
+                    run_config(args, config_dir, root/str(legacy), prepared)
 
             current = root/'False'
             legacy = root/'True'
             manifest = json.loads((current/'manifest.json').read_text())
-            self.assertEqual(manifest['initialization_mode'], 'current_settings')
+            self.assertEqual(manifest['initialization_mode'], 'directory_settings')
             self.assertEqual(manifest['initialization_by_group']['1']['status'], 'not_cached')
             snapshot = current/manifest['initialization_settings']['path']
             self.assertEqual(snapshot.read_bytes(), DEFAULT_SETTINGS.read_bytes())
@@ -69,7 +77,7 @@ class CurrentReplayInitializationTests(unittest.TestCase):
                 first = next(csv.DictReader(stream))
             self.assertEqual(float(first['arm_active_j1']), 0)
             self.assertNotEqual(first['applied_cmd_q_j1_rad'], first['cmd_q_j1_rad'])
-            self.assertEqual(json.loads((legacy/'manifest.json').read_text())['initialization_mode'], 'legacy')
+            self.assertEqual(json.loads((legacy/'manifest.json').read_text())['initialization_by_group']['1']['status'], 'disabled')
 
 
 if __name__ == '__main__':

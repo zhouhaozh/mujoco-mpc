@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "variant": "x4_950",
+  "calibrated": false,
+  "geometry": {
+    "corner_xy_m": [
+      [
+        0.475,
+        0.475
+      ],
+      [
+        0.475,
+        -0.475
+      ],
+      [
+        -0.475,
+        0.475
+      ],
+      [
+        -0.475,
+        -0.475
+      ]
+    ],
+    "wheel_radius_m": 0.0825,
+    "dual_wheel_offset_m": 0.024,
+    "drives_per_corner": 2,
+    "wheel_sign": [
+      1,
+      -1,
+      1,
+      -1,
+      1,
+      -1,
+      1,
+      -1
+    ],
+    "robot_mass_kg": 51.163677,
+    "source": "X4_950 URDF舵轴位置±0.475m；轮轴偏移0.1045m减轮碰撞中心偏移0.0805m=0.024m；半径来自collision URDF，符号来自左右轮轴±Y；质量为生成MJCF body_mass求和（导出舍入）。"
+  },
+  "coordination": {
+    "enable_cos_projection": true,
+    "cos_deadband_rad": 0.1,
+    "cos_floor": 0.0,
+    "reverse_threshold_rad": 1.5707963267948966,
+    "reverse_hysteresis_rad": 0.2,
+    "zero_speed_mps": 0.001,
+    "note": "复用现有协同算法及上述算法阈值；不是X4_950硬件标定。"
+  },
+  "ramp": {
+    "accel_limit_mps2": 21.083139625526304,
+    "ang_accel_limit_rad_s2": 0.5,
+    "dir_rate_limit_rad_s": 17.07554763865443,
+    "note": "Fitted replay response limits; not measured hardware maximum acceleration."
+  },
+  "servo": {
+    "period_ms": 1,
+    "steer_kp": 27.31130407389464,
+    "steer_kd": 1.6862378977467738,
+    "wheel_kp": 7.022711700500352,
+    "wheel_ki": 2.973317766811426,
+    "wheel_int_max_rad": 0.12220847637092845,
+    "wheel_accel_mps2": 13.587498630374334,
+    "note": "Fitted against base motion; individual wheel/steer motor feedback is unavailable."
+  },
+  "odom": {
+    "steer_offset_rad": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "wheel_speed_noise_rad_s": 0,
+    "imu_rate_hz": 1000,
+    "imu_latency_ms": 0,
+    "gyro_bias_rad_s": 0,
+    "gyro_noise_rad_s": 0,
+    "acc_noise_mps2": 0,
+    "gyro_fallback_ms": 300,
+    "note": "真值反馈，无量化、偏移、噪声或延迟；fallback阈值沿用算法值，不是硬件延迟。"
+  },
+  "parameter_fit": {
+    "source": "/home/ubuntu/works/mojuco-mpc/mpc-github/sckd_sim/models/config/x4_950_measured_fit.json",
+    "parameter_sha256": "fedcb2d261e03a3f14ca9b7e9f466f1fcb0df872c9bd9fdc80c0daff3176eb79",
+    "scope": "Five short measured motion logs; simulation fit only; no hardware calibration claim.",
+    "training_groups": [
+      1,
+      3,
+      4
+    ],
+    "validation_groups": [
+      2,
+      5
+    ],
+    "acceptance_thresholds": {
+      "per_group_joint_angle_rmse_deg": 5,
+      "per_group_joint_velocity_rmse_rad_s": 0.5
+    },
+    "acceptance_status": "Not certified by installer; inspect the independent replay report.",
+    "runtime_logic_changed": false
+  }
+}

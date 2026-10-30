@@ -60,8 +60,12 @@ MotorSystemConfig LoadMotorConfig(const std::string& motors_json_path,
   if (cfg.robot_variant == "x4_950" || mj.value("variant", "") == "x4_950") {
     if (cfg.robot_variant != "x4_950" || mj.value("variant", "") != "x4_950")
       throw std::runtime_error("X4_950 motor and robot variants must match");
-    const auto expected = std::filesystem::path(variant_json_path).parent_path().parent_path()
-                          / vj.at("motor_config").get<std::string>();
+    const auto reference = std::filesystem::path(vj.at("motor_config").get<std::string>()).lexically_normal();
+    const auto variant_dir = std::filesystem::path(variant_json_path).parent_path();
+    // Directory bundles use a sibling filename. Preserve the models-relative
+    // convention of older configs (e.g. config/motors_x4_950.json).
+    const auto expected = (reference.has_parent_path() ? variant_dir.parent_path() : variant_dir)
+                          / reference;
     if (mj.value("variant", "") != cfg.robot_variant ||
         std::filesystem::weakly_canonical(expected) !=
             std::filesystem::weakly_canonical(motors_json_path))

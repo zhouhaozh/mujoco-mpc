@@ -61,7 +61,10 @@ class X4ReplayBuilderTests(unittest.TestCase):
                 self.assertEqual(replay.geom_contype[ball], 0)
                 self.assertEqual(replay.geom_conaffinity[ball], 0)
                 meshdir = ET.parse(output).getroot().find("compiler").get("meshdir")
-                self.assertTrue(Path(meshdir).is_absolute())
+                self.assertFalse(Path(meshdir).is_absolute())
+                expected_meshdir = (source.parent / ET.parse(source).getroot()
+                                    .find("compiler").get("meshdir")).resolve()
+                self.assertEqual((output.parent / meshdir).resolve(), expected_meshdir)
 
     def test_existing_replay_is_idempotent_and_does_not_duplicate_ball(self):
         source = ROOT / "sckd_sim/models/generated/x4_950_replay.mjcf"

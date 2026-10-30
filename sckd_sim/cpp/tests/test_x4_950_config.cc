@@ -88,3 +88,14 @@ TEST_CASE("tennis motor and servo defaults remain unchanged") {
   CHECK(cfg.profile_peak);
   CHECK(LoadChassisConfig("models/config/chassis_m1.json").servo.period_ms == 4);
 }
+
+TEST_CASE("X4 directory bundles load sibling motors and reject another bundle") {
+  const std::string root = "models/config/measured_dynamics/";
+  for (const std::string name : {"current", "baseline", "fitted"}) {
+    const auto bundle = root + name + "/";
+    const auto cfg = LoadMotorConfig(bundle + "motors.json", bundle + "robot.json");
+    CHECK(cfg.robot_variant == "x4_950");
+    CHECK(cfg.arm_servo.enabled);
+  }
+  CHECK_THROWS(LoadMotorConfig(root + "baseline/motors.json", root + "fitted/robot.json"));
+}

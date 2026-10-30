@@ -4,7 +4,7 @@
   "purpose": "model_with_actuators_controller_disabled",
   "source_urdf": "source/x4_950/X4_950.urdf",
   "collision_reference": "source/x4_950/X4_950_collision.urdf",
-  "motor_config": "baseline/motors.json",
+  "motor_config": "motors.json",
   "racket_geometry": {
     "effective_length_m": 0.865,
     "note": "与原生MPC racket_len统一；Link5相对Link4的Y偏置为-0.065m，因此Link6相对Link5的Y距离为0.930m。仅覆盖生成模型，归档源URDF不改。"

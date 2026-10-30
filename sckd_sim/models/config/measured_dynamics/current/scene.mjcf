@@ -1,0 +1,198 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mujoco model="X4_950">
+  <compiler angle="radian" meshdir="." />
+  <asset>
+    <mesh name="base_link" file="meshes/base_link.STL" />
+    <mesh name="FL_steer_link" file="meshes/FL_steer_link.STL" />
+    <mesh name="FL_wheel_left_link" file="meshes/FL_wheel_left_link.STL" />
+    <mesh name="FL_wheel_right_link" file="meshes/FL_wheel_right_link.STL" />
+    <mesh name="FR_steer_link" file="meshes/FR_steer_link.STL" />
+    <mesh name="FR_wheel_left_link" file="meshes/FR_wheel_left_link.STL" />
+    <mesh name="FR_wheel_right_link" file="meshes/FR_wheel_right_link.STL" />
+    <mesh name="RR_steer_link" file="meshes/RR_steer_link.STL" />
+    <mesh name="RR_wheel_left_link" file="meshes/RR_wheel_left_link.STL" />
+    <mesh name="RR_wheel_right_link" file="meshes/RR_wheel_right_link.STL" />
+    <mesh name="RL_steer_link" file="meshes/RL_steer_link.STL" />
+    <mesh name="RL_wheel_left_link" file="meshes/RL_wheel_left_link.STL" />
+    <mesh name="RL_wheel_right_link" file="meshes/RL_wheel_right_link.STL" />
+    <mesh name="Link1" file="meshes/Link1.STL" />
+    <mesh name="Link2" file="meshes/Link2.STL" />
+    <mesh name="Link3" file="meshes/Link3.STL" />
+    <mesh name="Link4" file="meshes/Link4.STL" />
+    <mesh name="Link5" file="meshes/Link5.STL" />
+    <mesh name="ct_net_l" vertex="-0.0025 -3.05 0.79 -0.0025 -3.05 1.55 -0.0025 0 0.764 -0.0025 0 1.524 0.0025 -3.05 0.79 0.0025 -3.05 1.55 0.0025 0 0.764 0.0025 0 1.524" />
+    <mesh name="ct_tape_l" vertex="-0.003 -3.05 1.475 -0.003 -3.05 1.55 -0.003 0 1.449 -0.003 0 1.524 0.003 -3.05 1.475 0.003 -3.05 1.55 0.003 0 1.449 0.003 0 1.524" />
+    <mesh name="ct_net_r" vertex="-0.0025 0 0.764 -0.0025 0 1.524 -0.0025 3.05 0.79 -0.0025 3.05 1.55 0.0025 0 0.764 0.0025 0 1.524 0.0025 3.05 0.79 0.0025 3.05 1.55" />
+    <mesh name="ct_tape_r" vertex="-0.003 0 1.449 -0.003 0 1.524 -0.003 3.05 1.475 -0.003 3.05 1.55 0.003 0 1.449 0.003 0 1.524 0.003 3.05 1.475 0.003 3.05 1.55" />
+  </asset>
+  <worldbody>
+    <body name="base_link" pos="0 0 0.0">
+      <inertial pos="-0.0217007 -2.06e-05 0.263568" quat="-0.00156944 0.667819 0.00160148 0.74432" mass="31.3469" diaginertia="4.31574 3.61338 3.43752" />
+      <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.75294 0.75294 0.75294 1" density="0" mesh="base_link" />
+      <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.75294 0.75294 0.75294 1" mesh="base_link" contype="0" conaffinity="0" />
+      <body name="FL_steer_link" pos="0.475 0.475 0.2514">
+        <inertial pos="9.23e-05 0 -0.143272" quat="0.707111 0.707097 0.00283386 -0.000113441" mass="1.99298" diaginertia="0.0134379 0.0103669 0.00571799" />
+        <joint name="FL_steer_joint" />
+        <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.75294 0.75294 0.75294 1" density="0" mesh="FL_steer_link" />
+        <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.75294 0.75294 0.75294 1" mesh="FL_steer_link" contype="0" conaffinity="0" />
+        <body name="FL_wheel_left_link" pos="0 0.1045 -0.1689">
+          <inertial pos="0 -0.0789026 0" quat="0.707107 0 0 0.707107" mass="0.8036" diaginertia="0.0038696 0.0020683 0.0020683" />
+          <joint name="FL_wheel_left_joint" axis="0 1 0" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.75294 0.75294 0.75294 1" density="0" mesh="FL_wheel_left_link" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.75294 0.75294 0.75294 1" mesh="FL_wheel_left_link" contype="0" conaffinity="0" />
+          <geom name="col_FL_wheel_left_link" type="cylinder" size="0.0825 0.0225" pos="0.0 -0.0805 0.0" quat="0.7071067811865476 0.7071067811865476 0 0" contype="1" conaffinity="1" mass="0" />
+        </body>
+        <body name="FL_wheel_right_link" pos="0 -0.1045 -0.1689">
+          <inertial pos="0 0.0789026 0" quat="0.707107 0 0 0.707107" mass="0.8036" diaginertia="0.0038696 0.0020683 0.0020683" />
+          <joint name="FL_wheel_right_joint" axis="0 -1 0" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="FL_wheel_right_link" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="FL_wheel_right_link" contype="0" conaffinity="0" />
+          <geom name="col_FL_wheel_right_link" type="cylinder" size="0.0825 0.0225" pos="0.0 0.0805 0.0" quat="0.7071067811865476 0.7071067811865476 0 0" contype="1" conaffinity="1" mass="0" />
+        </body>
+      </body>
+      <body name="FR_steer_link" pos="0.475 -0.475 0.2514">
+        <inertial pos="9.23e-05 0 -0.143272" quat="0.707111 0.707097 0.0028338 -0.00011341" mass="1.99298" diaginertia="0.013438 0.0103669 0.00571799" />
+        <joint name="FR_steer_joint" />
+        <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="FR_steer_link" />
+        <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="FR_steer_link" contype="0" conaffinity="0" />
+        <body name="FR_wheel_left_link" pos="0 0.1045 -0.1689">
+          <inertial pos="0 -0.0789026 0" quat="0.707107 0 0 0.707107" mass="0.8036" diaginertia="0.0038696 0.0020683 0.0020683" />
+          <joint name="FR_wheel_left_joint" axis="0 1 0" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="FR_wheel_left_link" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="FR_wheel_left_link" contype="0" conaffinity="0" />
+          <geom name="col_FR_wheel_left_link" type="cylinder" size="0.0825 0.0225" pos="0.0 -0.0805 0.0" quat="0.7071067811865476 0.7071067811865476 0 0" contype="1" conaffinity="1" mass="0" />
+        </body>
+        <body name="FR_wheel_right_link" pos="0 -0.1045 -0.1689">
+          <inertial pos="0 0.0789026 0" quat="0.707107 0 0 0.707107" mass="0.8036" diaginertia="0.0038696 0.0020683 0.0020683" />
+          <joint name="FR_wheel_right_joint" axis="0 -1 0" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="FR_wheel_right_link" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="FR_wheel_right_link" contype="0" conaffinity="0" />
+          <geom name="col_FR_wheel_right_link" type="cylinder" size="0.0825 0.0225" pos="0.0 0.0805 0.0" quat="0.7071067811865476 0.7071067811865476 0 0" contype="1" conaffinity="1" mass="0" />
+        </body>
+      </body>
+      <body name="RR_steer_link" pos="-0.475 -0.475 0.2514">
+        <inertial pos="9.19e-05 0 -0.143272" quat="0.70711 0.707097 0.00282235 -0.000101928" mass="1.99298" diaginertia="0.0134379 0.0103669 0.00571799" />
+        <joint name="RR_steer_joint" />
+        <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="RR_steer_link" />
+        <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="RR_steer_link" contype="0" conaffinity="0" />
+        <body name="RR_wheel_left_link" pos="0 0.1045 -0.1689">
+          <inertial pos="0 -0.0789026 0" quat="0.707107 0 0 0.707107" mass="0.8036" diaginertia="0.0038696 0.0020683 0.0020683" />
+          <joint name="RR_wheel_left_joint" axis="0 1 0" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="RR_wheel_left_link" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="RR_wheel_left_link" contype="0" conaffinity="0" />
+          <geom name="col_RR_wheel_left_link" type="cylinder" size="0.0825 0.0225" pos="0.0 -0.0805 0.0" quat="0.7071067811865476 0.7071067811865476 0 0" contype="1" conaffinity="1" mass="0" />
+        </body>
+        <body name="RR_wheel_right_link" pos="0 -0.1045 -0.1689">
+          <inertial pos="0 0.0789026 0" quat="0.707107 0 0 0.707107" mass="0.8036" diaginertia="0.0038696 0.0020683 0.0020683" />
+          <joint name="RR_wheel_right_joint" axis="0 -1 0" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="RR_wheel_right_link" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="RR_wheel_right_link" contype="0" conaffinity="0" />
+          <geom name="col_RR_wheel_right_link" type="cylinder" size="0.0825 0.0225" pos="0.0 0.0805 0.0" quat="0.7071067811865476 0.7071067811865476 0 0" contype="1" conaffinity="1" mass="0" />
+        </body>
+      </body>
+      <body name="RL_steer_link" pos="-0.475 0.475 0.2514">
+        <inertial pos="-9.24e-05 0 -0.143272" quat="0.707097 0.707111 -0.00011341 0.0028338" mass="1.99298" diaginertia="0.013438 0.0103669 0.00571799" />
+        <joint name="RL_steer_joint" />
+        <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="RL_steer_link" />
+        <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="RL_steer_link" contype="0" conaffinity="0" />
+        <body name="RL_wheel_left_link" pos="0 0.1045 -0.1689">
+          <inertial pos="0 -0.0789026 0" quat="0.707107 0 0 0.707107" mass="0.8036" diaginertia="0.0038696 0.0020683 0.0020683" />
+          <joint name="RL_wheel_left_joint" axis="0 1 0" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="RL_wheel_left_link" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="RL_wheel_left_link" contype="0" conaffinity="0" />
+          <geom name="col_RL_wheel_left_link" type="cylinder" size="0.0825 0.0225" pos="0.0 -0.0805 0.0" quat="0.7071067811865476 0.7071067811865476 0 0" contype="1" conaffinity="1" mass="0" />
+        </body>
+        <body name="RL_wheel_right_link" pos="0 -0.1045 -0.1689">
+          <inertial pos="0 0.0789026 0" quat="0.707107 0 0 0.707107" mass="0.8036" diaginertia="0.0038696 0.0020683 0.0020683" />
+          <joint name="RL_wheel_right_joint" axis="0 -1 0" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="RL_wheel_right_link" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="RL_wheel_right_link" contype="0" conaffinity="0" />
+          <geom name="col_RL_wheel_right_link" type="cylinder" size="0.0825 0.0225" pos="0.0 0.0805 0.0" quat="0.7071067811865476 0.7071067811865476 0 0" contype="1" conaffinity="1" mass="0" />
+        </body>
+      </body>
+      <body name="Link1" pos="0 0 0.7954">
+        <inertial pos="0.0006446 0.0492283 0.0881217" quat="0.687273 -0.161902 0.182825 0.684119" mass="2.30911" diaginertia="0.00783923 0.00642811 0.00414716" />
+        <joint name="Joint1" axis="0 0 -1" armature="4.9256104369436654e-05" damping="1.0107672420857402e-06" frictionloss="0.0" />
+        <geom quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="Link1" />
+        <geom quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="Link1" contype="0" conaffinity="0" />
+        <body name="Link2" pos="0 -0.0105 0.105">
+          <inertial pos="0.512722 0.0205509 0.0001174" quat="0.503827 0.506364 0.493379 0.496317" mass="1.59513" diaginertia="0.105711 0.105481 0.00119109" />
+          <joint name="Joint2" axis="0 1 0" limited="true" range="-3.14 0.5" armature="0.0015170188214235032" damping="0.0006148162044033986" frictionloss="0.0" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="Link2" />
+          <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="Link2" contype="0" conaffinity="0" />
+          <body name="Link3" pos="0.705 0.0445 0">
+            <inertial pos="-0.0001361 -0.0307382 0.0895608" quat="0.98424 0.176829 0.000789135 -0.00136917" mass="1.06686" diaginertia="0.0021794 0.001948 0.0015205" />
+            <joint name="Joint3" axis="0 -1 0" limited="true" range="-3.14 0.5" armature="0.012412940380012059" damping="0.4126206104297769" frictionloss="0.0" />
+            <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="Link3" />
+            <geom type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="Link3" contype="0" conaffinity="0" />
+            <body name="Link4" pos="3.5678e-05 -0.034015 0.0685">
+              <inertial pos="-2.1e-06 -0.0161677 0.0908131" quat="0.777735 0.628592 0 0" mass="0.310335" diaginertia="0.0007151 0.000673839 0.000156961" />
+              <joint name="Joint4" axis="0 0 -1" armature="0.006235001399179067" damping="0.04482610813659325" frictionloss="0.0" />
+              <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="Link4" />
+              <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="Link4" contype="0" conaffinity="0" />
+              <body name="Link5" pos="0 -0.065 0.102">
+                <inertial pos="0 0.500744 0" quat="0.707104 0.707104 0.00207963 -0.00207963" mass="0.134122" diaginertia="0.0128723 0.0127363 0.0001398" />
+                <joint name="Joint5" axis="0 -1 0" armature="0.002383865439760338" damping="1.0084580377172693e-06" frictionloss="0.0" />
+                <geom pos="0 0 0" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.752941 0.752941 0.752941 1" density="0" mesh="Link5" />
+                <geom pos="0 0 0" quat="1 0 0 0" type="mesh" rgba="0.752941 0.752941 0.752941 1" mesh="Link5" contype="0" conaffinity="0" />
+                <body name="Link6" pos="0 0.93 0">
+                  <inertial pos="0 0 0" quat="0.000281656 0.706825 -0.000281432 0.707388" mass="0.0005" diaginertia="4.17e-06 2.51e-06 1.67e-06" />
+                  <geom name="racket_face" size="0.1225 0.1 0.005" quat="0.500398 0.5 0.499602 0.5" type="box" mass="0" rgba="0.5 0.5 0.5 0" />
+                  <site name="racket_center" pos="0 0 0" />
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <freejoint name="root" />
+    </body>
+    <geom name="floor" type="plane" size="30 30 0.1" contype="1" conaffinity="1" />
+    <light pos="0 0 4" dir="0 0 -1" directional="true" />
+    <body name="court" pos="0 0 0">
+      <geom name="ct_surround" type="box" rgba="0.10 0.22 0.26 1" mass="0" contype="0" conaffinity="0" pos="6.7 0 0.001" size="8.7 5.05 0.0005" />
+      <geom name="ct_court" type="box" rgba="0.08 0.40 0.28 1" mass="0" contype="0" conaffinity="0" pos="6.7 0 0.002" size="6.7 3.05 0.0005" />
+      <geom name="ct_base_near" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="0.02 0 0.004" size="0.02 3.05 0.0005" />
+      <geom name="ct_base_far" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="13.38 0 0.004" size="0.02 3.05 0.0005" />
+      <geom name="ct_side_d_l" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="6.7 -3.03 0.004" size="6.7 0.02 0.0005" />
+      <geom name="ct_side_d_r" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="6.7 3.03 0.004" size="6.7 0.02 0.0005" />
+      <geom name="ct_side_s_l" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="6.7 -2.57 0.004" size="6.7 0.02 0.0005" />
+      <geom name="ct_side_s_r" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="6.7 2.57 0.004" size="6.7 0.02 0.0005" />
+      <geom name="ct_svc_near" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="4.7 0 0.004" size="0.02 3.05 0.0005" />
+      <geom name="ct_svc_far" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="8.7 0 0.004" size="0.02 3.05 0.0005" />
+      <geom name="ct_long_near" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="0.78 0 0.004" size="0.02 3.05 0.0005" />
+      <geom name="ct_long_far" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="12.62 0 0.004" size="0.02 3.05 0.0005" />
+      <geom name="ct_mid_near" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="2.36 0 0.004" size="2.36 0.02 0.0005" />
+      <geom name="ct_mid_far" type="box" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" pos="11.04 0 0.004" size="2.36 0.02 0.0005" />
+      <geom name="ct_net_l" type="mesh" rgba="0.10 0.12 0.12 0.55" mass="0" contype="0" conaffinity="0" mesh="ct_net_l" pos="6.7 0 0" />
+      <geom name="ct_tape_l" type="mesh" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" mesh="ct_tape_l" pos="6.7 0 0" />
+      <geom name="ct_post_l" type="cylinder" rgba="0.85 0.85 0.87 1" mass="0" contype="0" conaffinity="0" pos="6.7 -3.05 0.775" size="0.025 0.775" />
+      <geom name="ct_net_r" type="mesh" rgba="0.10 0.12 0.12 0.55" mass="0" contype="0" conaffinity="0" mesh="ct_net_r" pos="6.7 0 0" />
+      <geom name="ct_tape_r" type="mesh" rgba="0.98 0.98 0.95 1" mass="0" contype="0" conaffinity="0" mesh="ct_tape_r" pos="6.7 0 0" />
+      <geom name="ct_post_r" type="cylinder" rgba="0.85 0.85 0.87 1" mass="0" contype="0" conaffinity="0" pos="6.7 3.05 0.775" size="0.025 0.775" />
+    </body>
+  </worldbody>
+  <actuator>
+    <motor name="FL_steer_joint" joint="FL_steer_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
+    <motor name="FL_wheel_left_joint" joint="FL_wheel_left_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
+    <motor name="FL_wheel_right_joint" joint="FL_wheel_right_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
+    <motor name="FR_steer_joint" joint="FR_steer_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
+    <motor name="FR_wheel_left_joint" joint="FR_wheel_left_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
+    <motor name="FR_wheel_right_joint" joint="FR_wheel_right_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
+    <motor name="RL_steer_joint" joint="RL_steer_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
+    <motor name="RL_wheel_left_joint" joint="RL_wheel_left_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
+    <motor name="RL_wheel_right_joint" joint="RL_wheel_right_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
+    <motor name="RR_steer_joint" joint="RR_steer_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
+    <motor name="RR_wheel_left_joint" joint="RR_wheel_left_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
+    <motor name="RR_wheel_right_joint" joint="RR_wheel_right_joint" gear="1" ctrllimited="true" ctrlrange="-11 11" />
+    <motor name="Joint1" joint="Joint1" gear="1" ctrllimited="true" ctrlrange="-120 120" />
+    <motor name="Joint2" joint="Joint2" gear="1" ctrllimited="true" ctrlrange="-120 120" />
+    <motor name="Joint3" joint="Joint3" gear="1" ctrllimited="true" ctrlrange="-11 11" />
+    <motor name="Joint4" joint="Joint4" gear="1" ctrllimited="true" ctrlrange="-11 11" />
+    <motor name="Joint5" joint="Joint5" gear="1" ctrllimited="true" ctrlrange="-1.6 1.6" />
+  </actuator>
+  <keyframe>
+    <key name="home" qpos="0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0" />
+  </keyframe>
+  <option timestep="0.001" />
+</mujoco>

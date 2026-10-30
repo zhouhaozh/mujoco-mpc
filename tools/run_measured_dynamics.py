@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Compare measured motion with dynamics driven by the original logged setpoints.
 
-Selects current, baseline or fitted simulation parameters, not identified hardware
-settings. Only initial measured state and commands are passed to the native process.
+Loads simulation parameters from an explicitly selected, self-contained directory. Only initial measured state and commands are passed to the native process.
 """
 import argparse
 import csv
@@ -13,15 +12,15 @@ import math
 import os
 from pathlib import Path
 import queue
-import shutil
 import subprocess
 import time
 
 import numpy as np
 
 from replay_measured_robot import DEFAULT_DATA, DEFAULT_MAPPING, ROOT, interpolate, read_record
-from measured_dynamics_profiles import CURRENT_CONFIGS, command_identity, replay_scene, snapshot_profile
-from measured_replay_initialization import DEFAULT_SETTINGS, apply_initialization
+from measured_dynamics_profiles import (CURRENT_CONFIGS, command_identity, replay_scene,
+                                        snapshot_config_dir, validate_config_dir)
+from measured_replay_initialization import apply_initialization
 
 PROJECT = ROOT / 'sckd_sim'
 BINARY = PROJECT / 'build/x4_command_replay'
@@ -148,7 +147,7 @@ def compare(directory, record, measured_dq, measured_base_v, payload):
 
 def write_report(output, manifest, reports):
     lines = ['# 实测命令驱动的动力学对照', '',
-             f'参数配置：{manifest["profile"]}。本轮重新执行原生动力学计算。', '',
+             f'参数配置：{manifest["config_dir"]}。本轮重新执行原生动力学计算。', '',
              '以实测底盘/机械臂位置和速度初始化，按原始日志命令及记录的起始控制规则运行；不再写入后续实测状态。', '',
              f'起始控制设置：{manifest.get("initialization_mode", "legacy")}。逐条设置来源、前缀长度及底盘初态保存在 manifest.json 的 initialization_by_group 中。', '',
              '本结果不是实际驱动器完整命令的复刻：日志没有 Kp/Kd、模式、前馈和各轮反馈。J5 位置命令恒为零，控制模式及姿态方向未确认。', '',
@@ -188,7 +187,7 @@ def view_result(output, group=1, speed=.25):
             observed.append([{k: float(v) for k, v in row.items()} for row in csv.DictReader(f)])
     scene_path = replay_scene(output)
     manifest = json.loads((output/'manifest.json').read_text())
-    profile_label = manifest.get('profile', output.name)
+    profile_label = manifest.get('config_dir', manifest.get('profile', output.name))
     sim = Robot(scene_path)
     real = Robot(scene_path)
     keys, cursor, paused, last = queue.SimpleQueue(), 0., False, time.monotonic()
@@ -240,52 +239,60 @@ def view_result(output, group=1, speed=.25):
                     scene.ngeom += 1
             viewer.set_texts((mujoco.mjtFont.mjFONT_NORMAL, mujoco.mjtGridPos.mjGRID_TOPLEFT,
                               'Dynamics vs measured\nRobot\nRacket markers\nTime\nControls\nLimit',
-                              f'{directories[index].name}\nSolid = simulated; cyan ghost = measured\nRed = simulated; pink = Vicon\n{frame["t"]:.3f}s / {speed:g}x\nSpace pause | R restart | 1..5 select\nRecorded profile: {profile_label}; hardware modes unknown'))
+                              f'{directories[index].name}\nSolid = simulated; cyan ghost = measured\nRed = simulated; pink = Vicon\n{frame["t"]:.3f}s / {speed:g}x\nSpace pause | R restart | 1..5 select\nRecorded configuration: {profile_label}; hardware modes unknown'))
             viewer.sync()
             time.sleep(1/60)
 
 
-def write_profile_comparison(output):
-    manifests = {p: json.loads((output/p/'manifest.json').read_text()) for p in ('baseline', 'fitted')}
-    same_inputs = manifests['baseline']['experiment_sha256'] == manifests['fitted']['experiment_sha256']
-    if not same_inputs:
-        raise AssertionError('Profile comparison initial states/commands/settings differ')
-    results = {p: json.loads((output/p/'metrics.json').read_text()) for p in manifests}
-    comparison = {'profiles': ['baseline', 'fitted'], 'same_experiment_inputs': same_inputs,
-                  'experiment_sha256': manifests['baseline']['experiment_sha256'], 'metrics': results}
+def write_config_comparison(output):
+    labels = ('config_1', 'config_2')
+    manifests = {label: json.loads((output/label/'manifest.json').read_text()) for label in labels}
+    first, second = (manifests[label] for label in labels)
+    same_raw = first['raw_experiment_sha256'] == second['raw_experiment_sha256']
+    if not same_raw:
+        raise AssertionError('Configuration comparison measured initial states/commands/settings differ')
+    same_effective = first['experiment_sha256'] == second['experiment_sha256']
+    results = {label: json.loads((output/label/'metrics.json').read_text()) for label in labels}
+    comparison = {'config_dirs': {label: manifests[label]['config_dir'] for label in labels},
+                  'same_raw_experiment_inputs': same_raw,
+                  'same_experiment_inputs': same_effective,
+                  'raw_experiment_sha256': first['raw_experiment_sha256'],
+                  'experiment_sha256': {label: manifests[label]['experiment_sha256'] for label in labels},
+                  'metrics': results}
     (output/'comparison.json').write_text(json.dumps(comparison, indent=2, ensure_ascii=False)+'\n')
-    lines = ['# 新旧参数重新仿真对照', '',
-             '两套配置均重新执行原生动力学步进，共用同一次解析的初始状态和命令；输入 SHA-256 一致。', '',
+    lines = ['# 两套配置重新仿真对照', '',
+             *[f'- {label}：{manifests[label]["config_dir"]}' for label in labels], '',
+             '两套配置均重新执行原生动力学步进，共用同一次解析的实测初始状态和命令；原始输入 SHA-256 一致。',
+             ('应用起始控制设置后的输入也一致。' if same_effective else
+              '应用起始控制设置后的输入不同：本次差异包含初始化策略，不能单独归因于物理参数变化。'), '',
              '|组|配置|底盘 XY RMSE / m|J1–J5 角度 RMSE / °|J1–J5 速度 RMSE / rad/s|',
              '|---|---|---:|---|---|']
-    for old, new in zip(results['baseline'], results['fitted']):
-        for profile, metrics in [('baseline', old), ('fitted', new)]:
+    for pair in zip(*(results[label] for label in labels)):
+        for label, metrics in zip(labels, pair):
             q = ', '.join(f'{v:.3f}' for v in metrics['joint_angle_deg']['rmse_per_axis'])
             dq = ', '.join(f'{v:.3f}' for v in metrics['joint_velocity_rad_s']['rmse_per_axis'])
-            lines.append(f'|{metrics["group"]}|{profile}|{metrics["base_xy_m"]["vector_rmse"]:.4f}|{q}|{dq}|')
-    lines += ['', '逐组轨迹图、实测叠加和模型快照分别保存在 baseline/、fitted/ 子目录。',
-              'fitted 的 RS04 120 N·m 是短轨迹有效限矩，没有热或持续时间模型，不代表连续额定能力。',
-              '相同初始状态指相同的可观测状态及相同初始化规则；真机记录前的控制器内部状态仍未知。']
+            lines.append(f'|{metrics["group"]}|{label}|{metrics["base_xy_m"]["vector_rmse"]:.4f}|{q}|{dq}|')
+    lines += ['', '逐组轨迹图、实测叠加和独立模型快照分别保存在 config_1/、config_2/ 子目录。',
+              '真机记录前的控制器内部状态仍未知。']
     (output/'comparison.md').write_text('\n'.join(lines)+'\n')
-    print(f'Fresh profile comparison: {output/"comparison.md"}', flush=True)
+    print(f'Fresh configuration comparison: {output/"comparison.md"}', flush=True)
 
 
-def run_profile(args, profile, output, prepared):
+def run_config(args, config_dir, output, prepared):
+    config_dir = validate_config_dir(config_dir)
     output = output.resolve()
-    output.mkdir(parents=True, exist_ok=True)
-    config_paths = snapshot_profile(profile, output/'config')
-    initialization_settings = None
-    if profile == 'current' and not getattr(args, 'legacy_initialization', False):
-        initialization_settings = output/'config/replay_initialization.json'
-        shutil.copy2(DEFAULT_SETTINGS, initialization_settings)
-    print(f'Running fresh dynamics: profile={profile}, output={output}', flush=True)
-    manifest = {'profile': profile, 'config_paths': {k: str(Path(v).relative_to(output)) for k,v in config_paths.items()},
-                'experiment_sha256': {}, 'mapping': DEFAULT_MAPPING, 'base_command_frame': args.base_command_frame,
+    config_paths = snapshot_config_dir(config_dir, output/'config')
+    initialization_settings = output/'config/replay_initialization.json'
+    print(f'Running fresh dynamics: config_dir={config_dir}, output={output}', flush=True)
+    manifest = {'config_dir': str(config_dir), 'config_paths': {k: str(Path(v).relative_to(output)) for k,v in config_paths.items()},
+                'raw_experiment_sha256': {}, 'experiment_sha256': {}, 'mapping': DEFAULT_MAPPING, 'base_command_frame': args.base_command_frame,
                 'base_feedback_frame': args.base_feedback_frame, 'arm_mode': args.arm_mode,
                 'gravity_feedforward': not args.no_gravity_feedforward,
-                'initialization_mode': 'current_settings' if initialization_settings else 'legacy',
+                'initialization_mode': 'directory_settings',
                 'initialization_by_group': {},
                 'binary_sha256': hashlib.sha256(BINARY.read_bytes()).hexdigest(),
+                'snapshot_sha256': {str(p.relative_to(output/'config')): hashlib.sha256(p.read_bytes()).hexdigest()
+                                    for p in sorted((output/'config').rglob('*')) if p.is_file()},
                 'config_sha256': {k: hashlib.sha256(Path(v).read_bytes()).hexdigest() for k,v in config_paths.items()},
                 'config_contents': {k: json.loads(Path(v).read_text()) for k,v in config_paths.items() if v.endswith('.json')},
                 'assumptions': [
@@ -299,19 +306,15 @@ def run_profile(args, profile, output, prepared):
                     '起始保持属于已选择的仿真控制假设，不代表确认了采集时的真机驱动模式。',
                     'J5 位置对照依赖暂定方向；实测轮状态、真实模式、前馈、控制增益和延迟未包含于本批日志。',
                 ]}
-    if initialization_settings:
-        manifest['initialization_settings'] = {
-            'path': str(initialization_settings.relative_to(output)),
-            'sha256': hashlib.sha256(initialization_settings.read_bytes()).hexdigest()}
+    manifest['initialization_settings'] = {
+        'path': str(initialization_settings.relative_to(output)),
+        'sha256': hashlib.sha256(initialization_settings.read_bytes()).hexdigest()}
     reports = []
     for number, (record, dq, base_v, original) in enumerate(prepared, 1):
         payload = {**original, 'project_root': str(output/'config'),
                    **{k: Path(v).name for k,v in config_paths.items()}}
-        if initialization_settings:
-            payload, metadata = apply_initialization(payload, record.path, settings_path=initialization_settings)
-        else:
-            metadata = {'status': 'legacy', 'arm_start_policy': payload.get('arm_start_policy', 'immediate'),
-                        'chassis_servo_state': payload['initial'].get('chassis_servo_state')}
+        payload, metadata = apply_initialization(payload, record.path, settings_path=initialization_settings)
+        manifest['raw_experiment_sha256'][str(number)] = command_identity(original)
         manifest['initialization_by_group'][str(number)] = metadata
         manifest['experiment_sha256'][str(number)] = command_identity(payload)
         input_path = output/f'group_{number}_input.json'
@@ -339,18 +342,19 @@ def main():
     inputs.add_argument('--trajectory-file', type=Path,
                         help='generate a replay for this single trajectory CSV')
     parser.add_argument('--output', type=Path, default=ROOT/'outputs/measured_dynamics'/datetime.now().strftime('%Y%m%d_%H%M%S_%f'))
-    profiles = parser.add_mutually_exclusive_group()
-    profiles.add_argument('--profile', choices=['current', 'baseline', 'fitted'],
-                          help='parameter configuration for fresh dynamics (default: current)')
-    profiles.add_argument('--compare-profiles', action='store_true',
-                          help='rerun baseline and fitted from the same prepared initial states and commands')
+    configs = parser.add_mutually_exclusive_group()
+    configs.add_argument('--config-dir', type=Path,
+                         help='self-contained configuration directory (required for a fresh replay)')
+    configs.add_argument('--compare-config-dirs', type=Path, nargs=2, metavar=('DIR1', 'DIR2'),
+                         help='rerun two configuration directories from the same measured state and commands')
+    parser.add_argument('--profile', help=argparse.SUPPRESS)
+    parser.add_argument('--compare-profiles', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--no-build', action='store_true')
     parser.add_argument('--base-command-frame', choices=['world','body'], default='world')
     parser.add_argument('--base-feedback-frame', choices=['world','body'], default='world')
     parser.add_argument('--arm-mode', choices=['hybrid','j5_velocity'], default='hybrid')
     parser.add_argument('--no-gravity-feedforward', action='store_true')
-    parser.add_argument('--legacy-initialization', action='store_true',
-                        help='use the original cold-start/immediate policy with the current profile')
+    parser.add_argument('--legacy-initialization', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--view', action='store_true')
     parser.add_argument('--view-run', type=Path, help='view an existing comparison without rerunning dynamics')
     parser.add_argument('--group', type=int, default=1,
@@ -358,10 +362,14 @@ def main():
     parser.add_argument('--speed', type=float, default=.25)
     args = parser.parse_args()
     args.output = args.output.resolve()
-    if args.view_run and (args.profile or args.compare_profiles or args.view or args.trajectory_file):
-        parser.error('--view-run cannot be combined with --trajectory-file, --profile, --compare-profiles or --view')
-    if args.compare_profiles and args.view:
-        parser.error('view each completed comparison with --view-run OUTPUT/baseline or OUTPUT/fitted')
+    if args.profile is not None or args.compare_profiles:
+        parser.error('--profile/--compare-profiles were removed; use --config-dir PATH or --compare-config-dirs DIR1 DIR2')
+    if args.legacy_initialization:
+        parser.error('--legacy-initialization was removed; set enabled=false in CONFIG_DIR/replay_initialization.json')
+    if args.view_run and (args.config_dir or args.compare_config_dirs or args.view or args.trajectory_file):
+        parser.error('--view-run cannot be combined with --trajectory-file, --config-dir, --compare-config-dirs or --view')
+    if args.compare_config_dirs and args.view:
+        parser.error('view each completed comparison with --view-run OUTPUT/config_1 or OUTPUT/config_2')
     if not math.isfinite(args.speed) or args.speed <= 0:
         parser.error('--speed must be positive and finite')
     if args.view or args.view_run:
@@ -370,7 +378,16 @@ def main():
     if args.view_run:
         view_result(args.view_run, args.group, args.speed)
         return
-    if args.output.exists() and any(args.output.iterdir()):
+    if not (args.config_dir or args.compare_config_dirs):
+        parser.error('fresh replay requires --config-dir PATH or --compare-config-dirs DIR1 DIR2')
+    config_dirs = args.compare_config_dirs or [args.config_dir]
+    try:
+        config_dirs = [validate_config_dir(path) for path in config_dirs]
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
+    if any(args.output.is_relative_to(path) for path in config_dirs):
+        parser.error('--output must be outside the source configuration directories')
+    if args.output.exists() and (not args.output.is_dir() or any(args.output.iterdir())):
         parser.error('--output must be new or empty')
     if args.trajectory_file:
         path = args.trajectory_file.resolve()
@@ -390,12 +407,12 @@ def main():
             subprocess.run(['cmake', '--build', str(PROJECT/'build'), '--target', 'x4_command_replay', '-j4'], stdout=f, stderr=subprocess.STDOUT, check=True)
     prepared = [prepare(path, args.base_command_frame, args.base_feedback_frame,
                         args.arm_mode, not args.no_gravity_feedforward) for path in paths]
-    if args.compare_profiles:
-        for profile in ('baseline', 'fitted'):
-            run_profile(args, profile, args.output/profile, prepared)
-        write_profile_comparison(args.output)
+    if args.compare_config_dirs:
+        for index, config_dir in enumerate(config_dirs, 1):
+            run_config(args, config_dir, args.output/f'config_{index}', prepared)
+        write_config_comparison(args.output)
     else:
-        run_profile(args, args.profile or 'current', args.output, prepared)
+        run_config(args, config_dirs[0], args.output, prepared)
     if args.view:
         view_result(args.output, args.group, args.speed)
 

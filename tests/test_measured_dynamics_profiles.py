@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -52,6 +53,89 @@ class MeasuredDynamicsProfileTests(unittest.TestCase):
                             fitted_robot['arm_servo']['kp'])
         self.assertEqual(baseline_motors['motors']['RS04']['continuous_torque_nm'], 40)
         self.assertEqual(fitted_motors['motors']['RS04']['continuous_torque_nm'], 120)
+
+    def test_configuration_directories_are_self_contained_and_relocatable(self):
+        import mujoco
+
+        source_root = profiles.PROJECT/'models/config/measured_dynamics'
+        for name in ('current', 'baseline', 'fitted'):
+            source = profiles.validate_config_dir(source_root/name)
+            self.assertEqual(source, (source_root/name).resolve())
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = source_root/'current'
+            paths = profiles.snapshot_config_dir(source, root/'snapshot')
+            self.assertEqual(set(paths), set(profiles.PROFILE_FILES))
+            self.assertTrue((root/'snapshot/replay_initialization.json').is_file())
+            self.assertTrue((root/'snapshot/provenance.json').is_file())
+            self.assertTrue((root/'snapshot/meshes/Link1.STL').is_file())
+            self.assertFalse(any(path.is_symlink() for path in (root/'snapshot').rglob('*')))
+            self.assertFalse(os.path.samefile(source/'meshes/Link1.STL',
+                                              root/'snapshot/meshes/Link1.STL'))
+            self.assertEqual(json.loads(Path(paths['robot_variant_path']).read_text())['motor_config'],
+                             'motors.json')
+            self.assertEqual(ET.parse(paths['scene_path']).find('compiler').get('meshdir'), '.')
+
+            relocated = root/'renamed_configuration'
+            (root/'snapshot').rename(relocated)
+            profiles.validate_config_dir(relocated)
+            mujoco.MjModel.from_xml_path(str(relocated/'scene.mjcf'))
+
+    def test_invalid_configuration_fails_before_snapshot_creation(self):
+        source = profiles.PROJECT/'models/config/measured_dynamics/current'
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            incomplete = root/'incomplete'
+            incomplete.mkdir()
+            for name in profiles.CONFIG_DIRECTORY_FILES:
+                if name != 'chassis.json':
+                    shutil.copy2(source/name, incomplete/name)
+            (incomplete/'meshes').mkdir()
+            destination = root/'snapshot'
+            with self.assertRaisesRegex(FileNotFoundError, 'chassis.json'):
+                profiles.snapshot_config_dir(incomplete, destination)
+            self.assertFalse(destination.exists())
+
+            escaping = root/'escaping'
+            shutil.copytree(source, escaping)
+            nested = escaping/'nested_snapshot'
+            with self.assertRaisesRegex(ValueError, 'outside the source'):
+                profiles.snapshot_config_dir(escaping, nested)
+            self.assertFalse(nested.exists())
+
+            original_scene = (escaping/'scene.mjcf').read_text()
+            escaping_scene = original_scene.replace('meshdir="."', 'meshdir="../outside"')
+            (escaping/'scene.mjcf').write_text(escaping_scene)
+            with self.assertRaisesRegex(ValueError, r'without \.\.'):
+                profiles.validate_config_dir(escaping)
+
+            (escaping/'scene.mjcf').write_text('<mujoco>')
+            with self.assertRaisesRegex(ValueError, 'not valid XML'):
+                profiles.validate_config_dir(escaping)
+            (escaping/'scene.mjcf').write_text(original_scene)
+
+            initialization_path = escaping/'replay_initialization.json'
+            original_initialization = initialization_path.read_text()
+            initialization = json.loads(original_initialization)
+            initialization['schema_version'] = 2
+            initialization_path.write_text(json.dumps(initialization))
+            with self.assertRaisesRegex(ValueError, 'schema_version'):
+                profiles.validate_config_dir(escaping)
+            initialization_path.write_text(original_initialization)
+
+            robot_path = escaping/'robot.json'
+            original_robot = robot_path.read_text()
+            robot_path.write_text('[]')
+            with self.assertRaisesRegex(ValueError, 'must contain an object: robot.json'):
+                profiles.validate_config_dir(escaping)
+            robot_path.write_text(original_robot)
+
+            missing_asset = root/'missing_asset'
+            shutil.copytree(source, missing_asset)
+            (missing_asset/'meshes/Link1.STL').unlink()
+            with self.assertRaisesRegex(FileNotFoundError, 'Link1.STL'):
+                profiles.validate_config_dir(missing_asset)
 
     def test_snapshot_is_isolated_loadable_and_does_not_edit_current_config(self):
         current = [profiles.PROJECT/path for path in profiles.CURRENT_CONFIGS.values()]

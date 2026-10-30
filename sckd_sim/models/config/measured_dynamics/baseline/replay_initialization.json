@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "enabled": false,
+  "arm_start_policy": "immediate",
+  "identification_source": "legacy baseline replay behavior",
+  "scope": "Cold chassis-controller start and immediate arm command application.",
+  "records_by_source_sha256": {}
+}
