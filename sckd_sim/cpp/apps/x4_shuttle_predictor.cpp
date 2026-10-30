@@ -144,7 +144,8 @@ bool HandleLine(int client, const std::string& line,
       SendLine(client, {{"ok", true}});
       return false;
     }
-    predictor.UpdateUntil(request.at("t").get<double>());
+    predictor.UpdateUntil(request.at("t").get<double>(),
+                          request.value("refresh_prediction", true));
     SendLine(client, TargetResponse(predictor));
   } catch (const std::exception& error) {
     SendLine(client, {{"ok", false}, {"error", error.what()}});

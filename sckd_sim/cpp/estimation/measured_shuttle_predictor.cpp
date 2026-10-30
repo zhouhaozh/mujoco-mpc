@@ -192,9 +192,10 @@ struct MeasuredShuttlePredictor::Impl {
     }
   }
 
-  bool UpdateUntil(double relative_time_s) {
+  bool UpdateUntil(double relative_time_s, bool refresh_prediction) {
     const auto begin = std::chrono::steady_clock::now();
     const auto record_duration = [&] {
+      if (!refresh_prediction) return;
       last_target.prediction_ms =
           std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count();
     };
@@ -205,7 +206,6 @@ struct MeasuredShuttlePredictor::Impl {
         return last_target.valid;
       }
       const double absolute_limit_ms = first_timestamp_ms + 1000.0 * relative_time_s + 1e-6;
-      bool changed = false;
       while (next_row < rows.size() && rows[next_row].timestamp_ms <= absolute_limit_ms) {
         const auto& row = rows[next_row];
         ball::mlp::SingleBall ball;
@@ -218,17 +218,16 @@ struct MeasuredShuttlePredictor::Impl {
         // addNode still rebuilds the fit and refreshes validity for every sample.
         if (track->addNode(ball, EstimatedHitTimeMs(row), config.preassociated_replay)) {
           ++stats.accepted;
-          changed = true;
         } else {
           ++stats.rejected;
           stats.last_error = track->getLastError();
         }
         ++next_row;
+        prediction_dirty = true;
       }
-      if (changed) {
+      if (refresh_prediction && prediction_dirty) {
         RefreshTarget();
-      } else if (!track->isValid()) {
-        predicted_trajectory.clear();
+        prediction_dirty = false;
       }
       record_duration();
       return last_target.valid;
@@ -272,6 +271,7 @@ struct MeasuredShuttlePredictor::Impl {
   Target last_target;
   std::vector<std::array<double, 4>> predicted_trajectory;
   std::optional<double> last_valid_hit_time_s;
+  bool prediction_dirty = false;
   Stats stats;
 };
 
@@ -283,8 +283,8 @@ MeasuredShuttlePredictor::MeasuredShuttlePredictor(MeasuredShuttlePredictor&&) n
 MeasuredShuttlePredictor& MeasuredShuttlePredictor::operator=(MeasuredShuttlePredictor&&) noexcept =
     default;
 
-bool MeasuredShuttlePredictor::UpdateUntil(double relative_time_s) {
-  return impl_->UpdateUntil(relative_time_s);
+bool MeasuredShuttlePredictor::UpdateUntil(double relative_time_s, bool refresh_prediction) {
+  return impl_->UpdateUntil(relative_time_s, refresh_prediction);
 }
 
 const MeasuredShuttlePredictor::Target& MeasuredShuttlePredictor::target() const {

@@ -22,7 +22,7 @@
   "base_speed_limit_m_s": 0.4,
   "settle_s": 0.5,
   "stop_s": 0.6,
-  "prediction_period_ms": 10,
+  "prediction_period_ms": 4,
   "mpc_period_ms": 0,
   "minimum_remaining_s": 0.04,
   "hit_speed_m_s": 4.0,
@@ -30,6 +30,7 @@
   "hit_pitch_deg": 10.0,
   "hit_vertical_speed_m_s": 0.5,
   "notes": [
+    "每1ms仿真时间加入截至当前时刻的观测；prediction_period_ms=4，每4ms同步刷新击球点和预测轨迹，间隔内保留上一份预测结果。",
     "MPC求解期间冻结仿真时钟、机器人状态、球状态和击球剩余时间；求解返回后在同一仿真时刻完成控制输出，再推进1ms。求解在仿真时间中视为瞬间完成，墙钟耗时仍记录但不计入仿真计算延迟。",
     "mpc_period_ms=0：每推进1ms后，在目标有效且满足最小击球剩余时间条件时立即重解；正值按固定仿真周期触发，求解期间同样冻结仿真。实际调用频率由求解和循环开销决定，不代表墙钟1000Hz。",
     "显示限速保持现状：mpc_period_ms=0且本轮发生求解时跳过可视化慢放等待，其余循环沿用全局时间表；--view-speed 0.1不保证求解阶段严格0.1倍速，恢复等待时可能补等或追赶。",

@@ -50,8 +50,9 @@ class MeasuredShuttlePredictor {
   MeasuredShuttlePredictor& operator=(MeasuredShuttlePredictor&&) noexcept;
 
   // Adds only source rows whose relative timestamp is <= relative_time_s.
+  // When false, retain the published target/trajectory until a refreshing call.
   // Returns true when a valid descending fixed-height target is available.
-  bool UpdateUntil(double relative_time_s);
+  bool UpdateUntil(double relative_time_s, bool refresh_prediction = true);
 
   const Target& target() const;
   // Rows are {relative_time_s, x_m, y_m, z_m} from the current model forecast.

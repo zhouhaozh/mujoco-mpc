@@ -50,9 +50,9 @@ class ShuttlePredictionClient {
   ShuttlePredictionClient(const ShuttlePredictionClient&) = delete;
   ShuttlePredictionClient& operator=(const ShuttlePredictionClient&) = delete;
 
-  nlohmann::json Update(double t) {
+  nlohmann::json Update(double t, bool refresh_prediction = true) {
     if (!std::isfinite(t)) throw std::invalid_argument("prediction update time must be finite");
-    return Request({{"t", t}});
+    return Request({{"t", t}, {"refresh_prediction", refresh_prediction}});
   }
 
   void Close() noexcept {

@@ -199,10 +199,15 @@ int main(int argc, char** argv) try {
       events << Json{{"kind", "hit_position_error"},
                      {"hit_position_error", hit_position_error_json}}.dump() << '\n';
     }
-    if (active && (tick % predict_ticks == 0 || replay_t + dt > rows.back().t)) {
-      forecast = predictor.Update(std::clamp(replay_t, 0.0, rows.back().t));
-      if (forecast.at("target").at("valid").get<bool>()) ++predictions;
-      max_prediction_ms = std::max(max_prediction_ms, forecast.at("target").value("prediction_ms", 0.0));
+    if (active) {
+      // Ingest observations every 1 ms simulation tick; publish a matched
+      // target and trajectory only on prediction-period boundaries.
+      const bool refresh_prediction = tick % predict_ticks == 0;
+      forecast = predictor.Update(std::clamp(replay_t, 0.0, rows.back().t), refresh_prediction);
+      if (refresh_prediction) {
+        if (forecast.at("target").at("valid").get<bool>()) ++predictions;
+        max_prediction_ms = std::max(max_prediction_ms, forecast.at("target").value("prediction_ms", 0.0));
+      }
     }
     const BaseState base = be.base_state();
     const auto& current_target = forecast.at("target");
