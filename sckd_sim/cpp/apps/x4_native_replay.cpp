@@ -230,6 +230,10 @@ int main(int argc, char** argv) try {
         }
         auto goal = target.at("p_hit_m").get<std::array<double, 3>>();
         goal[0] -= initial_base[0]; goal[1] -= initial_base[1];
+        // Solve synchronously with simulation time, robot and ball states frozen.
+        // Wall-clock solve duration does not reduce remaining: the solve is
+        // instantaneous in simulation time. Commands are issued at the same t,
+        // then be.run(1) below advances the simulation by 1 ms.
         const auto solve_start = std::chrono::steady_clock::now();
         auto next = controller.Solve(state, goal, remaining);
         const auto solve_end = std::chrono::steady_clock::now();
