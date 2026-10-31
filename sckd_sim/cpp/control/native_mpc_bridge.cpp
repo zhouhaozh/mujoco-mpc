@@ -9,8 +9,7 @@
 #include <vector>
 #include "nmpc.h"
 
-// This header/library pair adds m_previous_acceleration to the old 832-byte ABI.
-static_assert(sizeof(NMPC) == 856, "NMPC header ABI does not match the supplied X4 library");
+static_assert(sizeof(NMPC) == 832, "NMPC header ABI does not match the supplied X4 library");
 
 namespace sckd {
 namespace {
@@ -23,17 +22,88 @@ double EpochMilliseconds() {
   return std::chrono::duration<double, std::milli>(
       std::chrono::system_clock::now().time_since_epoch()).count();
 }
+
+constexpr double kAccelerationInverse[NativeMpcPlan::kControls] = {
+    1.0 / 8.0, 1.0 / 8.0, 1.0 / 30.0, 1.0 / 30.0,
+    1.0 / 180.0, 1.0 / 400.0, 1.0 / 200.0};
 }  // namespace
 
-std::array<double, NativeMpcPlan::kControls> NativeMpcPlan::VelocityAt(double elapsed_s) const {
-  if (!success || segment_dt_s <= 0 || !std::isfinite(elapsed_s)) return {};
-  const double elapsed = std::clamp(elapsed_s, 0.0, kSteps * segment_dt_s);
-  const int segment = std::min(static_cast<int>(elapsed / segment_dt_s), kSteps - 1);
-  const double remaining = (segment + 1) * segment_dt_s - elapsed;
-  auto velocity = velocities[segment];
-  for (int axis = 0; axis < kControls; ++axis)
-    velocity[axis] -= accelerations[segment][axis] * remaining;
-  return velocity;
+void NativeMpcPlan::BuildTrajectory(const std::array<double, 14>& state) {
+  plan_ms = 0;
+  plan_pos.clear();
+  plan_vel.clear();
+  if (!AllFinite(state) || !std::isfinite(segment_dt_s) || segment_dt_s <= 0)
+    throw std::invalid_argument("native MPC trajectory requires finite state and positive segment duration");
+  for (const auto& step : velocity_increments)
+    if (!AllFinite(step)) throw std::invalid_argument("native MPC trajectory increments must be finite");
+
+  std::array<double, kControls> target_velocity{};
+  for (int axis = 0; axis < kControls; ++axis) target_velocity[axis] = state[7 + axis];
+  for (int step = 0; step < kSteps; ++step) {
+    for (int axis = 0; axis < kControls; ++axis) {
+      target_velocity[axis] += velocity_increments[step][axis];
+      if (!std::isfinite(target_velocity[axis]))
+        throw std::runtime_error("native MPC target velocity overflow");
+      velocities[step][axis] = target_velocity[axis];
+    }
+  }
+
+  const double total_s = segment_dt_s + segment_dt_s + segment_dt_s;
+  plan_ms = total_s >= 3.0 ? 3000 : static_cast<int>(total_s * 1000.0);
+  const int width = plan_ms + 1;
+  plan_pos.assign(kControls * width, 0.0);
+  plan_vel.assign(kControls * width, 0.0);
+  const int boundary1 = static_cast<int>(std::min(segment_dt_s, 3.0) * 1000.0);
+  const int boundary2 = static_cast<int>(std::min(segment_dt_s + segment_dt_s, 3.0) * 1000.0);
+  std::array<double, kControls> position{};
+  std::array<double, kControls> velocity{};
+  for (int axis = 0; axis < kControls; ++axis) {
+    position[axis] = state[axis];
+    velocity[axis] = state[7 + axis];
+    plan_pos[axis * width] = position[axis];
+    plan_vel[axis * width] = velocity[axis];
+  }
+  for (int i = 1; i <= plan_ms; ++i) {
+    const int step = i <= boundary1 ? 0 : (i <= boundary2 ? 1 : 2);
+    for (int axis = 0; axis < kControls; ++axis) {
+      const double max_delta = (1.0 / kAccelerationInverse[axis]) * kTickSeconds;
+      if (velocity[axis] < velocities[step][axis])
+        velocity[axis] = std::min(velocity[axis] + max_delta, velocities[step][axis]);
+      else
+        velocity[axis] = std::max(velocity[axis] - max_delta, velocities[step][axis]);
+      position[axis] += velocity[axis] * kTickSeconds;
+      if (!std::isfinite(position[axis]) || !std::isfinite(velocity[axis]))
+        throw std::runtime_error("native MPC dense trajectory overflow");
+      plan_pos[axis * width + i] = position[axis];
+      plan_vel[axis * width + i] = velocity[axis];
+    }
+  }
+}
+
+NativeMpcSample NativeMpcPlan::Sample(double elapsed_s) const {
+  NativeMpcSample sample;
+  const int width = plan_ms + 1;
+  if (!success || plan_ms < 0 || !std::isfinite(elapsed_s) ||
+      plan_pos.size() != static_cast<size_t>(kControls * width) ||
+      plan_vel.size() != static_cast<size_t>(kControls * width))
+    return sample;
+  const double elapsed = std::max(elapsed_s, 0.0);
+  const double plan_duration = plan_ms * kTickSeconds;
+  sample.index = elapsed >= plan_duration
+                     ? plan_ms
+                     : static_cast<int>(std::lround(elapsed * 1000.0));
+  for (int axis = 0; axis < kControls; ++axis) {
+    sample.positions[axis] = plan_pos[axis * width + sample.index];
+    sample.velocities[axis] = plan_vel[axis * width + sample.index];
+  }
+  const double over = elapsed - plan_duration;
+  if (over > 0) {
+    const double extension = std::min(over, kFollowThroughSeconds);
+    for (int axis = 2; axis < kControls; ++axis)
+      sample.positions[axis] += sample.velocities[axis] * extension;
+    if (over > kFollowThroughSeconds) sample.velocities.fill(0.0);
+  }
+  return sample;
 }
 
 struct NativeMpcBridge::Impl {
@@ -103,19 +173,15 @@ NativeMpcPlan NativeMpcBridge::Solve(const std::array<double, kStateSize>& state
                                ", accuracy=" + std::to_string(accuracy_success) + ")");
     const auto controls = impl_->controller->get_controls();
     if (controls.size() != kPredictSteps * NativeMpcPlan::kControls || !AllFinite(controls))
-      throw std::runtime_error("native MPC requires 21 finite acceleration controls");
-    std::array<double, NativeMpcPlan::kControls> velocity{};
-    for (int axis = 0; axis < NativeMpcPlan::kControls; ++axis) velocity[axis] = state[7 + axis];
+      throw std::runtime_error("native MPC requires 21 finite velocity increments");
     for (int step = 0; step < kPredictSteps; ++step) {
       for (int axis = 0; axis < NativeMpcPlan::kControls; ++axis) {
-        const double acceleration = controls[step * NativeMpcPlan::kControls + axis];
-        plan.accelerations[step][axis] = acceleration;
-        velocity[axis] += acceleration * dt;
-        if (!std::isfinite(velocity[axis])) throw std::runtime_error("native MPC velocity overflow");
-        plan.velocities[step][axis] = velocity[axis];
+        const double increment = controls[step * NativeMpcPlan::kControls + axis];
+        plan.velocity_increments[step][axis] = increment;
       }
     }
     plan.segment_dt_s = dt;
+    plan.BuildTrajectory(state);
     plan.success = true;
   } catch (const std::exception& e) {
     plan.error = e.what();

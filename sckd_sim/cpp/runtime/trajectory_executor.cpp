@@ -146,9 +146,10 @@ ExecutionFrame ExecuteTrajectory(ExecutionContext c, int t, double ts) {
         ? std::clamp(-num / den, 0.0, 0.10) : n6_tau;
     n6_tau = 0.7 * n6_tau + 0.3 * tau_hat6;
     if(coherent || arm_servo.enabled)n6_tau=variant=="servo_mpc"?0:be.motor_config().command_delay_ms*.001;
-    sample6(ts + n6_tau, n6_q, n6_dq);
-    {   // 底盘速度:ts 时刻(无 τ̂ —— 伺服斜坡与 Plans 斜坡同 8 m/s²)
-      const double tau6 = ts - n6_t0;
+    // 下发下一毫秒轨迹点；补偿估计仍对齐当前实测时刻。
+    sample6(ts + SynchronousSchedule::kTickSeconds + n6_tau, n6_q, n6_dq);
+    {   // 底盘也下发下一毫秒速度，无臂延迟补偿。
+      const double tau6 = ts + SynchronousSchedule::kTickSeconds - n6_t0;
       const int idx = std::clamp((int)std::lround(tau6 * 1000.0), 0, n6_ms);
       n6_base[0]=n6_pos[idx];n6_base[1]=n6_pos[W+idx];
       n6_vbase[0] = n6_vel[idx];

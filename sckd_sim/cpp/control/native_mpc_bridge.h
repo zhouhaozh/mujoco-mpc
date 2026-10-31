@@ -3,6 +3,7 @@
 #include <array>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace sckd {
 
@@ -13,23 +14,37 @@ struct NativeMpcHitParams {
   double hit_vertical_speed_m_s = 0.0;
 };
 
+struct NativeMpcSample {
+  std::array<double, 7> positions{};
+  std::array<double, 7> velocities{};
+  int index = -1;
+};
+
 struct NativeMpcPlan {
   static constexpr int kSteps = 3;
   static constexpr int kControls = 7;
+  static constexpr double kTickSeconds = .001;
+  static constexpr double kFollowThroughSeconds = .15;
 
-  // Segment-end velocities: [vx, vy, dq1, dq2, dq3, dq4, dq5].
+  // Segment target velocities: measured velocity + cumulative increments.
+  // Axis order: [vx, vy, dq1, dq2, dq3, dq4, dq5].
   std::array<std::array<double, kControls>, kSteps> velocities{};
-  // Supplied library controls are accelerations, not velocity increments.
-  std::array<std::array<double, kControls>, kSteps> accelerations{};
+  // Per-segment velocity increments (m/s for the base, rad/s for joints).
+  std::array<std::array<double, kControls>, kSteps> velocity_increments{};
   bool solver_success = false;
   bool accuracy_success = false;
   double segment_dt_s = 0.0;
+  int plan_ms = 0;
+  std::vector<double> plan_pos;
+  std::vector<double> plan_vel;
   double solve_ms = 0.0;
   bool success = false;
   std::string error;
 
-  // Continuous velocity along the piecewise-constant acceleration plan.
-  std::array<double, kControls> VelocityAt(double elapsed_s) const;
+  // Build the nmpc6-compatible 1 ms execution plan from measured state.
+  void BuildTrajectory(const std::array<double, 14>& state);
+  // Sample the dense plan; after its end, apply at most 150 ms of arm follow-through.
+  NativeMpcSample Sample(double elapsed_s) const;
 };
 
 // Direct C++ bridge for the pinned X4 header/libnmpc.so.1 pair.

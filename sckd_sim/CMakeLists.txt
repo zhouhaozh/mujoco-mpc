@@ -191,8 +191,8 @@ if(SCKD_BUILD_X4_NATIVE_REPLAY)
   set(NATIVE_MPC_LIBRARY "${NATIVE_MPC_DIR}/libnmpc.so.1")
   file(SHA256 "${NATIVE_MPC_LIBRARY}" NATIVE_MPC_SHA256)
   file(SHA256 "${NATIVE_MPC_DIR}/nmpc.h" NATIVE_MPC_HEADER_SHA256)
-  if(NOT NATIVE_MPC_SHA256 STREQUAL "2afcda72d20e7a0f77798d101049aba97cb7d9952b10da1ac6b82aaea9607554"
-     OR NOT NATIVE_MPC_HEADER_SHA256 STREQUAL "e3b82039f985691e37c42e1638404d62a2bbbeef3f5e0c11a7df39f3a8d35389")
+  if(NOT NATIVE_MPC_SHA256 STREQUAL "3ebd7f1c91ef7a42c2e69f66ac5c1679b33a1929bfe49669874af7d9323932e3"
+     OR NOT NATIVE_MPC_HEADER_SHA256 STREQUAL "1bf9c1482288b642f454ccf53bfdba9ee5001a36af197097f81e2cfd94909d4c")
     message(FATAL_ERROR "Native MPC header/library pair changed; verify ABI and control units before updating hashes")
   endif()
   set(NATIVE_MPC_DEPS "${NATIVE_MPC_DIR}/runtime")
@@ -217,6 +217,14 @@ if(SCKD_BUILD_X4_NATIVE_REPLAY)
   add_test(NAME native_mpc COMMAND test_native_mpc)
   set_tests_properties(native_mpc PROPERTIES
       WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/native-mpc-check"
+      ENVIRONMENT "LD_LIBRARY_PATH=${NATIVE_MPC_DEPS};CASADIPATH=${NATIVE_MPC_DEPS};OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1"
+      TIMEOUT 60)
+  add_executable(test_native_nmpc_alignment cpp/tests/test_native_nmpc_alignment.cc)
+  target_link_libraries(test_native_nmpc_alignment PRIVATE sckd_nmpc6 sckd_native_mpc)
+  target_compile_definitions(test_native_nmpc_alignment PRIVATE
+      SCKD_LEGACY_NMPC_LIBRARY="${CMAKE_CURRENT_SOURCE_DIR}/third_party/nmpc6/nlp.so")
+  add_test(NAME native_nmpc_alignment COMMAND test_native_nmpc_alignment)
+  set_tests_properties(native_nmpc_alignment PROPERTIES
       ENVIRONMENT "LD_LIBRARY_PATH=${NATIVE_MPC_DEPS};CASADIPATH=${NATIVE_MPC_DEPS};OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1"
       TIMEOUT 60)
 endif()

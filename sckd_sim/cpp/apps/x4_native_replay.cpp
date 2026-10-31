@@ -11,6 +11,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <thread>
+#include <utility>
 #include <vector>
 #include <nlohmann/json.hpp>
 #include "control/chassis_servo.h"
@@ -128,20 +129,17 @@ int main(int argc, char** argv) try {
   const auto initial_base = cfg.at("initial_base_xy_m").get<std::array<double, 2>>();
   const auto signs = cfg.at("mpc_joint_sign").get<std::array<double, 5>>();
   const auto offsets = cfg.at("mpc_joint_offset_rad").get<std::array<double, 5>>();
-  const auto vmax = cfg.at("arm_velocity_limit_rad_s").get<std::array<double, 5>>();
-  const auto amax = cfg.at("arm_acceleration_limit_rad_s2").get<std::array<double, 5>>();
-  const auto window = cfg.at("unlimited_joint_position_window_rad").get<std::array<double, 2>>();
   const auto& arm = be.motor_config().arm_servo;
   if (!arm.enabled) throw std::runtime_error("independent X4 servo config required");
   std::array<int, 5> joints{};
-  std::array<double, 5> qcmd = arm.standby_q, dqcmd{}, lo{}, hi{}, qstart{};
+  std::array<double, 5> qcmd = arm.standby_q, dqcmd{}, qstart{};
   for (int j = 0; j < 5; ++j) {
-    if (std::abs(signs[j]) != 1 || !std::isfinite(offsets[j]) || !(vmax[j] > 0) || !(amax[j] > 0))
-      throw std::runtime_error("invalid joint mapping or execution limits");
+    if (std::abs(signs[j]) != 1 || !std::isfinite(offsets[j]))
+      throw std::runtime_error("invalid joint mapping");
     joints[j] = Named(m, mjOBJ_JOINT, kAxisJointName[AxisArm(j)]);
-    lo[j] = m->jnt_limited[joints[j]] ? m->jnt_range[2*joints[j]] : window[0];
-    hi[j] = m->jnt_limited[joints[j]] ? m->jnt_range[2*joints[j]+1] : window[1];
-    if (qcmd[j] < lo[j] || qcmd[j] > hi[j]) throw std::runtime_error("standby outside joint limits");
+    if (m->jnt_limited[joints[j]] &&
+        (qcmd[j] < m->jnt_range[2*joints[j]] || qcmd[j] > m->jnt_range[2*joints[j]+1]))
+      throw std::runtime_error("standby outside joint limits");
     d->qpos[m->jnt_qposadr[joints[j]]] = qcmd[j];
     qstart[j] = qcmd[j];
   }
@@ -162,12 +160,12 @@ int main(int argc, char** argv) try {
   const double end = settle + rows.back().t + stop;
   const int ticks = static_cast<int>(std::ceil(end / dt));
   const double minimum_remaining = cfg.at("minimum_remaining_s");
-  const double base_speed = cfg.at("base_speed_limit_m_s");
+  const double arm_delay_s = be.motor_config().command_delay_ms * .001;
   NativeMpcPlan plan;
-  double plan_start = 0, plan_end = -1, min_gap = std::numeric_limits<double>::infinity();
+  double plan_start = 0, min_gap = std::numeric_limits<double>::infinity();
   double max_joint_motion = 0, max_mpc_joint_motion = 0, max_solve_ms = 0, max_prediction_ms = 0;
   std::array<double, 5> first_execution_q{};
-  int attempts = 0, successes = 0, command_ticks = 0, clipped = 0, predictions = 0;
+  int attempts = 0, successes = 0, command_ticks = 0, predictions = 0;
   bool geometric_contact = false;
   Json forecast = {{"target", {{"valid", false}}},
                    {"predicted_trajectory", Json::array()},
@@ -217,9 +215,8 @@ int main(int argc, char** argv) try {
     hit_position_error.UpdatePendingHit(
         target_current ? std::optional<double>(current_target.at("t_hit_s").get<double>())
                        : std::nullopt);
-    // A failed solve may retain a valid prior plan, but an invalid/expired
-    // observation must stop that plan. Execution limits ramp velocity to zero.
-    if (!target_current) plan.success = false;
+    // Prediction validity gates new solves. An accepted plan remains available
+    // through its endpoint and follow-through even if the next prediction fails.
     if (target_current && runtime::SynchronousSchedule::Replan(tick, mpc_ticks)) {
       const auto& target = forecast.at("target");
       const double hit_t = target.at("t_hit_s");
@@ -247,29 +244,28 @@ int main(int argc, char** argv) try {
         events << Json{{"kind", "solve"}, {"t", t}, {"replay_t", replay_t}, {"target", target},
             {"state", state}, {"goal_local", goal}, {"success", next.success},
             {"solver_success", next.solver_success}, {"accuracy_success", next.accuracy_success},
-            {"control_semantics", "acceleration"}, {"accelerations", next.accelerations},
-            {"segment_dt_s", next.segment_dt_s},
+            {"control_semantics", "velocity_increment"}, {"velocity_increments", next.velocity_increments},
+            {"segment_dt_s", next.segment_dt_s}, {"plan_ms", next.plan_ms},
             {"solve_start_wall_s", std::chrono::duration<double>(solve_start-wall_start).count()},
             {"solve_end_wall_s", std::chrono::duration<double>(solve_end-wall_start).count()},
             {"solve_ms", next.solve_ms}, {"error", next.error}, {"velocities", next.velocities}}.dump() << '\n';
-        if (next.success) { plan = next; plan_start = t; plan_end = settle + hit_t; ++successes; }
+        if (next.success) { plan = std::move(next); plan_start = t; ++successes; }
       }
     }
-    std::array<double, 7> desired{};
-    const bool executing = target_current && plan.success && t < plan_end;
+    const double sample_time = t + dt;
+    const double elapsed = sample_time - plan_start;
+    const auto base_sample = plan.Sample(elapsed);
+    const auto arm_sample = plan.Sample(sample_time + arm_delay_s - plan_start);
+    const bool executing = plan.success &&
+        elapsed - plan.plan_ms * NativeMpcPlan::kTickSeconds <= NativeMpcPlan::kFollowThroughSeconds;
     if (executing) {
       if (!command_ticks) for (int j = 0; j < 5; ++j) first_execution_q[j] = be.joint(AxisArm(j)).q;
-      // Command the upcoming tick's end velocity so each new plan applies a*dt.
-      desired = plan.VelocityAt(t-plan_start+dt); ++command_ticks;
+      ++command_ticks;
     }
     ArmHybridCmd cmd;
     for (int j = 0; j < 5; ++j) {
-      const double raw = signs[j] * desired[2+j];
-      double target_dq = std::clamp(raw, -vmax[j], vmax[j]);
-      if (raw != target_dq) ++clipped;
-      dqcmd[j] += std::clamp(target_dq-dqcmd[j], -amax[j]*dt, amax[j]*dt);
-      const double next_q = std::clamp(qcmd[j] + dqcmd[j]*dt, lo[j], hi[j]);
-      dqcmd[j] = (next_q-qcmd[j])/dt; qcmd[j] = next_q;
+      qcmd[j] = plan.success ? signs[j] * (arm_sample.positions[2+j] - offsets[j]) : arm.standby_q[j];
+      dqcmd[j] = plan.success ? signs[j] * arm_sample.velocities[2+j] : 0.0;
       cmd.q[j] = qcmd[j]; cmd.dq[j] = dqcmd[j]; cmd.kp[j] = arm.kp[j]; cmd.kd[j] = arm.kd[j];
       max_joint_motion = std::max(max_joint_motion, std::abs(be.joint(AxisArm(j)).q-qstart[j]));
       if (executing) max_mpc_joint_motion = std::max(max_mpc_joint_motion,
@@ -277,11 +273,19 @@ int main(int argc, char** argv) try {
     }
     if (!be.arm_gravity(cmd.q, cmd.tau_ff)) throw std::runtime_error("gravity feedforward failed");
     be.set_arm_hybrid(cmd);
-    const double vx = std::clamp(desired[0], -base_speed, base_speed);
-    const double vy = std::clamp(desired[1], -base_speed, base_speed);
-    servo.set_twist({std::cos(base.yaw)*vx + std::sin(base.yaw)*vy,
-        -std::sin(base.yaw)*vx + std::cos(base.yaw)*vy, std::clamp(-base.yaw, -.2, .2)});
+    const double vx = base_sample.velocities[0], vy = base_sample.velocities[1];
+    const std::array<double, 3> base_command = {
+        std::cos(base.yaw)*vx + std::sin(base.yaw)*vy,
+        -std::sin(base.yaw)*vx + std::cos(base.yaw)*vy, 0.0};
+    servo.set_twist({base_command[0], base_command[1], base_command[2]});
     servo.update(t);
+    events << Json{{"kind", "command"}, {"t", t}, {"replay_t", replay_t},
+        {"target_current", target_current}, {"executing", executing},
+        {"plan_start_s", plan.success ? Json(plan_start) : Json(nullptr)}, {"plan_ms", plan.plan_ms},
+        {"sample_time_s", sample_time}, {"arm_sample_time_s", sample_time + arm_delay_s},
+        {"base_sample_index", base_sample.index}, {"arm_sample_index", arm_sample.index},
+        {"q_command", qcmd}, {"dq_command", dqcmd}, {"base_velocity_world", {vx, vy}},
+        {"base_yaw_rad", base.yaw}, {"base_twist_command", base_command}}.dump() << '\n';
     const double gap = SurfaceGap(m, d, face, ball_qa, m->geom_size[3*ball_g]);
     if (active) { min_gap = std::min(min_gap, gap); geometric_contact |= gap <= 0; }
     for (int j = 0; j < m->nq; ++j) if (!std::isfinite(d->qpos[j])) throw std::runtime_error("nonfinite qpos");
@@ -309,7 +313,8 @@ int main(int argc, char** argv) try {
   const Json summary = {{"schema", "X4_NATIVE_REPLAY_RESULT/1"}, {"pipeline_passed", passed},
       {"scene", path("scene_path")}, {"trajectory", path("trajectory_path")}, {"native_mpc", path("native_mpc_library")},
       {"simulated_s", d->time}, {"physics_steps", be.tick()}, {"solve_attempts", attempts}, {"solve_successes", successes},
-      {"valid_predictions", predictions}, {"mpc_execution_ticks", command_ticks}, {"velocity_clip_count", clipped},
+      {"valid_predictions", predictions}, {"mpc_execution_ticks", command_ticks},
+      {"command_sampling", "next_tick_dense_plan"}, {"follow_through_s", NativeMpcPlan::kFollowThroughSeconds},
       {"max_joint_motion_rad", max_joint_motion}, {"minimum_surface_gap_m", min_gap}, {"geometric_contact", geometric_contact},
       {"max_mpc_joint_motion_rad", max_mpc_joint_motion}, {"input_policy", cfg.value("preassociated_replay", false) ? "preassociated_forced" : "normal_association"},
       {"physical_hit", nullptr}, {"ball_mode", "measured_reference_no_collision_no_bounce"}, {"end_reason", "recording_end_then_stop"},

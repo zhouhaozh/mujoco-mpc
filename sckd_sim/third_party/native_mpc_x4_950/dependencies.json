@@ -83,6 +83,18 @@
       "source": "/usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3",
       "sha256": "8ba4a98f44d763c2e648755ef452025919e28633339f23ff605044de3483a25d",
       "soname": "libblas.so.3"
+    },
+    {
+      "file": "runtime/libcoinhsl.so",
+      "source": "/home/ubuntu/works/my_isaaclab_badminton/mpc-zhou/third_party/mpc/lib/libcoinhsl.so",
+      "sha256": "1bdeaf2739c223f5e8ab229c3098a51c6003483310a58dee310df4338ad8e4af",
+      "soname": "libcoinhsl.so"
+    },
+    {
+      "file": "runtime/libmetis.so.5.1.0",
+      "source": "/home/ubuntu/works/my_isaaclab_badminton/mpc-zhou/third_party/mpc/lib/libmetis.so.5.1.0",
+      "sha256": "e3644eb16d61bdc633255b36851aecbb61919963a3a3d3cd8a5eb9bf2895f200",
+      "soname": "libmetis.so.5"
     }
   ],
   "headers": [
